@@ -30,20 +30,21 @@ async def seed():
         tl_existing = (await db.execute(select(TaskList))).scalars().all()
         if not tl_existing:
             lists = [
-                TaskList(name="Boodschappen",   color="#FF6B6B"),
-                TaskList(name="Huishouden",     color="#4ECDC4"),
-                TaskList(name="School",         color="#6C5CE7"),
+                TaskList(name="Taken",       color="#6C5CE7"),
+                TaskList(name="Huishouden",  color="#4ECDC4"),
             ]
             db.add_all(lists)
             await db.commit()
-            await db.refresh(lists[0])
+            for l in lists:
+                await db.refresh(l)
             # Sample tasks
             today = date.today()
             db.add_all([
-                Task(title="Melk kopen",         done=False, due_date=today, list_id=lists[0].id),
-                Task(title="Brood kopen",         done=False, due_date=today, list_id=lists[0].id),
-                Task(title="Stofzuigen",          done=False, due_date=today, list_id=lists[1].id),
-                Task(title="Huiswerk wiskunde",   done=False, due_date=today, list_id=lists[2].id, member_id=3),
+                Task(title="Doktersafspraak plannen",  done=False, due_date=today,                    list_id=lists[0].id),
+                Task(title="Verzekering nakijken",     done=False, due_date=today + timedelta(days=3), list_id=lists[0].id),
+                Task(title="Stofzuigen",               done=False, due_date=today,                    list_id=lists[1].id),
+                Task(title="Badkamer schoonmaken",     done=False, due_date=today + timedelta(days=1), list_id=lists[1].id),
+                Task(title="Ramen lappen",             done=False, due_date=today + timedelta(days=5), list_id=lists[1].id),
             ])
             await db.commit()
             print("✓ Task lists & tasks created")
