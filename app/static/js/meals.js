@@ -124,13 +124,23 @@
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      const cookVal = cookSel ? cookSel.value : '';
+      const cookVal  = cookSel ? cookSel.value : '';
+      const name     = form.name.value.trim();
+      const recipeUrl = form.recipe_url.value.trim();
+
+      if (!name) { form.name.focus(); return; }
+      if (recipeUrl && !recipeUrl.startsWith('http://') && !recipeUrl.startsWith('https://')) {
+        Toast.show('Recept URL moet beginnen met http:// of https://', 'error');
+        form.recipe_url.focus();
+        return;
+      }
+
       const data = {
         date:           form.date.value,
         meal_type:      form.meal_type.value,
-        name:           form.name.value,
-        description:    form.description.value,
-        recipe_url:     form.recipe_url.value,
+        name,
+        description:    form.description.value.trim(),
+        recipe_url:     recipeUrl,
         cook_member_id: cookVal ? parseInt(cookVal) : null,
       };
       try {

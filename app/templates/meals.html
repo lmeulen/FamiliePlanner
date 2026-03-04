@@ -50,13 +50,13 @@
       </select>
     </label>
     <label>Naam *
-      <input type="text" name="name" required maxlength="200" placeholder="Bijv. Spaghetti bolognese" />
+      <input type="text" name="name" required minlength="1" maxlength="200" placeholder="Bijv. Spaghetti bolognese" />
     </label>
     <label>Beschrijving
-      <textarea name="description" rows="2"></textarea>
+      <textarea name="description" rows="2" maxlength="1000"></textarea>
     </label>
     <label>Recept URL
-      <input type="url" name="recipe_url" placeholder="https://..." />
+      <input type="url" name="recipe_url" placeholder="https://..." maxlength="500" />
     </label>
     <label>Wie kookt er?
       <select name="cook_member_id">

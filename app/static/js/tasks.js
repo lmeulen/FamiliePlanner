@@ -199,13 +199,27 @@
       e.preventDefault();
       const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
 
+      // Trim text inputs
+      form.title.value       = form.title.value.trim();
+      form.description.value = form.description.value.trim();
+
+      if (!form.title.value) {
+        form.title.focus();
+        return;
+      }
+
       // Creating a new recurring series
       if (!editTaskId && recurToggle.checked) {
-        const seriesEnd = form.querySelector('[name="series_end"]').value;
-        if (!seriesEnd) {
-          Toast.show('Vul een einddatum in voor de reeks', 'error');
+        const seriesEndInput = form.querySelector('[name="series_end"]');
+        const seriesEndErr   = document.getElementById('task-series-end-error');
+        const seriesEnd      = seriesEndInput.value;
+        const dueDate        = form.due_date.value;
+        if (!seriesEnd || seriesEnd <= dueDate) {
+          seriesEndErr?.classList.remove('hidden');
+          seriesEndInput.focus();
           return;
         }
+        seriesEndErr?.classList.add('hidden');
         const payload = {
           title:           form.title.value,
           description:     form.description.value,

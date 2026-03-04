@@ -1,13 +1,13 @@
 """Pydantic schemas for TaskList, TaskRecurrenceSeries and Task."""
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from app.enums import RecurrenceType
 
 
 # ---- TaskList ----
 
 class TaskListBase(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=100)
     color: str = "#4ECDC4"
 
 
@@ -29,19 +29,25 @@ class TaskListOut(TaskListBase):
 # ---- TaskRecurrenceSeries ----
 
 class TaskRecurrenceSeriesCreate(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
     list_id: int | None = None
     member_id: int | None = None
     recurrence_type: RecurrenceType
     series_start: date
     series_end: date
 
+    @model_validator(mode="after")
+    def end_after_start(self) -> "TaskRecurrenceSeriesCreate":
+        if self.series_end <= self.series_start:
+            raise ValueError("series_end must be after series_start")
+        return self
+
 
 class TaskRecurrenceSeriesUpdate(BaseModel):
     """series_start is immutable after creation."""
-    title: str
-    description: str = ""
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
     list_id: int | None = None
     member_id: int | None = None
     recurrence_type: RecurrenceType
@@ -58,8 +64,8 @@ class TaskRecurrenceSeriesOut(TaskRecurrenceSeriesCreate):
 # ---- Task ----
 
 class TaskBase(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=1000)
     done: bool = False
     due_date: date | None = None
     list_id: int | None = None

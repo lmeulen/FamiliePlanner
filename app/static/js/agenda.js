@@ -393,6 +393,34 @@
       const startDt  = new Date(form.start_time.value);
       const endDt    = new Date(form.end_time.value);
 
+      // Cross-field: end must be after start
+      const endTimeErr = document.getElementById('end-time-error');
+      if (endDt <= startDt) {
+        endTimeErr?.classList.remove('hidden');
+        form.end_time.focus();
+        return;
+      }
+      endTimeErr?.classList.add('hidden');
+
+      // Trim text inputs
+      form.title.value       = form.title.value.trim();
+      form.description.value = form.description.value.trim();
+      form.location.value    = form.location.value.trim();
+
+      // Series end date validation
+      const seriesEndInput = form.querySelector('input[name="series_end"]');
+      const seriesEndErr   = document.getElementById('series-end-error');
+      const startDate      = form.start_time.value.split('T')[0];
+      if (seriesEndInput && !seriesEndInput.classList.contains('hidden')) {
+        const seriesEndVal = seriesEndInput.value;
+        if (!seriesEndVal || seriesEndVal <= startDate) {
+          seriesEndErr?.classList.remove('hidden');
+          seriesEndInput.focus();
+          return;
+        }
+        seriesEndErr?.classList.add('hidden');
+      }
+
       const eventData = {
         title:       form.title.value,
         description: form.description.value,

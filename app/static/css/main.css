@@ -909,6 +909,24 @@ img { max-width: 100%; }
   cursor: pointer;
 }
 .modal-form textarea { resize: vertical; min-height: 60px; }
+
+/* ── Form validation ─────────────────────────────────────────── */
+.modal-form input:user-invalid,
+.modal-form textarea:user-invalid,
+.modal-form select:user-invalid {
+  border-color: var(--color-danger);
+  background: #fff5f5;
+}
+.modal-form input:user-invalid:focus,
+.modal-form textarea:user-invalid:focus,
+.modal-form select:user-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, .15);
+}
+.field-error {
+  color: var(--color-danger);
+  font-size: .78rem;
+  margin-top: -.3rem;
+}
 .checkbox-label {
   flex-direction: row !important;
   align-items: center;

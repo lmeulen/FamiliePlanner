@@ -52,7 +52,11 @@
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      const data = { name: form.name.value, color: form.color.value, avatar: form.avatar.value };
+      const name   = form.name.value.trim();
+      const avatar = form.avatar.value.trim();
+      if (!name) { form.name.focus(); return; }
+      if (!avatar) { form.avatar.focus(); return; }
+      const data = { name, color: form.color.value, avatar };
       try {
         if (editId) {
           await API.put(`/api/family/${editId}`, data);

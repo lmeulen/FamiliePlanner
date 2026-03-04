@@ -22,13 +22,13 @@
   <form id="member-form" class="modal-form">
     <h3 class="modal-title" id="member-form-title">Gezinslid toevoegen</h3>
     <label>Naam *
-      <input type="text" name="name" required maxlength="50" placeholder="Bijv. Emma" />
+      <input type="text" name="name" required minlength="1" maxlength="50" placeholder="Bijv. Emma" />
     </label>
     <label>Kleur
       <input type="color" name="color" value="#4ECDC4" />
     </label>
     <label>Emoji avatar
-      <input type="text" name="avatar" maxlength="4" placeholder="👤" value="👤" />
+      <input type="text" name="avatar" required minlength="1" maxlength="4" placeholder="👤" value="👤" />
     </label>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>

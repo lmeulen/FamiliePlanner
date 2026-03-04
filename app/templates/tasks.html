@@ -46,10 +46,10 @@
   <form id="task-form" class="modal-form">
     <h3 class="modal-title" id="task-form-title">Taak toevoegen</h3>
     <label>Titel *
-      <input type="text" name="title" required maxlength="200" placeholder="Bijv. Melk kopen" />
+      <input type="text" name="title" required minlength="1" maxlength="200" placeholder="Bijv. Melk kopen" />
     </label>
     <label>Beschrijving
-      <textarea name="description" rows="2"></textarea>
+      <textarea name="description" rows="2" maxlength="1000"></textarea>
     </label>
     <label>Lijst
       <select name="list_id">
@@ -87,6 +87,7 @@
       </label>
       <label>Einddatum reeks *
         <input type="date" name="series_end" />
+        <span class="field-error hidden" id="task-series-end-error">Einddatum moet na vervaldatum liggen</span>
       </label>
     </div>
 
@@ -113,7 +114,7 @@
   <form id="list-form" class="modal-form">
     <h3 class="modal-title">Nieuwe lijst</h3>
     <label>Naam *
-      <input type="text" name="name" required maxlength="100" placeholder="Bijv. Boodschappen" />
+      <input type="text" name="name" required minlength="1" maxlength="100" placeholder="Bijv. Boodschappen" />
     </label>
     <label>Kleur
       <input type="color" name="color" value="#4ECDC4" />
