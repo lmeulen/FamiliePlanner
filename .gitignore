@@ -44,8 +44,8 @@ env/
 .env.*.local
 
 # Logs
-logs/
-*.log
+logs/*.log
+logs/*.gz
 
 # Testing
 .pytest_cache/

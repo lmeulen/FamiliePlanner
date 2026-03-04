@@ -2,6 +2,7 @@
 import calendar as cal_mod
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
 from sqlalchemy import select, and_, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,9 +77,11 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
     series = RecurrenceSeries(**payload.model_dump())
     db.add(series)
     await db.flush()   # get series.id before creating events
-    db.add_all(_make_events_for_series(series))
+    occurrences = _make_events_for_series(series)
+    db.add_all(occurrences)
     await db.commit()
     await db.refresh(series)
+    logger.info("agenda.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
     return series
 
 
@@ -86,6 +89,7 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
 async def get_series(series_id: int, db: AsyncSession = Depends(get_db)):
     series = await db.get(RecurrenceSeries, series_id)
     if not series:
+        logger.warning("agenda.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     return series
 
@@ -96,6 +100,7 @@ async def update_series(
 ):
     series = await db.get(RecurrenceSeries, series_id)
     if not series:
+        logger.warning("agenda.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
 
     for k, v in payload.model_dump(exclude_unset=True).items():
@@ -107,9 +112,11 @@ async def update_series(
             and_(AgendaEvent.series_id == series_id, AgendaEvent.is_exception == False)  # noqa: E712
         )
     )
-    db.add_all(_make_events_for_series(series))
+    new_events = _make_events_for_series(series)
+    db.add_all(new_events)
     await db.commit()
     await db.refresh(series)
+    logger.info("agenda.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_events))
     return series
 
 
@@ -117,10 +124,12 @@ async def update_series(
 async def delete_series(series_id: int, db: AsyncSession = Depends(get_db)):
     series = await db.get(RecurrenceSeries, series_id)
     if not series:
+        logger.warning("agenda.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     await db.execute(sa_delete(AgendaEvent).where(AgendaEvent.series_id == series_id))
     await db.delete(series)
     await db.commit()
+    logger.info("agenda.series.deleted id={} title='{}'", series_id, series.title)
 
 
 # ── Agenda event endpoints ────────────────────────────────────────
@@ -181,6 +190,7 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
     db.add(event)
     await db.commit()
     await db.refresh(event)
+    logger.info("agenda.event.created id={} title='{}'", event.id, event.title)
     return event
 
 
@@ -188,6 +198,7 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
 async def get_event(event_id: int, db: AsyncSession = Depends(get_db)):
     event = await db.get(AgendaEvent, event_id)
     if not event:
+        logger.warning("agenda.event.not_found id={}", event_id)
         raise HTTPException(404, "Event not found")
     return event
 
@@ -198,6 +209,7 @@ async def update_event(
 ):
     event = await db.get(AgendaEvent, event_id)
     if not event:
+        logger.warning("agenda.event.not_found id={}", event_id)
         raise HTTPException(404, "Event not found")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(event, key, value)
@@ -205,6 +217,7 @@ async def update_event(
         event.is_exception = True   # mark as individually edited
     await db.commit()
     await db.refresh(event)
+    logger.info("agenda.event.updated id={} title='{}'", event.id, event.title)
     return event
 
 
@@ -212,6 +225,8 @@ async def update_event(
 async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
     event = await db.get(AgendaEvent, event_id)
     if not event:
+        logger.warning("agenda.event.not_found id={}", event_id)
         raise HTTPException(404, "Event not found")
     await db.delete(event)
     await db.commit()
+    logger.info("agenda.event.deleted id={}", event_id)

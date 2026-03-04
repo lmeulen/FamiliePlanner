@@ -1,5 +1,6 @@
 """CRUD router for FamilyMember."""
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ async def create_member(payload: FamilyMemberCreate, db: AsyncSession = Depends(
     db.add(member)
     await db.commit()
     await db.refresh(member)
+    logger.info("family.member.created id={} name='{}'", member.id, member.name)
     return member
 
 
@@ -29,6 +31,7 @@ async def create_member(payload: FamilyMemberCreate, db: AsyncSession = Depends(
 async def get_member(member_id: int, db: AsyncSession = Depends(get_db)):
     member = await db.get(FamilyMember, member_id)
     if not member:
+        logger.warning("family.member.not_found id={}", member_id)
         raise HTTPException(404, "Family member not found")
     return member
 
@@ -39,11 +42,13 @@ async def update_member(
 ):
     member = await db.get(FamilyMember, member_id)
     if not member:
+        logger.warning("family.member.not_found id={}", member_id)
         raise HTTPException(404, "Family member not found")
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(member, key, value)
     await db.commit()
     await db.refresh(member)
+    logger.info("family.member.updated id={} name='{}'", member.id, member.name)
     return member
 
 
@@ -51,6 +56,8 @@ async def update_member(
 async def delete_member(member_id: int, db: AsyncSession = Depends(get_db)):
     member = await db.get(FamilyMember, member_id)
     if not member:
+        logger.warning("family.member.not_found id={}", member_id)
         raise HTTPException(404, "Family member not found")
     await db.delete(member)
     await db.commit()
+    logger.info("family.member.deleted id={}", member_id)

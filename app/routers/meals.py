@@ -1,6 +1,7 @@
 """CRUD router for Meal planner."""
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,6 +66,7 @@ async def create_meal(payload: MealCreate, db: AsyncSession = Depends(get_db)):
     db.add(meal)
     await db.commit()
     await db.refresh(meal)
+    logger.info("meals.meal.created id={} name='{}' date={}", meal.id, meal.name, meal.date)
     return meal
 
 
@@ -72,6 +74,7 @@ async def create_meal(payload: MealCreate, db: AsyncSession = Depends(get_db)):
 async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
+        logger.warning("meals.meal.not_found id={}", meal_id)
         raise HTTPException(404, "Meal not found")
     return meal
 
@@ -82,11 +85,13 @@ async def update_meal(
 ):
     meal = await db.get(Meal, meal_id)
     if not meal:
+        logger.warning("meals.meal.not_found id={}", meal_id)
         raise HTTPException(404, "Meal not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(meal, k, v)
     await db.commit()
     await db.refresh(meal)
+    logger.info("meals.meal.updated id={} name='{}'", meal.id, meal.name)
     return meal
 
 
@@ -94,6 +99,8 @@ async def update_meal(
 async def delete_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
+        logger.warning("meals.meal.not_found id={}", meal_id)
         raise HTTPException(404, "Meal not found")
     await db.delete(meal)
     await db.commit()
+    logger.info("meals.meal.deleted id={}", meal_id)

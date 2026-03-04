@@ -10,18 +10,26 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from loguru import logger
 
 from app.config import APP_TITLE, APP_VERSION
 from app.database import init_db
+from app.logging_config import setup_logging
 from app.routers import agenda, family, meals, tasks
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Initialise logging before anything else
+setup_logging()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting {} v{}", APP_TITLE, APP_VERSION)
     await init_db()
+    logger.info("Database ready")
     yield
+    logger.info("Shutting down {}", APP_TITLE)
 
 
 app = FastAPI(
@@ -31,6 +39,24 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+
+# ── Request logging middleware ────────────────────────────────────
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "{method} {path} → {status} ({duration:.1f}ms)",
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        duration=duration_ms,
+    )
+    return response
+
 
 # Static files
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")

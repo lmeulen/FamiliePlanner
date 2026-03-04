@@ -2,6 +2,7 @@
 import calendar as cal_mod
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
+from loguru import logger
 from sqlalchemy import select, and_, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,6 +83,7 @@ async def create_task_list(payload: TaskListCreate, db: AsyncSession = Depends(g
     db.add(tl)
     await db.commit()
     await db.refresh(tl)
+    logger.info("tasks.list.created id={} name='{}'", tl.id, tl.name)
     return tl
 
 
@@ -91,11 +93,13 @@ async def update_task_list(
 ):
     tl = await db.get(TaskList, list_id)
     if not tl:
+        logger.warning("tasks.list.not_found id={}", list_id)
         raise HTTPException(404, "Task list not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(tl, k, v)
     await db.commit()
     await db.refresh(tl)
+    logger.info("tasks.list.updated id={} name='{}'", tl.id, tl.name)
     return tl
 
 
@@ -103,9 +107,11 @@ async def update_task_list(
 async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
     tl = await db.get(TaskList, list_id)
     if not tl:
+        logger.warning("tasks.list.not_found id={}", list_id)
         raise HTTPException(404, "Task list not found")
     await db.delete(tl)
     await db.commit()
+    logger.info("tasks.list.deleted id={}", list_id)
 
 
 # ---- Task Recurrence Series ----
@@ -115,9 +121,11 @@ async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSessi
     series = TaskRecurrenceSeries(**payload.model_dump())
     db.add(series)
     await db.flush()
-    db.add_all(_make_tasks_for_series(series))
+    occurrences = _make_tasks_for_series(series)
+    db.add_all(occurrences)
     await db.commit()
     await db.refresh(series)
+    logger.info("tasks.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
     return series
 
 
@@ -125,6 +133,7 @@ async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSessi
 async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
     series = await db.get(TaskRecurrenceSeries, series_id)
     if not series:
+        logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     return series
 
@@ -135,6 +144,7 @@ async def update_task_series(
 ):
     series = await db.get(TaskRecurrenceSeries, series_id)
     if not series:
+        logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(series, k, v)
@@ -144,9 +154,11 @@ async def update_task_series(
             and_(Task.series_id == series_id, Task.is_exception == False)  # noqa: E712
         )
     )
-    db.add_all(_make_tasks_for_series(series))
+    new_tasks = _make_tasks_for_series(series)
+    db.add_all(new_tasks)
     await db.commit()
     await db.refresh(series)
+    logger.info("tasks.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_tasks))
     return series
 
 
@@ -154,10 +166,12 @@ async def update_task_series(
 async def delete_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
     series = await db.get(TaskRecurrenceSeries, series_id)
     if not series:
+        logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     await db.execute(sa_delete(Task).where(Task.series_id == series_id))
     await db.delete(series)
     await db.commit()
+    logger.info("tasks.series.deleted id={} title='{}'", series_id, series.title)
 
 
 # ---- Tasks ----
@@ -217,6 +231,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     db.add(task)
     await db.commit()
     await db.refresh(task)
+    logger.info("tasks.task.created id={} title='{}'", task.id, task.title)
     return task
 
 
@@ -224,6 +239,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(Task, task_id)
     if not task:
+        logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     return task
 
@@ -234,6 +250,7 @@ async def update_task(
 ):
     task = await db.get(Task, task_id)
     if not task:
+        logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(task, k, v)
@@ -241,6 +258,7 @@ async def update_task(
         task.is_exception = True   # mark as individually edited
     await db.commit()
     await db.refresh(task)
+    logger.info("tasks.task.updated id={} title='{}'", task.id, task.title)
     return task
 
 
@@ -248,10 +266,12 @@ async def update_task(
 async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(Task, task_id)
     if not task:
+        logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     task.done = not task.done
     await db.commit()
     await db.refresh(task)
+    logger.info("tasks.task.toggled id={} done={}", task.id, task.done)
     return task
 
 
@@ -259,9 +279,11 @@ async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
 async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(Task, task_id)
     if not task:
+        logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     await db.delete(task)
     await db.commit()
+    logger.info("tasks.task.deleted id={}", task_id)
 
 # ---- Task Lists ----
 
