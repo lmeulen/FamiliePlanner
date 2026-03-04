@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Taken – FamiliePlanner{% endblock %}
+{% block nav_tasks %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">✅ Taken</h1>
+</div>
+
+<!-- List tabs -->
+<div class="list-tabs-row">
+  <div class="list-tabs" id="list-tabs" role="tablist">
+    <button class="list-tab active" data-list="all" role="tab" aria-selected="true">Alle</button>
+    <!-- Dynamic list tabs added by JS -->
+  </div>
+  <button class="icon-btn" id="btn-add-list" aria-label="Nieuwe lijst" title="Nieuwe lijst">＋</button>
+</div>
+
+<!-- Member filter -->
+<div class="member-chips" id="tasks-member-chips">
+  <button class="chip chip--all chip--active" data-member="all">Allen</button>
+</div>
+
+<!-- Filter: show done -->
+<div class="filter-row">
+  <label class="toggle-label">
+    <input type="checkbox" id="show-done" />
+    <span>Afgerond tonen</span>
+  </label>
+</div>
+
+<!-- Task list body -->
+<div id="tasks-body" class="tasks-body">
+  <div class="skeleton-list">
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  </div>
+</div>
+
+<p class="empty-state hidden" id="tasks-empty">Geen taken 🎉</p>
+
+<!-- FAB: add task -->
+<button class="fab" id="btn-add-task" aria-label="Taak toevoegen">＋</button>
+
+<!-- Task form template -->
+<template id="tpl-task-form">
+  <form id="task-form" class="modal-form">
+    <h3 class="modal-title" id="task-form-title">Taak toevoegen</h3>
+    <label>Titel *
+      <input type="text" name="title" required maxlength="200" placeholder="Bijv. Melk kopen" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2"></textarea>
+    </label>
+    <label>Lijst
+      <select name="list_id">
+        <option value="">Geen lijst</option>
+      </select>
+    </label>
+    <label>Gezinslid
+      <select name="member_id">
+        <option value="">Iedereen</option>
+      </select>
+    </label>
+    <label>Vervaldatum
+      <input type="date" name="due_date" />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="btn-delete-task">Verwijderen</button>
+    </div>
+  </form>
+</template>
+
+<!-- List form template -->
+<template id="tpl-list-form">
+  <form id="list-form" class="modal-form">
+    <h3 class="modal-title">Nieuwe lijst</h3>
+    <label>Naam *
+      <input type="text" name="name" required maxlength="100" placeholder="Bijv. Boodschappen" />
+    </label>
+    <label>Kleur
+      <input type="color" name="color" value="#4ECDC4" />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Aanmaken</button>
+    </div>
+  </form>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/tasks.js"></script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Overzicht – FamiliePlanner{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Goedemorgen! 👋</h1>
+  <p class="page-subtitle" id="dashboard-subtitle">Hier is jouw dag overzicht</p>
+</div>
+
+<!-- Family member quick-filter chips -->
+<section class="section" aria-label="Gezinsleden">
+  <div class="member-chips" id="member-chips">
+    <button class="chip chip--all chip--active" data-member="all">Allen</button>
+    <!-- Filled by JS -->
+  </div>
+</section>
+
+<!-- TODAY'S AGENDA -->
+<section class="section" aria-labelledby="today-agenda-title">
+  <div class="section-header">
+    <h2 class="section-title" id="today-agenda-title">📅 Agenda vandaag</h2>
+    <a href="/agenda" class="section-link">Alles &rsaquo;</a>
+  </div>
+  <div class="card-list" id="today-events">
+    <div class="skeleton-list">
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </div>
+  <p class="empty-state hidden" id="events-empty">Geen afspraken vandaag 🎉</p>
+</section>
+
+<!-- TODAY'S MEALS -->
+<section class="section" aria-labelledby="today-meals-title">
+  <div class="section-header">
+    <h2 class="section-title" id="today-meals-title">🍽️ Wat eten we vandaag?</h2>
+    <a href="/maaltijden" class="section-link">Weekmenu &rsaquo;</a>
+  </div>
+  <div class="meal-grid" id="today-meals">
+    <div class="skeleton-list">
+      <div class="skeleton"></div>
+    </div>
+  </div>
+  <p class="empty-state hidden" id="meals-empty">Nog geen maaltijden gepland 🍴</p>
+</section>
+
+<!-- TODAY'S TASKS -->
+<section class="section" aria-labelledby="today-tasks-title">
+  <div class="section-header">
+    <h2 class="section-title" id="today-tasks-title">✅ Taken vandaag</h2>
+    <a href="/taken" class="section-link">Alle taken &rsaquo;</a>
+  </div>
+  <div class="card-list" id="today-tasks">
+    <div class="skeleton-list">
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+  </div>
+  <p class="empty-state hidden" id="tasks-empty">Geen taken vandaag 🥳</p>
+</section>
+
+<!-- WEEK OVERVIEW -->
+<section class="section" aria-labelledby="week-title">
+  <div class="section-header">
+    <h2 class="section-title" id="week-title">📆 Komende week</h2>
+  </div>
+  <div class="week-strip" id="week-strip"><!-- Filled by JS --></div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

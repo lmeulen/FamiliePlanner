@@ -1,0 +1,138 @@
+/* ================================================================
+   themes.css – CSS custom-property tokens for light & dark themes
+   ================================================================ */
+
+/* ── LIGHT THEME (default) ────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  /* Backgrounds */
+  --bg-app:          #F4F6FB;
+  --bg-surface:      #FFFFFF;
+  --bg-surface-2:    #EDF0F7;
+  --bg-overlay:      rgba(0,0,0,0.45);
+
+  /* Text */
+  --text-primary:    #1A1D2E;
+  --text-secondary:  #5A5F7D;
+  --text-muted:      #9EA7C4;
+  --text-inverse:    #FFFFFF;
+
+  /* Brand / accent */
+  --accent:          #6C5CE7;
+  --accent-light:    #E8E3FC;
+  --accent-hover:    #5A4BD6;
+
+  /* Status / semantic */
+  --color-success:   #00B894;
+  --color-warning:   #FDCB6E;
+  --color-danger:    #D63031;
+  --color-info:      #0984E3;
+
+  /* Family member palette */
+  --member-1:        #FF6B6B;
+  --member-2:        #4ECDC4;
+  --member-3:        #FFE66D;
+  --member-4:        #6C5CE7;
+  --member-5:        #FF8E53;
+
+  /* Meal type colours */
+  --meal-breakfast:  #FDCB6E;
+  --meal-lunch:      #55EFC4;
+  --meal-dinner:     #6C5CE7;
+  --meal-snack:      #FD79A8;
+
+  /* Borders & shadows */
+  --border:          #E2E7F0;
+  --border-focus:    #6C5CE7;
+  --shadow-sm:       0 1px 4px rgba(108,92,231,.08);
+  --shadow-md:       0 4px 16px rgba(108,92,231,.12);
+  --shadow-lg:       0 8px 32px rgba(108,92,231,.16);
+
+  /* Navigation */
+  --nav-bg:          #FFFFFF;
+  --nav-active:      #6C5CE7;
+  --nav-inactive:    #9EA7C4;
+
+  /* Header */
+  --header-bg:       #FFFFFF;
+  --header-shadow:   0 2px 8px rgba(0,0,0,.06);
+
+  /* Input */
+  --input-bg:        #F4F6FB;
+  --input-border:    #D6DCE8;
+
+  /* Skeleton */
+  --skeleton-base:   #E8ECF3;
+  --skeleton-shine:  #F4F6FB;
+
+  /* Scrollbar */
+  --scrollbar-track: #F4F6FB;
+  --scrollbar-thumb: #C8CFDF;
+}
+
+/* ── DARK THEME ───────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --bg-app:          #0F1117;
+  --bg-surface:      #1A1D2E;
+  --bg-surface-2:    #252840;
+  --bg-overlay:      rgba(0,0,0,0.65);
+
+  /* Text */
+  --text-primary:    #E8EAF6;
+  --text-secondary:  #9EA7C4;
+  --text-muted:      #5A5F7D;
+  --text-inverse:    #FFFFFF;
+
+  /* Brand / accent */
+  --accent:          #8B7CF6;
+  --accent-light:    #2D2650;
+  --accent-hover:    #7C6BF0;
+
+  /* Status / semantic (slightly adjusted for dark bg) */
+  --color-success:   #00CBA4;
+  --color-warning:   #FDD179;
+  --color-danger:    #FF5252;
+  --color-info:      #29B6F6;
+
+  /* Family member palette – same hues, keeps branding consistent */
+  --member-1:        #FF6B6B;
+  --member-2:        #4ECDC4;
+  --member-3:        #FFE66D;
+  --member-4:        #8B7CF6;
+  --member-5:        #FF8E53;
+
+  /* Meal type colours */
+  --meal-breakfast:  #FDD179;
+  --meal-lunch:      #55EFC4;
+  --meal-dinner:     #8B7CF6;
+  --meal-snack:      #FD79A8;
+
+  /* Borders & shadows */
+  --border:          #2D3150;
+  --border-focus:    #8B7CF6;
+  --shadow-sm:       0 1px 4px rgba(0,0,0,.3);
+  --shadow-md:       0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:       0 8px 32px rgba(0,0,0,.5);
+
+  /* Navigation */
+  --nav-bg:          #1A1D2E;
+  --nav-active:      #8B7CF6;
+  --nav-inactive:    #5A5F7D;
+
+  /* Header */
+  --header-bg:       #1A1D2E;
+  --header-shadow:   0 2px 8px rgba(0,0,0,.4);
+
+  /* Input */
+  --input-bg:        #0F1117;
+  --input-border:    #2D3150;
+
+  /* Skeleton */
+  --skeleton-base:   #252840;
+  --skeleton-shine:  #2D3150;
+
+  /* Scrollbar */
+  --scrollbar-track: #1A1D2E;
+  --scrollbar-thumb: #3D4165;
+}

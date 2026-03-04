@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Agenda – FamiliePlanner{% endblock %}
+{% block nav_agenda %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">📅 Agenda</h1>
+</div>
+
+<!-- View controls -->
+<div class="view-controls">
+  <button class="view-btn active" data-view="week">Week</button>
+  <button class="view-btn" data-view="month">Maand</button>
+  <button class="view-btn" data-view="list">Lijst</button>
+</div>
+
+<!-- Calendar navigation -->
+<div class="cal-nav">
+  <button class="icon-btn" id="cal-prev" aria-label="Vorige periode">&lsaquo;</button>
+  <h2 class="cal-title" id="cal-title"></h2>
+  <button class="icon-btn" id="cal-next" aria-label="Volgende periode">&rsaquo;</button>
+</div>
+
+<!-- Member filter -->
+<div class="member-chips" id="agenda-member-chips">
+  <button class="chip chip--all chip--active" data-member="all">Allen</button>
+</div>
+
+<!-- Calendar grid -->
+<div id="cal-view" class="cal-view"></div>
+
+<!-- Events list (list view) -->
+<div id="events-list-view" class="card-list hidden"></div>
+
+<!-- FAB: add event -->
+<button class="fab" id="btn-add-event" aria-label="Afspraak toevoegen">＋</button>
+
+<!-- Event form (inside modal, rendered by JS) -->
+<template id="tpl-event-form">
+  <form id="event-form" class="modal-form">
+    <h3 class="modal-title" id="event-form-title">Afspraak toevoegen</h3>
+    <label>Titel *
+      <input type="text" name="title" required maxlength="200" placeholder="Bijv. Voetbaltraining" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2" placeholder="Optionele details"></textarea>
+    </label>
+    <label>Locatie
+      <input type="text" name="location" placeholder="Bijv. Sporthal" />
+    </label>
+    <div class="form-row">
+      <label>Van *
+        <input type="datetime-local" name="start_time" required />
+      </label>
+      <label>Tot *
+        <input type="datetime-local" name="end_time" required />
+      </label>
+    </div>
+    <label class="checkbox-label">
+      <input type="checkbox" name="all_day" />
+      Hele dag
+    </label>
+    <label>Gezinslid
+      <select name="member_id">
+        <option value="">Heel gezin</option>
+      </select>
+    </label>
+    <label>Kleur
+      <input type="color" name="color" value="#4ECDC4" />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="btn-delete-event">Verwijderen</button>
+    </div>
+  </form>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/agenda.js"></script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Maaltijden – FamiliePlanner{% endblock %}
+{% block nav_meals %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🍽️ Maaltijden</h1>
+</div>
+
+<!-- Week navigation -->
+<div class="cal-nav">
+  <button class="icon-btn" id="meals-prev" aria-label="Vorige week">&lsaquo;</button>
+  <h2 class="cal-title" id="meals-week-title"></h2>
+  <button class="icon-btn" id="meals-next" aria-label="Volgende week">&rsaquo;</button>
+</div>
+
+<!-- Meal type filter tabs -->
+<div class="view-controls">
+  <button class="view-btn active" data-type="all">Alle</button>
+  <button class="view-btn" data-type="breakfast">🌅 Ontbijt</button>
+  <button class="view-btn" data-type="lunch">☀️ Lunch</button>
+  <button class="view-btn" data-type="dinner">🌙 Diner</button>
+</div>
+
+<!-- Weekly meal plan -->
+<div id="meals-week-grid" class="meals-week-grid">
+  <div class="skeleton-list">
+    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  </div>
+</div>
+
+<p class="empty-state hidden" id="meals-empty">Geen maaltijden gepland 🍴</p>
+
+<!-- FAB: add meal -->
+<button class="fab" id="btn-add-meal" aria-label="Maaltijd toevoegen">＋</button>
+
+<!-- Meal form template -->
+<template id="tpl-meal-form">
+  <form id="meal-form" class="modal-form">
+    <h3 class="modal-title" id="meal-form-title">Maaltijd toevoegen</h3>
+    <label>Datum *
+      <input type="date" name="date" required />
+    </label>
+    <label>Type
+      <select name="meal_type">
+        <option value="breakfast">🌅 Ontbijt</option>
+        <option value="lunch">☀️ Lunch</option>
+        <option value="dinner" selected>🌙 Diner</option>
+        <option value="snack">🍎 Tussendoor</option>
+      </select>
+    </label>
+    <label>Naam *
+      <input type="text" name="name" required maxlength="200" placeholder="Bijv. Spaghetti bolognese" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2"></textarea>
+    </label>
+    <label>Recept URL
+      <input type="url" name="recipe_url" placeholder="https://..." />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="btn-delete-meal">Verwijderen</button>
+    </div>
+  </form>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/meals.js"></script>
+{% endblock %}

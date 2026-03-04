@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#6C5CE7" />
+  <title>{% block title %}FamiliePlanner{% endblock %}</title>
+
+  <!-- Favicon (emoji) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>"/>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/static/css/themes.css" />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- ──────────── APP HEADER ──────────── -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-logo">🏠</span>
+      <span class="app-name">FamiliePlanner</span>
+    </div>
+    <div class="header-center" id="header-date"><!-- filled by JS --></div>
+    <div class="header-right">
+      <button class="icon-btn" id="theme-toggle" aria-label="Wissel thema" title="Wissel thema">
+        <span id="theme-icon">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ──────────── MAIN CONTENT ──────────── -->
+  <main class="app-main">
+    <div class="page-container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- ──────────── BOTTOM NAVIGATION ──────────── -->
+  <nav class="bottom-nav" role="navigation" aria-label="Hoofdnavigatie">
+    <a href="/"          class="nav-item {% block nav_dashboard %}{% endblock %}" aria-label="Dashboard">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Overzicht</span>
+    </a>
+    <a href="/agenda"    class="nav-item {% block nav_agenda %}{% endblock %}" aria-label="Agenda">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Agenda</span>
+    </a>
+    <a href="/taken"     class="nav-item {% block nav_tasks %}{% endblock %}" aria-label="Taken">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">Taken</span>
+    </a>
+    <a href="/maaltijden" class="nav-item {% block nav_meals %}{% endblock %}" aria-label="Maaltijden">
+      <span class="nav-icon">🍽️</span>
+      <span class="nav-label">Eten</span>
+    </a>
+    <a href="/gezin"     class="nav-item {% block nav_family %}{% endblock %}" aria-label="Gezin">
+      <span class="nav-icon">👨‍👩‍👧‍👦</span>
+      <span class="nav-label">Gezin</span>
+    </a>
+  </nav>
+
+  <!-- ──────────── MODAL CONTAINER ──────────── -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-box" id="modal-box">
+      <button class="modal-close" id="modal-close" aria-label="Sluiten">&times;</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- ──────────── TOAST NOTIFICATIONS ──────────── -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- ──────────── SCRIPTS ──────────── -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/modal.js"></script>
+  <script src="/static/js/toast.js"></script>
+  <script src="/static/js/theme.js"></script>
+  <script src="/static/js/app.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
