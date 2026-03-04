@@ -4,19 +4,6 @@
 {% block nav_dashboard %}active{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1 class="page-title">Goedemorgen! 👋</h1>
-  <p class="page-subtitle" id="dashboard-subtitle">Hier is jouw dag overzicht</p>
-</div>
-
-<!-- Family member quick-filter chips (full width) -->
-<section class="section" aria-label="Gezinsleden">
-  <div class="member-chips" id="member-chips">
-    <button class="chip chip--all chip--active" data-member="all">Allen</button>
-    <!-- Filled by JS -->
-  </div>
-</section>
-
 <!-- Two-column layout: 2/3 main · 1/3 tasks -->
 <div class="dashboard-grid">
 
@@ -49,14 +36,6 @@
         </div>
       </div>
       <p class="empty-state hidden" id="meals-empty">Nog geen maaltijden gepland 🍴</p>
-    </section>
-
-    <!-- WEEK OVERVIEW -->
-    <section class="section" aria-labelledby="week-title">
-      <div class="section-header">
-        <h2 class="section-title" id="week-title">📆 Komende week</h2>
-      </div>
-      <div class="week-strip" id="week-strip"><!-- Filled by JS --></div>
     </section>
 
   </div><!-- /.dashboard-main -->

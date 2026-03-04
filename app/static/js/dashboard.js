@@ -1,8 +1,7 @@
 /* ================================================================
-   dashboard.js – Overview page: today events, meals, tasks, week
+   dashboard.js – Overview page: today events, meals, tasks
    ================================================================ */
 (function () {
-  let activeMember = null;
 
   // ── Render helpers ────────────────────────────────────────────
   function renderEventCard(ev) {
@@ -54,15 +53,14 @@
     const empty     = document.getElementById('events-empty');
     try {
       const events = await API.get('/api/agenda/today');
-      const filtered = activeMember ? events.filter(e => !e.member_id || e.member_id === activeMember) : events;
-      if (!filtered.length) {
+      if (!events.length) {
         container.innerHTML = '';
         empty.classList.remove('hidden');
       } else {
-        container.innerHTML = filtered.map(renderEventCard).join('');
+        container.innerHTML = events.map(renderEventCard).join('');
         empty.classList.add('hidden');
       }
-    } catch (e) {
+    } catch {
       container.innerHTML = `<p class="text-muted">Kon agenda niet laden.</p>`;
     }
   }
@@ -79,7 +77,7 @@
         container.innerHTML = meals.map(renderMealCard).join('');
         empty.classList.add('hidden');
       }
-    } catch (e) {
+    } catch {
       container.innerHTML = `<p class="text-muted">Kon maaltijden niet laden.</p>`;
     }
   }
@@ -88,10 +86,7 @@
     const container = document.getElementById('today-tasks');
     const empty     = document.getElementById('tasks-empty');
     try {
-      const url = activeMember
-        ? `/api/tasks/today?member_id=${activeMember}`
-        : '/api/tasks/today';
-      const tasks = await API.get(url);
+      const tasks = await API.get('/api/tasks/today');
       if (!tasks.length) {
         container.innerHTML = '';
         empty.classList.remove('hidden');
@@ -100,35 +95,8 @@
         empty.classList.add('hidden');
         bindTaskToggles(container);
       }
-    } catch (e) {
+    } catch {
       container.innerHTML = `<p class="text-muted">Kon taken niet laden.</p>`;
-    }
-  }
-
-  async function loadWeekStrip() {
-    const strip = document.getElementById('week-strip');
-    const events = await API.get('/api/agenda/week').catch(() => []);
-    const meals  = await API.get('/api/meals/week').catch(() => []);
-
-    strip.innerHTML = '';
-    const today = FP.today();
-    for (let i = 0; i < 7; i++) {
-      const day  = FP.addDays(today, i);
-      const dayEvents = events.filter(e => FP.isSameDay(new Date(e.start_time), day));
-      const dayMeals  = meals.filter(m  => FP.isSameDay(new Date(m.date), day));
-
-      const dots = [
-        ...dayEvents.map(e => `<span class="week-dot" style="background:${e.color}"></span>`),
-        ...dayMeals.map(()  => `<span class="week-dot" style="background:var(--meal-dinner)"></span>`),
-      ].slice(0, 5).join('');
-
-      const isToday = i === 0;
-      strip.innerHTML += `
-        <div class="week-day-card ${isToday ? 'week-day-card--today' : ''}">
-          <div class="week-day-name">${FP.NL_DAYS[day.getDay()]}</div>
-          <div class="week-day-num">${day.getDate()}</div>
-          <div class="week-day-dots">${dots}</div>
-        </div>`;
     }
   }
 
@@ -136,37 +104,21 @@
   function bindTaskToggles(container) {
     container.querySelectorAll('.task-check').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
         try {
-          await API.patch(`/api/tasks/${id}/toggle`);
+          await API.patch(`/api/tasks/${btn.dataset.id}/toggle`);
           loadTasks();
           Toast.show('Taak bijgewerkt!');
-        } catch (e) {
+        } catch {
           Toast.show('Fout bij bijwerken', 'error');
         }
       });
     });
   }
 
-  // ── Greeting ──────────────────────────────────────────────────
-  function setGreeting() {
-    const h = new Date().getHours();
-    const greeting = h < 12 ? 'Goedemorgen! 👋' : h < 18 ? 'Goedemiddag! ☀️' : 'Goedenavond! 🌙';
-    const el = document.querySelector('.page-title');
-    if (el) el.textContent = greeting;
-  }
-
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
-    setGreeting();
     await FP.loadMembers();
-    await FP.buildMemberChips('member-chips', member => {
-      activeMember = member;
-      loadEvents();
-      loadTasks();
-    });
-
-    await Promise.all([loadEvents(), loadMeals(), loadTasks(), loadWeekStrip()]);
+    await Promise.all([loadEvents(), loadMeals(), loadTasks()]);
   }
 
   document.addEventListener('DOMContentLoaded', init);
