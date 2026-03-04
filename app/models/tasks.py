@@ -24,10 +24,10 @@ class TaskRecurrenceSeries(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     list_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("task_lists.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("task_lists.id", ondelete="SET NULL"), nullable=True, index=True
     )
     member_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True
     )
     recurrence_type: Mapped[RecurrenceType] = mapped_column(SAEnum(RecurrenceType), nullable=False)
     series_start: Mapped[date] = mapped_column(Date, nullable=False)
@@ -41,18 +41,18 @@ class Task(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
-    done: Mapped[bool] = mapped_column(Boolean, default=False)
-    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    done: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     # Optional link to list and family member
     list_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("task_lists.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("task_lists.id", ondelete="SET NULL"), nullable=True, index=True
     )
     member_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True
+        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True
     )
     # Recurring series linkage (NULL = standalone task)
     series_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("task_recurrence_series.id", ondelete="CASCADE"), nullable=True
+        Integer, ForeignKey("task_recurrence_series.id", ondelete="CASCADE"), nullable=True, index=True
     )
     is_exception: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())

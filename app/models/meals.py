@@ -18,6 +18,6 @@ class Meal(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     recipe_url: Mapped[str] = mapped_column(String(500), default="")
     cook_member_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, default=None
+        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, default=None, index=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
