@@ -64,6 +64,43 @@
     <label>Vervaldatum
       <input type="date" name="due_date" />
     </label>
+
+    <!-- Recurrence toggle (new task only) -->
+    <div id="recurrence-toggle-row" class="form-row">
+      <label class="toggle-label">
+        <input type="checkbox" id="recurrence-toggle" />
+        <span>Herhalende taak</span>
+      </label>
+    </div>
+
+    <!-- Recurrence fields -->
+    <div id="recurrence-fields" class="hidden">
+      <label>Herhaling
+        <select name="recurrence_type">
+          <option value="daily">Dagelijks</option>
+          <option value="every_other_day">Om de dag</option>
+          <option value="weekdays">Werkdagen</option>
+          <option value="weekly" selected>Wekelijks</option>
+          <option value="biweekly">Tweewekelijks</option>
+          <option value="monthly">Maandelijks</option>
+        </select>
+      </label>
+      <label>Einddatum reeks *
+        <input type="date" name="series_end" />
+      </label>
+    </div>
+
+    <!-- Scope selector (edit of series task) -->
+    <div id="scope-selector" class="hidden">
+      <p class="form-hint">Dit is een herhalende taak. Wat wil je bewerken?</p>
+      <label class="radio-label">
+        <input type="radio" name="edit_scope" value="this" checked /> Alleen deze taak
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="edit_scope" value="series" /> Hele reeks
+      </label>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
       <button type="button" class="btn btn--danger hidden" id="btn-delete-task">Verwijderen</button>

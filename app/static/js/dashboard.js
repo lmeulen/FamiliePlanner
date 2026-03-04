@@ -27,14 +27,15 @@
     const dueMeta = overdue && task.due_date
       ? `<div class="task-due overdue">Verlopen: ${FP.formatDate(new Date(task.due_date))}</div>`
       : '';
+    const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
     return `
       <div class="card task-card ${overdue ? 'task-overdue' : ''}" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body">
-          <div class="task-title ${task.done ? 'done' : ''}">${task.title}</div>
-          ${member ? `<div class="task-meta">${member.avatar} ${member.name}</div>` : ''}
+          <div class="task-title ${task.done ? 'done' : ''}">${task.title}${recurIcon}</div>
           ${dueMeta}
         </div>
+        ${member ? `<div class="event-member-badge" style="background:${member.color}" title="${member.name}">${member.avatar}</div>` : ''}
       </div>`;
   }
 

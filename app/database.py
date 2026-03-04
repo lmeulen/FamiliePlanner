@@ -38,6 +38,8 @@ async def init_db():
             "ALTER TABLE meals ADD COLUMN cook_member_id INTEGER",
             "ALTER TABLE agenda_events ADD COLUMN series_id INTEGER",
             "ALTER TABLE agenda_events ADD COLUMN is_exception INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN series_id INTEGER",
+            "ALTER TABLE tasks ADD COLUMN is_exception INTEGER NOT NULL DEFAULT 0",
         ]
         for sql in migrations:
             try:

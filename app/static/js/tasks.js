@@ -2,12 +2,13 @@
    tasks.js – Task lists & task management page
    ================================================================ */
 (function () {
-  let tasks      = [];
-  let lists      = [];
-  let activeList = 'all';   // list_id or 'all'
+  let tasks        = [];
+  let lists        = [];
+  let activeList   = 'all';   // list_id or 'all'
   let activeMember = null;
-  let showDone   = false;
-  let editTaskId = null;
+  let showDone     = false;
+  let editTaskId   = null;
+  let editSeriesId = null;
 
   // ── Loaders ───────────────────────────────────────────────────
   async function loadLists() {
@@ -27,7 +28,6 @@
   // ── Render list tabs ──────────────────────────────────────────
   function renderListTabs() {
     const tabs = document.getElementById('list-tabs');
-    // Keep first "Alle" tab
     const allTab = tabs.querySelector('[data-list="all"]');
     tabs.innerHTML = '';
     tabs.appendChild(allTab);
@@ -98,18 +98,19 @@
     const member = FP.getMember(task.member_id);
     const list   = lists.find(l => l.id === task.list_id);
     const isOverdue = task.due_date && !task.done && new Date(task.due_date) < new Date();
+    const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
     return `
       <div class="card task-card" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body" style="cursor:pointer" data-edit="${task.id}">
-          <div class="task-title ${task.done ? 'done' : ''}">${task.title}</div>
+          <div class="task-title ${task.done ? 'done' : ''}">${task.title}${recurIcon}</div>
           <div class="task-meta">
-            ${member ? `<span>${member.avatar} ${member.name}</span>` : ''}
-            ${task.due_date ? ` · ${FP.formatDate(task.due_date)}` : ''}
+            ${task.due_date ? FP.formatDate(task.due_date) : ''}
           </div>
         </div>
         ${task.due_date ? `<span class="task-due-badge ${isOverdue ? 'overdue' : ''}">${FP.formatDateShort(task.due_date)}</span>` : ''}
         ${list ? `<span class="task-list-dot" style="background:${list.color}"></span>` : ''}
+        ${member ? `<div class="event-member-badge" style="background:${member.color}" title="${member.name}">${member.avatar}</div>` : ''}
       </div>`;
   }
 
@@ -132,11 +133,16 @@
 
   // ── Task form ─────────────────────────────────────────────────
   async function openTaskForm(id = null) {
-    editTaskId = id;
+    editTaskId   = id;
+    editSeriesId = null;
     Modal.open('tpl-task-form');
-    const form   = document.getElementById('task-form');
-    const title  = document.getElementById('task-form-title');
-    const delBtn = document.getElementById('btn-delete-task');
+    const form        = document.getElementById('task-form');
+    const titleEl     = document.getElementById('task-form-title');
+    const delBtn      = document.getElementById('btn-delete-task');
+    const recurToggle = document.getElementById('recurrence-toggle');
+    const recurFields = document.getElementById('recurrence-fields');
+    const recurRow    = document.getElementById('recurrence-toggle-row');
+    const scopeSel    = document.getElementById('scope-selector');
 
     FP.populateMemberSelect(form.querySelector('select[name="member_id"]'));
 
@@ -149,8 +155,16 @@
       listSel.appendChild(opt);
     });
 
+    // Recurrence toggle behaviour
+    recurToggle.addEventListener('change', () => {
+      recurFields.classList.toggle('hidden', !recurToggle.checked);
+      if (recurToggle.checked) {
+        form.querySelector('[name="series_end"]').value = '';
+      }
+    });
+
     if (id) {
-      title.textContent = 'Taak bewerken';
+      titleEl.textContent = 'Taak bewerken';
       delBtn.classList.remove('hidden');
       const task = tasks.find(t => t.id === id);
       if (task) {
@@ -159,15 +173,79 @@
         listSel.value          = task.list_id || '';
         form.querySelector('select[name="member_id"]').value = task.member_id || '';
         form.due_date.value    = task.due_date || '';
+
+        if (task.series_id) {
+          editSeriesId = task.series_id;
+          recurRow.classList.add('hidden');    // hide toggle when editing
+          recurFields.classList.add('hidden');
+          scopeSel.classList.remove('hidden');
+        } else {
+          recurRow.classList.remove('hidden');
+          scopeSel.classList.add('hidden');
+        }
       }
     } else {
-      title.textContent = 'Taak toevoegen';
+      titleEl.textContent = 'Taak toevoegen';
       delBtn.classList.add('hidden');
+      recurRow.classList.remove('hidden');
+      scopeSel.classList.add('hidden');
+      recurFields.classList.add('hidden');
       if (activeList !== 'all') listSel.value = activeList;
+      // Default due date to today
+      form.due_date.value = FP.todayStr();
     }
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
+
+      // Creating a new recurring series
+      if (!editTaskId && recurToggle.checked) {
+        const seriesEnd = form.querySelector('[name="series_end"]').value;
+        if (!seriesEnd) {
+          Toast.show('Vul een einddatum in voor de reeks', 'error');
+          return;
+        }
+        const payload = {
+          title:           form.title.value,
+          description:     form.description.value,
+          list_id:         listSel.value ? parseInt(listSel.value) : null,
+          member_id:       form.querySelector('select[name="member_id"]').value
+                             ? parseInt(form.querySelector('select[name="member_id"]').value) : null,
+          recurrence_type: form.querySelector('[name="recurrence_type"]').value,
+          series_start:    form.due_date.value,
+          series_end:      seriesEnd,
+        };
+        try {
+          await API.post('/api/tasks/series', payload);
+          Toast.show('Reeks aangemaakt!');
+          Modal.close();
+          loadTasks();
+        } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+        return;
+      }
+
+      // Editing series as a whole
+      if (editSeriesId && scope === 'series') {
+        const payload = {
+          title:           form.title.value,
+          description:     form.description.value,
+          list_id:         listSel.value ? parseInt(listSel.value) : null,
+          member_id:       form.querySelector('select[name="member_id"]').value
+                             ? parseInt(form.querySelector('select[name="member_id"]').value) : null,
+          recurrence_type: form.querySelector('[name="recurrence_type"]')?.value || 'weekly',
+          series_end:      form.due_date.value,
+        };
+        try {
+          await API.put(`/api/tasks/series/${editSeriesId}`, payload);
+          Toast.show('Reeks bijgewerkt!');
+          Modal.close();
+          loadTasks();
+        } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+        return;
+      }
+
+      // Single task create / edit
       const data = {
         title:       form.title.value,
         description: form.description.value,
@@ -194,6 +272,19 @@
     }, { once: true });
 
     delBtn.addEventListener('click', async () => {
+      if (editSeriesId) {
+        const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
+        if (scope === 'series') {
+          if (!confirm('Hele reeks verwijderen?')) return;
+          try {
+            await API.delete(`/api/tasks/series/${editSeriesId}`);
+            Toast.show('Reeks verwijderd', 'warning');
+            Modal.close();
+            loadTasks();
+          } catch { Toast.show('Fout', 'error'); }
+          return;
+        }
+      }
       if (!confirm('Taak verwijderen?')) return;
       try {
         await API.delete(`/api/tasks/${editTaskId}`);
