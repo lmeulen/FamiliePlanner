@@ -32,8 +32,15 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Migrate: add cook_member_id to meals if it doesn't exist yet
-        try:
-            await conn.execute(text("ALTER TABLE meals ADD COLUMN cook_member_id INTEGER"))
-        except Exception:
-            pass  # column already exists
+        # Column migrations for databases created before a schema change.
+        # Each ALTER TABLE is wrapped so it silently skips if already applied.
+        migrations = [
+            "ALTER TABLE meals ADD COLUMN cook_member_id INTEGER",
+            "ALTER TABLE agenda_events ADD COLUMN series_id INTEGER",
+            "ALTER TABLE agenda_events ADD COLUMN is_exception INTEGER NOT NULL DEFAULT 0",
+        ]
+        for sql in migrations:
+            try:
+                await conn.execute(text(sql))
+            except Exception:
+                pass  # column already exists

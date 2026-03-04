@@ -1002,3 +1002,22 @@ img { max-width: 100%; }
   .page-container { padding: 2rem 2.5rem 3rem; }
   .fab { bottom: calc(70px + .75rem + env(safe-area-inset-bottom)); right: 1.5rem; }
 }
+
+/* ── RECURRENCE FORM ────────────────────────────────────────── */
+.form-section-label {
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  margin: .75rem 0 .35rem;
+}
+.scope-options { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .5rem; }
+.radio-label   { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; }
+.radio-label input[type="radio"] { width: 16px; height: 16px; accent-color: var(--accent); }
+#recurrence-section {
+  border-top: 1px solid var(--border);
+  padding-top: .75rem;
+  margin-top: .25rem;
+}
+.recur-icon { font-size: .75em; opacity: .8; }

@@ -7,3 +7,12 @@ class MealType(str, enum.Enum):
     lunch = "lunch"
     dinner = "dinner"
     snack = "snack"
+
+
+class RecurrenceType(str, enum.Enum):
+    daily           = "daily"
+    every_other_day = "every_other_day"
+    weekly          = "weekly"
+    biweekly        = "biweekly"
+    weekdays        = "weekdays"
+    monthly         = "monthly"

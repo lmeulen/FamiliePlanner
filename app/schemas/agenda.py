@@ -1,7 +1,47 @@
-"""Pydantic schemas for AgendaEvent."""
-from datetime import datetime
+"""Pydantic schemas for AgendaEvent and RecurrenceSeries."""
+from datetime import date, datetime, time
 from pydantic import BaseModel, model_validator
+from app.enums import RecurrenceType
 
+
+# ── Recurrence series ────────────────────────────────────────────
+
+class RecurrenceSeriesCreate(BaseModel):
+    title: str
+    description: str = ""
+    location: str = ""
+    all_day: bool = False
+    member_id: int | None = None
+    color: str = "#4ECDC4"
+    recurrence_type: RecurrenceType
+    series_start: date
+    series_end: date
+    start_time_of_day: time
+    end_time_of_day: time
+
+
+class RecurrenceSeriesUpdate(BaseModel):
+    """series_start is immutable after creation; all other fields may be updated."""
+    title: str
+    description: str = ""
+    location: str = ""
+    all_day: bool = False
+    member_id: int | None = None
+    color: str = "#4ECDC4"
+    recurrence_type: RecurrenceType
+    series_end: date
+    start_time_of_day: time
+    end_time_of_day: time
+
+
+class RecurrenceSeriesOut(RecurrenceSeriesCreate):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Agenda event ─────────────────────────────────────────────────
 
 class AgendaEventBase(BaseModel):
     title: str
@@ -31,5 +71,7 @@ class AgendaEventUpdate(AgendaEventBase):
 class AgendaEventOut(AgendaEventBase):
     id: int
     created_at: datetime
+    series_id: int | None = None
+    is_exception: bool = False
 
     model_config = {"from_attributes": True}

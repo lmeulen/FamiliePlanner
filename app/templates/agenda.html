@@ -68,6 +68,49 @@
     <label>Kleur
       <input type="color" name="color" value="#4ECDC4" />
     </label>
+
+    <!-- Recurrence toggle (only shown when creating a new event) -->
+    <label class="checkbox-label" id="recurrence-toggle-row">
+      <input type="checkbox" id="recurrence-toggle" />
+      Herhaling instellen
+    </label>
+
+    <!-- Recurrence section: shown when toggle is on OR when editing a series event -->
+    <div id="recurrence-section" class="hidden">
+
+      <!-- Scope selector: only shown when editing an existing series event -->
+      <div id="series-scope-selector" class="hidden">
+        <div class="form-section-label">🔁 Onderdeel van een reeks</div>
+        <div class="scope-options">
+          <label class="radio-label">
+            <input type="radio" name="edit_scope" value="this" checked />
+            Alleen dit event
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="edit_scope" value="series" />
+            Hele reeks bewerken
+          </label>
+        </div>
+      </div>
+
+      <!-- Recurrence rule fields: shown when creating OR when scope=series -->
+      <div id="recurrence-fields">
+        <label>Herhaling
+          <select name="recurrence_type">
+            <option value="daily">Dagelijks</option>
+            <option value="every_other_day">Om de dag</option>
+            <option value="weekly" selected>Wekelijks</option>
+            <option value="biweekly">Tweewekelijks</option>
+            <option value="weekdays">Werkdagen (ma–vr)</option>
+            <option value="monthly">Maandelijks</option>
+          </select>
+        </label>
+        <label>Herhaling t/m *
+          <input type="date" name="series_end" />
+        </label>
+      </div>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
       <button type="button" class="btn btn--danger hidden" id="btn-delete-event">Verwijderen</button>

@@ -20,4 +20,4 @@ class Meal(Base):
     cook_member_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, default=None
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
