@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/static/css/main.css?v={{ static_v }}" />
   {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
   <!-- ──────────── SIDE NAVIGATION ──────────── -->
   <nav class="side-nav" role="navigation" aria-label="Hoofdnavigatie">

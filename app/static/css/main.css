@@ -1038,3 +1038,26 @@ img { max-width: 100%; }
   margin-top: .25rem;
 }
 .recur-icon { font-size: .75em; opacity: .8; }
+
+/* ── DASHBOARD TWO-COLUMN GRID ──────────────────────────────── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0 1.5rem;
+  align-items: start;
+}
+.dashboard-sidebar {
+  position: sticky;
+  top: 1rem;
+}
+/* Remove page-container horizontal constraints on dashboard */
+.page-dashboard .page-container {
+  max-width: none;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+/* Stack on narrow screens */
+@media (max-width: 700px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .dashboard-sidebar { position: static; }
+}
