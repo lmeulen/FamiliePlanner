@@ -212,6 +212,8 @@ img { max-width: 100%; }
   flex-shrink: 0;
 }
 .task-due-badge.overdue { background: #ffe0e0; color: var(--color-danger); }
+.task-card.task-overdue { border-left: 3px solid var(--color-danger); }
+.task-due { font-size: .72rem; color: var(--color-danger); margin-top: .1rem; font-weight: 500; }
 .task-list-dot {
   width: 10px; height: 10px;
   border-radius: 50%;

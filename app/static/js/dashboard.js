@@ -22,14 +22,18 @@
       </div>`;
   }
 
-  function renderTaskCard(task) {
+  function renderTaskCard(task, overdue = false) {
     const member = FP.getMember(task.member_id);
+    const dueMeta = overdue && task.due_date
+      ? `<div class="task-due overdue">Verlopen: ${FP.formatDate(new Date(task.due_date))}</div>`
+      : '';
     return `
-      <div class="card task-card" data-id="${task.id}">
+      <div class="card task-card ${overdue ? 'task-overdue' : ''}" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body">
           <div class="task-title ${task.done ? 'done' : ''}">${task.title}</div>
           ${member ? `<div class="task-meta">${member.avatar} ${member.name}</div>` : ''}
+          ${dueMeta}
         </div>
       </div>`;
   }
@@ -83,15 +87,22 @@
   }
 
   async function loadTasks() {
-    const container = document.getElementById('today-tasks');
+    const container = document.getElementById('all-tasks');
     const empty     = document.getElementById('tasks-empty');
     try {
-      const tasks = await API.get('/api/tasks/today');
-      if (!tasks.length) {
+      const [today, overdue] = await Promise.all([
+        API.get('/api/tasks/today'),
+        API.get('/api/tasks/overdue'),
+      ]);
+      const html = [
+        ...today.map(t => renderTaskCard(t, false)),
+        ...overdue.map(t => renderTaskCard(t, true)),
+      ].join('');
+      if (!html) {
         container.innerHTML = '';
         empty.classList.remove('hidden');
       } else {
-        container.innerHTML = tasks.map(renderTaskCard).join('');
+        container.innerHTML = html;
         empty.classList.add('hidden');
         bindTaskToggles(container);
       }

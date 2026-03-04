@@ -92,6 +92,18 @@ async def today_tasks(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+@router.get("/overdue", response_model=list[TaskOut])
+async def overdue_tasks(db: AsyncSession = Depends(get_db)):
+    today = date.today()
+    stmt = (
+        select(Task)
+        .where(and_(Task.due_date < today, Task.done == False))  # noqa: E712
+        .order_by(Task.due_date.asc(), Task.created_at)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 @router.post("/", response_model=TaskOut, status_code=201)
 async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     task = Task(**payload.model_dump())
