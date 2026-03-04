@@ -16,29 +16,8 @@
 </head>
 <body>
 
-  <!-- ──────────── APP HEADER ──────────── -->
-  <header class="app-header">
-    <div class="header-left">
-      <span class="app-logo">🏠</span>
-      <span class="app-name">FamiliePlanner</span>
-    </div>
-    <div class="header-center" id="header-date"><!-- filled by JS --></div>
-    <div class="header-right">
-      <button class="icon-btn" id="theme-toggle" aria-label="Wissel thema" title="Wissel thema">
-        <span id="theme-icon">🌙</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- ──────────── MAIN CONTENT ──────────── -->
-  <main class="app-main">
-    <div class="page-container">
-      {% block content %}{% endblock %}
-    </div>
-  </main>
-
-  <!-- ──────────── BOTTOM NAVIGATION ──────────── -->
-  <nav class="bottom-nav" role="navigation" aria-label="Hoofdnavigatie">
+  <!-- ──────────── SIDE NAVIGATION ──────────── -->
+  <nav class="side-nav" role="navigation" aria-label="Hoofdnavigatie">
     <a href="/"          class="nav-item {% block nav_dashboard %}{% endblock %}" aria-label="Dashboard">
       <span class="nav-icon">🏠</span>
       <span class="nav-label">Overzicht</span>
@@ -60,6 +39,32 @@
       <span class="nav-label">Gezin</span>
     </a>
   </nav>
+
+  <!-- ──────────── APP CONTENT ──────────── -->
+  <div class="app-content">
+
+    <!-- ──────────── APP HEADER ──────────── -->
+    <header class="app-header">
+      <div class="header-left">
+        <span class="app-logo">🏠</span>
+        <span class="app-name">FamiliePlanner</span>
+      </div>
+      <div class="header-center" id="header-date"><!-- filled by JS --></div>
+      <div class="header-right">
+        <button class="icon-btn" id="theme-toggle" aria-label="Wissel thema" title="Wissel thema">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ──────────── MAIN CONTENT ──────────── -->
+    <main class="app-main">
+      <div class="page-container">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+  </div><!-- /.app-content -->
 
   <!-- ──────────── MODAL CONTAINER ──────────── -->
   <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
