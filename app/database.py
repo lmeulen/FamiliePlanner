@@ -2,6 +2,7 @@
 Async SQLite database setup using SQLAlchemy 2.x + aiosqlite.
 All models import Base from here; call init_db() on startup.
 """
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -31,3 +32,8 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate: add cook_member_id to meals if it doesn't exist yet
+        try:
+            await conn.execute(text("ALTER TABLE meals ADD COLUMN cook_member_id INTEGER"))
+        except Exception:
+            pass  # column already exists

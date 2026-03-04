@@ -111,12 +111,16 @@ window.FP = (() => {
     return { breakfast:'🌅 Ontbijt', lunch:'☀️ Lunch', dinner:'🌙 Diner', snack:'🍎 Tussendoor' }[t] || t;
   }
 
-  // ── Header date ───────────────────────────────────────────────
+  // ── Header date + time ──────────────────────────────────────
   function renderHeaderDate() {
     const el = document.getElementById('header-date');
     if (!el) return;
-    const d = new Date();
-    el.textContent = `${NL_DAYS_FULL[d.getDay()]} ${d.getDate()} ${NL_MONTHS[d.getMonth()]}`;
+    const d  = new Date();
+    const hh = pad(d.getHours());
+    const mm = pad(d.getMinutes());
+    el.innerHTML =
+      `<div class="header-date-line">${NL_DAYS_FULL[d.getDay()]} ${d.getDate()} ${NL_MONTHS[d.getMonth()]}</div>` +
+      `<div class="header-time-line">${hh}:${mm}</div>`;
   }
 
   // ── Member chips builder ──────────────────────────────────────
@@ -164,6 +168,7 @@ window.FP = (() => {
   // ── Init ──────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     renderHeaderDate();
+    setInterval(renderHeaderDate, 30_000);  // update clock every 30s
     loadMembers();   // pre-load for all pages
   });
 

@@ -40,18 +40,33 @@ img { max-width: 100%; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: .75rem 1rem;
+  padding: .5rem 1rem;
   background: var(--header-bg);
   box-shadow: var(--header-shadow);
-  height: 60px;
+  height: 68px;
 }
 .header-left  { display: flex; align-items: center; gap: .5rem; }
 .header-right { display: flex; align-items: center; gap: .5rem; }
 .header-center {
-  font-size: .85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1;
+  gap: .1rem;
+}
+.header-date-line {
+  font-size: .72rem;
   font-weight: 500;
   color: var(--text-secondary);
-  text-align: center;
+  text-transform: capitalize;
+}
+.header-time-line {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .5px;
+  font-variant-numeric: tabular-nums;
 }
 .app-logo { font-size: 1.4rem; }
 .app-name  {
@@ -229,6 +244,18 @@ img { max-width: 100%; }
   font-weight: 600;
   font-size: .88rem;
   line-height: 1.3;
+}
+.meal-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .4rem;
+}
+.meal-cook {
+  font-size: .72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Week meals grid */
@@ -972,27 +999,6 @@ img { max-width: 100%; }
   .week-day-card    { min-width: 100px; }
 }
 @media (min-width: 960px) {
-  .page-container   { padding: 2rem 2.5rem 3rem; }
-  .app-main         { padding-bottom: 0; }
-  /* On wide screens switch bottom-nav to left sidebar */
-  .bottom-nav {
-    position: fixed;
-    left: 0; top: 0; bottom: 0; right: auto;
-    flex-direction: column;
-    width: 80px;
-    border-top: none;
-    border-right: 1px solid var(--border);
-    padding-bottom: 0;
-    box-shadow: 2px 0 12px rgba(0,0,0,.05);
-  }
-  .nav-item {
-    flex: 0 0 auto;
-    padding: 1rem .25rem;
-    min-height: auto;
-  }
-  .app-main {
-    margin-left: 80px;
-    padding-bottom: 2rem;
-  }
-  .fab { bottom: 1.5rem; right: 1.5rem; }
+  .page-container { padding: 2rem 2.5rem 3rem; }
+  .fab { bottom: calc(70px + .75rem + env(safe-area-inset-bottom)); right: 1.5rem; }
 }

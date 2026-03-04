@@ -24,4 +24,5 @@ class Meal(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     recipe_url: Mapped[str] = mapped_column(String(500), default="")
+    cook_member_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

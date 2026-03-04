@@ -10,6 +10,7 @@ class MealBase(BaseModel):
     name: str
     description: str = ""
     recipe_url: str = ""
+    cook_member_id: int | None = None
 
 
 class MealCreate(MealBase):

@@ -81,3 +81,6 @@ id_*.txt
 # Generated payload store snapshot
 data/status.json
 data/status.json.tmp
+
+# SQL database
+*.db

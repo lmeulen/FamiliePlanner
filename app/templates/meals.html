@@ -58,6 +58,11 @@
     <label>Recept URL
       <input type="url" name="recipe_url" placeholder="https://..." />
     </label>
+    <label>Wie kookt er?
+      <select name="cook_member_id">
+        <!-- populated by JS -->
+      </select>
+    </label>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
       <button type="button" class="btn btn--danger hidden" id="btn-delete-meal">Verwijderen</button>
@@ -67,5 +72,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/meals.js"></script>
+<script src="/static/js/meals.js?v={{ static_v }}"></script>
 {% endblock %}

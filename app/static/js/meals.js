@@ -54,10 +54,14 @@
 
       if (dayMeals.length) {
         dayMeals.forEach(meal => {
+          const cook = meal.cook_member_id ? FP.getMember(meal.cook_member_id) : null;
           html += `
             <div class="meal-card" data-id="${meal.id}" style="flex:0 0 auto;max-width:160px">
               <span class="meal-type-badge ${meal.meal_type}">${FP.mealTypeLabel(meal.meal_type)}</span>
-              <div class="meal-name">${meal.name}</div>
+              <div class="meal-name-row">
+                <div class="meal-name">${meal.name}</div>
+                ${cook ? `<div class="meal-cook">${cook.avatar} ${cook.name}</div>` : ''}
+              </div>
               ${meal.recipe_url ? `<a href="${meal.recipe_url}" target="_blank" rel="noopener" style="font-size:.72rem;color:var(--accent)" onclick="event.stopPropagation()">🔗 Recept</a>` : ''}
             </div>`;
         });
@@ -93,6 +97,13 @@
     const title  = document.getElementById('meal-form-title');
     const delBtn = document.getElementById('btn-delete-meal');
 
+    await FP.loadMembers();
+    const cookSel = form.querySelector('[name="cook_member_id"]');
+    if (cookSel) {
+      FP.populateMemberSelect(cookSel, true);
+      if (cookSel.options[0]) cookSel.options[0].textContent = '— Niemand —';
+    }
+
     if (id) {
       title.textContent = 'Maaltijd bewerken';
       delBtn.classList.remove('hidden');
@@ -103,6 +114,7 @@
         form.name.value       = meal.name;
         form.description.value = meal.description || '';
         form.recipe_url.value  = meal.recipe_url || '';
+        if (cookSel) cookSel.value = meal.cook_member_id || '';
       }
     } else {
       title.textContent = 'Maaltijd toevoegen';
@@ -112,12 +124,14 @@
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      const cookVal = cookSel ? cookSel.value : '';
       const data = {
-        date:        form.date.value,
-        meal_type:   form.meal_type.value,
-        name:        form.name.value,
-        description: form.description.value,
-        recipe_url:  form.recipe_url.value,
+        date:           form.date.value,
+        meal_type:      form.meal_type.value,
+        name:           form.name.value,
+        description:    form.description.value,
+        recipe_url:     form.recipe_url.value,
+        cook_member_id: cookVal ? parseInt(cookVal) : null,
       };
       try {
         if (editId) {

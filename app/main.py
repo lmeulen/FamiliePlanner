@@ -3,6 +3,7 @@ FamiliePlanner – FastAPI application entry point.
 Mounts static files, registers routers, serves Jinja2 templates.
 """
 from contextlib import asynccontextmanager
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -36,6 +37,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates.env.globals["static_v"] = str(int(time.time()))
 
 # API routers
 app.include_router(family.router)
