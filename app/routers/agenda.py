@@ -90,7 +90,7 @@ async def update_event(
     event = await db.get(AgendaEvent, event_id)
     if not event:
         raise HTTPException(404, "Event not found")
-    for key, value in payload.model_dump().items():
+    for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(event, key, value)
     await db.commit()
     await db.refresh(event)

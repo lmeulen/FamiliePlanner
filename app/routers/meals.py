@@ -5,7 +5,8 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.meals import Meal, MealType
+from app.models.meals import Meal
+from app.enums import MealType
 from app.schemas.meals import MealCreate, MealOut, MealUpdate
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
@@ -82,7 +83,7 @@ async def update_meal(
     meal = await db.get(Meal, meal_id)
     if not meal:
         raise HTTPException(404, "Meal not found")
-    for k, v in payload.model_dump().items():
+    for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(meal, k, v)
     await db.commit()
     await db.refresh(meal)

@@ -40,7 +40,7 @@ async def update_member(
     member = await db.get(FamilyMember, member_id)
     if not member:
         raise HTTPException(404, "Family member not found")
-    for key, value in payload.model_dump().items():
+    for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(member, key, value)
     await db.commit()
     await db.refresh(member)

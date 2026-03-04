@@ -1,16 +1,9 @@
 """Meal planner model."""
 from datetime import date, datetime
-from sqlalchemy import String, Date, DateTime, Integer, Text, Enum as SAEnum
+from sqlalchemy import String, Date, DateTime, Integer, Text, ForeignKey, Enum as SAEnum, func
 from sqlalchemy.orm import Mapped, mapped_column
-import enum
 from app.database import Base
-
-
-class MealType(str, enum.Enum):
-    breakfast = "breakfast"
-    lunch = "lunch"
-    dinner = "dinner"
-    snack = "snack"
+from app.enums import MealType
 
 
 class Meal(Base):
@@ -24,5 +17,7 @@ class Meal(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="")
     recipe_url: Mapped[str] = mapped_column(String(500), default="")
-    cook_member_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    cook_member_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, default=None
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

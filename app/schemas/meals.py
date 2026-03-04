@@ -1,7 +1,7 @@
 """Pydantic schemas for Meal."""
 from datetime import date, datetime
 from pydantic import BaseModel
-from app.models.meals import MealType
+from app.enums import MealType
 
 
 class MealBase(BaseModel):

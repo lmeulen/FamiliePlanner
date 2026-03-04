@@ -37,7 +37,7 @@ async def update_task_list(
     tl = await db.get(TaskList, list_id)
     if not tl:
         raise HTTPException(404, "Task list not found")
-    for k, v in payload.model_dump().items():
+    for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(tl, k, v)
     await db.commit()
     await db.refresh(tl)
@@ -116,7 +116,7 @@ async def update_task(
     task = await db.get(Task, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
-    for k, v in payload.model_dump().items():
+    for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(task, k, v)
     await db.commit()
     await db.refresh(task)
