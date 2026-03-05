@@ -9,7 +9,7 @@
 
   function applyTheme(t) {
     html.setAttribute('data-theme', t);
-    icon.textContent = t === 'dark' ? '☀️' : '🌙';
+    if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
     localStorage.setItem(KEY, t);
   }
 
