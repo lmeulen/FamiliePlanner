@@ -8,13 +8,13 @@ from fastapi.templating import Jinja2Templates
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import APP_PASSWORD, APP_USERNAME, BASE_DIR
+from app.config import APP_PASSWORD, APP_USERNAME, AUTH_REQUIRED, BASE_DIR
 
 # Paths that are accessible without authentication
 _PUBLIC_PATHS = frozenset({"/login", "/logout"})
 
-# Set AUTH_DISABLED=1 in the test environment to bypass auth
-_AUTH_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "yes")
+# AUTH_REQUIRED=false in .env (or AUTH_DISABLED=1 for legacy test support) bypasses auth
+_AUTH_DISABLED = not AUTH_REQUIRED or os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "yes")
 
 templates = Jinja2Templates(directory=BASE_DIR / "app" / "templates")
 

@@ -20,6 +20,7 @@ DATABASE_URL = f"sqlite+aiosqlite:///{BASE_DIR}/familieplanner.db"
 SECRET_KEY: str = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 APP_USERNAME: str = os.environ.get("APP_USERNAME", "admin")
 APP_PASSWORD: str = os.environ.get("APP_PASSWORD", "familieplanner")
+AUTH_REQUIRED: bool = os.environ.get("AUTH_REQUIRED", "true").lower() not in ("0", "false", "no")
 
 # Family members – edit names/colours here or expose via API later
 FAMILY_MEMBERS_DEFAULT = [
