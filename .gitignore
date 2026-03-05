@@ -84,3 +84,5 @@ data/status.json.tmp
 
 # SQL database
 *.db
+# Uploaded photos
+app/static/uploads/
