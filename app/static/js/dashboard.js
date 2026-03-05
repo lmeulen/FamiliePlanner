@@ -106,21 +106,23 @@
     const container = document.getElementById('all-tasks');
     const empty     = document.getElementById('tasks-empty');
     try {
-      const [today, overdue, lists] = await Promise.all([
+      const [today, overdue, lists, overduePos] = await Promise.all([
         API.get('/api/tasks/today'),
         API.get('/api/tasks/overdue'),
         API.get('/api/tasks/lists'),
+        API.get('/api/tasks/overdue-position').catch(() => ({ sort_order: 9999 })),
       ]);
       _tasks = [...today, ...overdue];
 
-      // Priority order for known list names
-      const PRIORITY = ['Taken', 'Huishouden'];
-      const sortedLists = [...lists].sort((a, b) => {
-        const ai = PRIORITY.indexOf(a.name), bi = PRIORITY.indexOf(b.name);
-        if (ai !== -1 && bi !== -1) return ai - bi;
-        if (ai !== -1) return -1;
-        if (bi !== -1) return  1;
-        return a.name.localeCompare(b.name);
+      // Lists are already ordered by sort_order from API
+      // Build virtual items: lists + overdue pseudo-entry at its configured position
+      const virtualItems = [
+        ...lists.map(l => ({ type: 'list', list: l })),
+        { type: 'overdue', sort_order: overduePos.sort_order },
+      ].sort((a, b) => {
+        const aOrd = a.type === 'list' ? a.list.sort_order : a.sort_order;
+        const bOrd = b.type === 'list' ? b.list.sort_order : b.sort_order;
+        return aOrd - bOrd;
       });
 
       // Group today's tasks by list_id (null = "Overige")
@@ -133,26 +135,26 @@
 
       let html = '';
 
-      // Named lists in priority order
-      sortedLists.forEach(list => {
-        const tasks = grouped.get(list.id) || [];
-        if (!tasks.length) return;
-        html += `<div class="task-group-header">${list.name}</div>`;
-        html += tasks.map(t => renderTaskCard(t, false)).join('');
+      virtualItems.forEach(item => {
+        if (item.type === 'list') {
+          const tasks = grouped.get(item.list.id) || [];
+          if (!tasks.length) return;
+          html += `<div class="task-group-header">${item.list.name}</div>`;
+          html += tasks.map(t => renderTaskCard(t, false)).join('');
+        } else {
+          // Overige taken (null list_id)
+          const overige = grouped.get(null) || [];
+          if (overige.length) {
+            html += `<div class="task-group-header">Overige taken</div>`;
+            html += overige.map(t => renderTaskCard(t, false)).join('');
+          }
+          // Verlopen taken
+          if (overdue.length) {
+            html += `<div class="task-group-header task-group-header--overdue">Verlopen taken</div>`;
+            html += overdue.map(t => renderTaskCard(t, true)).join('');
+          }
+        }
       });
-
-      // Overige taken (no list)
-      const overige = grouped.get(null) || [];
-      if (overige.length) {
-        html += `<div class="task-group-header">Overige taken</div>`;
-        html += overige.map(t => renderTaskCard(t, false)).join('');
-      }
-
-      // Verlopen taken
-      if (overdue.length) {
-        html += `<div class="task-group-header task-group-header--overdue">Verlopen taken</div>`;
-        html += overdue.map(t => renderTaskCard(t, true)).join('');
-      }
 
       if (!html) {
         container.innerHTML = '';
@@ -309,11 +311,13 @@
 
     FP.buildMemberPicker('task-member-picker');
 
-    // Populate list select
+    // Populate list select (required – no empty option)
     const listSel = document.getElementById('dash-task-list-select');
+    listSel.innerHTML = '';
+    let dashLists = [];
     try {
-      const lists = await API.get('/api/tasks/lists');
-      lists.forEach(l => {
+      dashLists = await API.get('/api/tasks/lists');
+      dashLists.forEach(l => {
         const opt = document.createElement('option');
         opt.value = l.id; opt.textContent = l.name;
         listSel.appendChild(opt);
@@ -327,7 +331,7 @@
       if (task) {
         form.title.value       = task.title;
         form.description.value = task.description || '';
-        listSel.value          = task.list_id || '';
+        listSel.value          = task.list_id || (dashLists[0]?.id ?? '');
         FP.buildMemberPicker('task-member-picker', task.member_ids || []);
         form.due_date.value    = task.due_date || '';
       }
@@ -335,6 +339,7 @@
       titleEl.textContent = 'Taak toevoegen';
       delBtn.classList.add('hidden');
       form.due_date.value = FP.todayStr();
+      if (dashLists.length) listSel.value = dashLists[0].id;
     }
 
     form.addEventListener('submit', async e => {

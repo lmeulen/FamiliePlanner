@@ -101,7 +101,7 @@
     const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
     const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${m.name}">${m.avatar}</div>`).join('');
     return `
-      <div class="card task-card" data-id="${task.id}">
+      <div class="card task-card${isOverdue ? ' task-overdue' : ''}" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body" style="cursor:pointer" data-edit="${task.id}">
           <div class="task-title ${task.done ? 'done' : ''}">${task.title}${recurIcon}</div>
@@ -147,9 +147,9 @@
 
     FP.buildMemberPicker('task-member-picker');
 
-    // Populate list select
+    // Populate list select (required – no empty option)
     const listSel = form.querySelector('select[name="list_id"]');
-    listSel.innerHTML = '<option value="">Geen lijst</option>';
+    listSel.innerHTML = '';
     lists.forEach(l => {
       const opt = document.createElement('option');
       opt.value = l.id; opt.textContent = l.name;
@@ -191,7 +191,12 @@
       recurRow.classList.remove('hidden');
       scopeSel.classList.add('hidden');
       recurFields.classList.add('hidden');
-      if (activeList !== 'all') listSel.value = activeList;
+      // Default to active list or first list
+      if (activeList !== 'all') {
+        listSel.value = activeList;
+      } else if (lists.length) {
+        listSel.value = lists[0].id;
+      }
       // Default due date to today
       form.due_date.value = FP.todayStr();
     }
@@ -225,7 +230,7 @@
         const payload = {
           title:           form.title.value,
           description:     form.description.value,
-          list_id:         listSel.value ? parseInt(listSel.value) : null,
+          list_id:         listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
           member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]').value,
           series_start:    form.due_date.value,
@@ -245,7 +250,7 @@
         const payload = {
           title:           form.title.value,
           description:     form.description.value,
-          list_id:         listSel.value ? parseInt(listSel.value) : null,
+          list_id:         listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
           member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]')?.value || 'weekly',
           series_end:      form.due_date.value,
@@ -263,7 +268,7 @@
       const data = {
         title:       form.title.value,
         description: form.description.value,
-        list_id:     listSel.value ? parseInt(listSel.value) : null,
+        list_id:     listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
         member_ids:  memberIds,
         due_date:    form.due_date.value || null,
         done:        false,
@@ -311,7 +316,7 @@
     }, { once: true });
   }
 
-  // ── List form ─────────────────────────────────────────────────
+  // ── List form (create new) ────────────────────────────────────
   function openListForm() {
     Modal.open('tpl-list-form');
     const form = document.getElementById('list-form');
@@ -330,6 +335,74 @@
     }, { once: true });
   }
 
+  // ── Manage lists order ────────────────────────────────────────
+  async function openManageLists() {
+    Modal.open('tpl-manage-lists');
+    let overduePos = 9999;
+    try {
+      const res = await API.get('/api/tasks/overdue-position');
+      overduePos = res.sort_order;
+    } catch {}
+
+    // Build virtual items array: lists + overdue pseudo-entry
+    let items = [
+      ...lists.map(l => ({ type: 'list', id: l.id, name: l.name, color: l.color, sort_order: l.sort_order })),
+      { type: 'overdue', id: null, name: 'Verlopen taken', color: '#E74C3C', sort_order: overduePos },
+    ];
+    items.sort((a, b) => a.sort_order - b.sort_order || (a.type === 'overdue' ? 1 : -1));
+
+    function renderOrder() {
+      const container = document.getElementById('manage-lists-order');
+      if (!container) return;
+      container.innerHTML = items.map((item, idx) => `
+        <div class="manage-list-row" data-idx="${idx}">
+          <span class="manage-list-dot" style="background:${item.color}"></span>
+          <span class="manage-list-name">${item.name}</span>
+          <div class="manage-list-btns">
+            <button class="icon-btn manage-up" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} title="Omhoog">▲</button>
+            <button class="icon-btn manage-down" data-idx="${idx}" ${idx === items.length - 1 ? 'disabled' : ''} title="Omlaag">▼</button>
+          </div>
+        </div>`).join('');
+
+      container.querySelectorAll('.manage-up').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.idx);
+          if (i === 0) return;
+          [items[i - 1], items[i]] = [items[i], items[i - 1]];
+          renderOrder();
+        });
+      });
+      container.querySelectorAll('.manage-down').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.idx);
+          if (i === items.length - 1) return;
+          [items[i], items[i + 1]] = [items[i + 1], items[i]];
+          renderOrder();
+        });
+      });
+    }
+    renderOrder();
+
+    document.getElementById('btn-save-list-order')?.addEventListener('click', async () => {
+      // Assign sequential sort_orders
+      items.forEach((item, idx) => { item.sort_order = (idx + 1) * 10; });
+
+      const listItems = items.filter(i => i.type === 'list');
+      const overdueItem = items.find(i => i.type === 'overdue');
+
+      try {
+        await Promise.all([
+          API.put('/api/tasks/lists/reorder', listItems.map(i => ({ id: i.id, sort_order: i.sort_order }))),
+          API.put('/api/tasks/overdue-position', { sort_order: overdueItem?.sort_order ?? 9999 }),
+        ]);
+        Toast.show('Volgorde opgeslagen!');
+        Modal.close();
+        await loadLists();
+        loadTasks();
+      } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     await FP.loadMembers();
@@ -338,6 +411,7 @@
 
     document.getElementById('btn-add-task')?.addEventListener('click', () => openTaskForm());
     document.getElementById('btn-add-list')?.addEventListener('click', openListForm);
+    document.getElementById('btn-manage-lists')?.addEventListener('click', openManageLists);
     document.getElementById('show-done')?.addEventListener('change', e => {
       showDone = e.target.checked;
       loadTasks();

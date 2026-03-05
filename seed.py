@@ -13,6 +13,7 @@ from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_member
 from app.models.family import FamilyMember
 from app.models.meals import Meal, MealType
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
+from app.models.settings import AppSetting
 
 
 async def seed():
@@ -27,6 +28,7 @@ async def seed():
         await db.execute(delete(TaskList))
         await db.execute(delete(Meal))
         await db.execute(delete(FamilyMember))
+        await db.execute(delete(AppSetting))
         await db.commit()
         print("[OK] Database cleared")
 
@@ -38,13 +40,18 @@ async def seed():
 
         # ---- Task lists ----
         lists = [
-            TaskList(name="Taken",      color="#6C5CE7"),
-            TaskList(name="Huishouden", color="#4ECDC4"),
+            TaskList(name="Taken",      color="#6C5CE7", sort_order=10),
+            TaskList(name="Huishouden", color="#4ECDC4", sort_order=20),
         ]
         db.add_all(lists)
         await db.commit()
         for tl in lists:
             await db.refresh(tl)
+
+        # ---- App settings ----
+        db.add(AppSetting(key="overdue_sort_order", value="9999"))
+        await db.commit()
+        print("[OK] App settings created")
 
         today = date.today()
         tasks_seed = [

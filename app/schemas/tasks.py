@@ -9,6 +9,7 @@ from app.enums import RecurrenceType
 class TaskListBase(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     color: str = "#4ECDC4"
+    sort_order: int = 0
 
 
 class TaskListCreate(TaskListBase):
@@ -19,11 +20,20 @@ class TaskListUpdate(TaskListBase):
     pass
 
 
+class TaskListReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
+
 class TaskListOut(TaskListBase):
     id: int
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class OverduePositionOut(BaseModel):
+    sort_order: int
 
 
 # ---- TaskRecurrenceSeries ----

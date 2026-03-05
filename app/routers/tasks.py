@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.enums import RecurrenceType
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
+from app.models.settings import AppSetting
 from app.schemas.tasks import (
-    TaskCreate, TaskListCreate, TaskListOut, TaskListUpdate,
+    TaskCreate, TaskListCreate, TaskListOut, TaskListUpdate, TaskListReorderItem, OverduePositionOut,
     TaskOut, TaskUpdate,
     TaskRecurrenceSeriesCreate, TaskRecurrenceSeriesOut, TaskRecurrenceSeriesUpdate,
 )
@@ -88,18 +89,52 @@ async def _set_task_members(db: AsyncSession, junction_table, key_col: str, key_
 
 @router.get("/lists", response_model=list[TaskListOut])
 async def list_task_lists(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(TaskList).order_by(TaskList.id))
+    result = await db.execute(select(TaskList).order_by(TaskList.sort_order, TaskList.id))
     return result.scalars().all()
 
 
 @router.post("/lists", response_model=TaskListOut, status_code=201)
 async def create_task_list(payload: TaskListCreate, db: AsyncSession = Depends(get_db)):
+    # Assign sort_order after existing lists if not specified
+    if payload.sort_order == 0:
+        res = await db.execute(select(TaskList).order_by(TaskList.sort_order.desc()))
+        last = res.scalars().first()
+        payload = payload.model_copy(update={"sort_order": (last.sort_order + 10) if last else 10})
     tl = TaskList(**payload.model_dump())
     db.add(tl)
     await db.commit()
     await db.refresh(tl)
     logger.info("tasks.list.created id={} name='{}'", tl.id, tl.name)
     return tl
+
+
+@router.put("/lists/reorder", status_code=204)
+async def reorder_task_lists(items: list[TaskListReorderItem], db: AsyncSession = Depends(get_db)):
+    """Bulk-update sort_order for task lists."""
+    for item in items:
+        tl = await db.get(TaskList, item.id)
+        if tl:
+            tl.sort_order = item.sort_order
+    await db.commit()
+    logger.info("tasks.lists.reordered count={}", len(items))
+
+
+@router.get("/overdue-position", response_model=OverduePositionOut)
+async def get_overdue_position(db: AsyncSession = Depends(get_db)):
+    setting = await db.get(AppSetting, "overdue_sort_order")
+    return {"sort_order": int(setting.value) if setting else 9999}
+
+
+@router.put("/overdue-position", response_model=OverduePositionOut)
+async def set_overdue_position(payload: OverduePositionOut, db: AsyncSession = Depends(get_db)):
+    setting = await db.get(AppSetting, "overdue_sort_order")
+    if setting:
+        setting.value = str(payload.sort_order)
+    else:
+        db.add(AppSetting(key="overdue_sort_order", value=str(payload.sort_order)))
+    await db.commit()
+    logger.info("tasks.overdue_position.updated sort_order={}", payload.sort_order)
+    return {"sort_order": payload.sort_order}
 
 
 @router.put("/lists/{list_id}", response_model=TaskListOut)

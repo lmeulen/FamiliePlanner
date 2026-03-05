@@ -734,6 +734,15 @@ img { max-width: 100%; }
   border-bottom-color: var(--color-danger);
 }
 
+/* ── MANAGE LISTS ────────────────────────────────────────────── */
+.manage-lists-order { display: flex; flex-direction: column; gap: .4rem; margin: .75rem 0; }
+.manage-list-row { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; background: var(--color-surface); border-radius: .5rem; border: 1px solid var(--color-border); }
+.manage-list-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.manage-list-name { flex: 1; font-size: .9rem; }
+.manage-list-btns { display: flex; gap: .25rem; }
+.manage-list-btns .icon-btn { font-size: .75rem; padding: .15rem .35rem; line-height: 1; }
+.manage-list-btns .icon-btn:disabled { opacity: .3; cursor: default; }
+
 /* ── FAMILY GRID ─────────────────────────────────────────────── */
 .family-grid {
   display: grid;
