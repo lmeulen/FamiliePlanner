@@ -11,6 +11,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from loguru import logger
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -25,6 +29,9 @@ BASE_DIR = Path(__file__).resolve().parent
 
 # Initialise logging before anything else
 setup_logging()
+
+# ── Rate limiter ──────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
 @asynccontextmanager
@@ -51,11 +58,14 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
-# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → routes
+# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → SlowAPI → routes
 app.add_middleware(AuthMiddleware)
 app.add_middleware(CSRFMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 
@@ -138,9 +148,9 @@ app.include_router(meals.router)
 app.include_router(photos.router)
 app.include_router(settings_router.router)
 
-# Auth routes
+# Auth routes – login POST is rate-limited to 5 attempts per minute per IP
 app.get("/login", response_class=HTMLResponse)(login_get)
-app.post("/login")(login_post)
+app.post("/login")(limiter.limit("5/minute")(login_post))
 app.get("/logout")(logout)
 
 # ────────────────────────────────────────────────
