@@ -400,11 +400,15 @@
       form.description.value = form.description.value.trim();
       form.location.value    = form.location.value.trim();
 
-      // Series end date validation
-      const seriesEndInput = form.querySelector('input[name="series_end"]');
-      const seriesEndErr   = document.getElementById('series-end-error');
-      const startDate      = form.start_time.value.split('T')[0];
-      if (seriesEndInput && !seriesEndInput.classList.contains('hidden')) {
+      // Series end date validation (only when recurrence-fields is visible)
+      const seriesEndInput    = form.querySelector('input[name="series_end"]');
+      const seriesEndErr      = document.getElementById('series-end-error');
+      const startDate         = form.start_time.value.split('T')[0];
+      const recurSectionEl    = document.getElementById('recurrence-section');
+      const recurFieldsEl     = document.getElementById('recurrence-fields');
+      const seriesEndVisible  = !recurSectionEl?.classList.contains('hidden') &&
+                                !recurFieldsEl?.classList.contains('hidden');
+      if (seriesEndInput && seriesEndVisible) {
         const seriesEndVal = seriesEndInput.value;
         if (!seriesEndVal || seriesEndVal <= startDate) {
           seriesEndErr?.classList.remove('hidden');
