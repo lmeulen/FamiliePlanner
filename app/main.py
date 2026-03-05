@@ -16,6 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
+from app.csrf import CSRFMiddleware
 from app.database import init_db
 from app.logging_config import setup_logging
 from app.routers import agenda, family, meals, tasks, photos, settings as settings_router
@@ -52,7 +53,9 @@ app = FastAPI(
 )
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
+# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → routes
 app.add_middleware(AuthMiddleware)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 

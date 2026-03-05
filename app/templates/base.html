@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="csrf-token" content="{{ request.state.csrf_token }}" />
   <meta name="theme-color" content="#6C5CE7" />
   <title>{% block title %}FamiliePlanner{% endblock %}</title>
 

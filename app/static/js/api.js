@@ -4,14 +4,21 @@
    ================================================================ */
 window.API = (() => {
   const BASE = '';   // same origin
+  const _SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+  function _csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+  }
 
   async function request(method, path, data) {
     const isFormData = data instanceof FormData;
     const opts = {
       method,
       credentials: 'same-origin',
+      headers: {},
     };
-    if (!isFormData) opts.headers = { 'Content-Type': 'application/json' };
+    if (!isFormData) opts.headers['Content-Type'] = 'application/json';
+    if (!_SAFE.has(method)) opts.headers['X-CSRF-Token'] = _csrfToken();
     if (data !== undefined) opts.body = isFormData ? data : JSON.stringify(data);
 
     const res = await fetch(BASE + path, opts);
