@@ -43,12 +43,13 @@
 
   function renderMealCard(meal) {
     const cook = meal.cook_member_id ? FP.getMember(meal.cook_member_id) : null;
+    const badge = cook ? `<div class="event-member-badge" style="background:${cook.color}" title="${cook.name}">${cook.avatar}</div>` : '';
     return `
       <div class="meal-card" data-id="${meal.id}">
         <span class="meal-type-badge ${meal.meal_type}">${FP.mealTypeLabel(meal.meal_type)}</span>
         <div class="meal-name-row">
           <div class="meal-name">${meal.name}</div>
-          ${cook ? `<div class="meal-cook">${cook.avatar} ${cook.name}</div>` : ''}
+          ${badge ? `<div class="event-member-badges">${badge}</div>` : ''}
         </div>
         ${meal.description ? `<div class="text-muted" style="font-size:.78rem;margin-top:.2rem">${meal.description}</div>` : ''}
       </div>`;
