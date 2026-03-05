@@ -7,10 +7,11 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from loguru import logger
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AuthMiddleware, login_get, login_post, logout
@@ -45,6 +46,30 @@ app = FastAPI(
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
 app.add_middleware(AuthMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
+
+
+# ── Database exception handlers ───────────────────────────────────
+
+def _integrity_message(exc: IntegrityError) -> str:
+    msg = str(exc.orig).lower()
+    if "foreign key" in msg:
+        return "Referenced resource does not exist (invalid id)."
+    if "unique" in msg or "not unique" in msg:
+        return "A record with this value already exists."
+    return "Database integrity error."
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    detail = _integrity_message(exc)
+    logger.warning("IntegrityError on {} {}: {}", request.method, request.url.path, exc.orig)
+    return JSONResponse(status_code=422, content={"detail": detail})
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+    logger.error("SQLAlchemyError on {} {}: {}", request.method, request.url.path, exc)
+    return JSONResponse(status_code=400, content={"detail": "Database error. Please try again."})
 
 
 # ── Request logging middleware ────────────────────────────────────
