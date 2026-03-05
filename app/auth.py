@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import APP_PASSWORD, APP_USERNAME, AUTH_REQUIRED, BASE_DIR
+from app.config import APP_PASSWORD, APP_USERNAME, AUTH_REQUIRED, BASE_DIR, verify_password
 
 # Paths that are accessible without authentication
 _PUBLIC_PATHS = frozenset({"/login", "/logout"})
@@ -71,7 +71,7 @@ async def login_post(
 ) -> RedirectResponse:
     """Validate credentials and create session."""
     user_ok = secrets.compare_digest(username.encode(), APP_USERNAME.encode())
-    pass_ok = secrets.compare_digest(password.encode(), APP_PASSWORD.encode())
+    pass_ok = verify_password(password, APP_PASSWORD)
     if user_ok and pass_ok:
         request.session["authenticated"] = True
         logger.info("auth.login.success user='{}'", username)
