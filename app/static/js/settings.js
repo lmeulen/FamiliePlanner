@@ -76,5 +76,97 @@
     }
   }
 
+  // ── Backup & Restore ─────────────────────────────────────────
+  const backupBtn = document.getElementById('backup-btn');
+  const restoreBtn = document.getElementById('restore-btn');
+  const restoreFile = document.getElementById('restore-file');
+
+  function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+  }
+
+  // Download backup
+  backupBtn.addEventListener('click', async () => {
+    try {
+      backupBtn.disabled = true;
+      backupBtn.textContent = '⏳ Bezig...';
+
+      const response = await fetch('/api/settings/backup', {
+        method: 'GET',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+      });
+
+      if (!response.ok) throw new Error('Backup failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'backup.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      backupBtn.textContent = '✅ Gedownload!';
+      setTimeout(() => {
+        backupBtn.textContent = '📥 Download Backup';
+        backupBtn.disabled = false;
+      }, 2000);
+    } catch (err) {
+      console.error('Backup error:', err);
+      backupBtn.textContent = '❌ Fout!';
+      setTimeout(() => {
+        backupBtn.textContent = '📥 Download Backup';
+        backupBtn.disabled = false;
+      }, 2000);
+    }
+  });
+
+  // Restore backup
+  restoreBtn.addEventListener('click', async () => {
+    const file = restoreFile.files[0];
+    if (!file) {
+      alert('Selecteer eerst een backup bestand.');
+      return;
+    }
+
+    const confirmed = confirm(
+      '⚠️ WAARSCHUWING: Dit verwijdert ALLE huidige gegevens en vervangt ze met de backup.\n\n' +
+      'Weet je zeker dat je wilt doorgaan?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      restoreBtn.disabled = true;
+      restoreBtn.textContent = '⏳ Bezig met restoren...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/settings/restore', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Restore failed');
+      }
+
+      restoreBtn.textContent = '✅ Hersteld!';
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error('Restore error:', err);
+      alert('Restore mislukt: ' + err.message);
+      restoreBtn.textContent = '📤 Restore Backup';
+      restoreBtn.disabled = false;
+    }
+  });
+
   load();
 })();

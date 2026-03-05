@@ -1264,8 +1264,21 @@ img { max-width: 100%; }
 .btn--danger-ghost:hover { opacity: 1; background: color-mix(in srgb, var(--color-danger) 12%, transparent); }
 
 /* ── SETTINGS PAGE ───────────────────────────────────────────── */
-.settings-page { max-width: 640px; }
+.settings-page { max-width: 1200px; }
 .page-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 1.25rem; }
+.settings-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.settings-main { min-width: 0; }
+.settings-sidebar { position: sticky; top: 1rem; }
 .settings-form { display: flex; flex-direction: column; gap: 1.25rem; }
 .settings-section { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
 .settings-section-title { font-size: .95rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .25rem; }
