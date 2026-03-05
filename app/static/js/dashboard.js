@@ -172,9 +172,158 @@
     });
   }
 
+  // ── FAB speed dial ────────────────────────────────────────────
+  function initFab() {
+    const fab      = document.getElementById('fab-main');
+    const dial     = document.getElementById('fab-speed-dial');
+    if (!fab || !dial) return;
+
+    function openDial() {
+      dial.classList.remove('hidden');
+      fab.setAttribute('aria-expanded', 'true');
+      fab.style.transform = 'rotate(45deg)';
+    }
+    function closeDial() {
+      dial.classList.add('hidden');
+      fab.setAttribute('aria-expanded', 'false');
+      fab.style.transform = '';
+    }
+
+    fab.addEventListener('click', e => {
+      e.stopPropagation();
+      dial.classList.contains('hidden') ? openDial() : closeDial();
+    });
+
+    document.addEventListener('click', () => closeDial());
+
+    document.getElementById('fab-add-event')?.addEventListener('click', () => {
+      closeDial();
+      openDashEventForm();
+    });
+    document.getElementById('fab-add-task')?.addEventListener('click', () => {
+      closeDial();
+      openDashTaskForm();
+    });
+    document.getElementById('fab-add-meal')?.addEventListener('click', () => {
+      closeDial();
+      openDashMealForm();
+    });
+  }
+
+  // ── Quick-add: Afspraak ───────────────────────────────────────
+  function openDashEventForm() {
+    Modal.open('tpl-dash-event-form');
+    const form = document.getElementById('event-form');
+    FP.buildMemberPicker('event-member-picker');
+
+    const now = new Date();
+    const roundedStart = new Date(now);
+    roundedStart.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+    const roundedEnd = new Date(roundedStart);
+    roundedEnd.setHours(roundedEnd.getHours() + 1);
+    form.start_time.value = FP.toLocalDatetimeInput(roundedStart);
+    form.end_time.value   = FP.toLocalDatetimeInput(roundedEnd);
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const startDt = new Date(form.start_time.value);
+      const endDt   = new Date(form.end_time.value);
+      const endErr  = document.getElementById('end-time-error');
+      if (endDt <= startDt) { endErr?.classList.remove('hidden'); return; }
+      endErr?.classList.add('hidden');
+      try {
+        await API.post('/api/agenda/', {
+          title:       form.title.value.trim(),
+          description: form.description.value.trim(),
+          location:    form.location.value.trim(),
+          start_time:  startDt.toISOString(),
+          end_time:    endDt.toISOString(),
+          all_day:     form.all_day.checked,
+          color:       form.color.value,
+          member_ids:  FP.getSelectedMemberIds('event-member-picker'),
+        });
+        Modal.close();
+        Toast.show('Afspraak toegevoegd!');
+        loadEvents();
+      } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+  }
+
+  // ── Quick-add: Taak ───────────────────────────────────────────
+  async function openDashTaskForm() {
+    Modal.open('tpl-dash-task-form');
+    const form = document.getElementById('task-form');
+    FP.buildMemberPicker('task-member-picker');
+
+    const today = new Date();
+    form.due_date.value = `${today.getFullYear()}-${FP.pad(today.getMonth()+1)}-${FP.pad(today.getDate())}`;
+
+    // Populate list select
+    const listSel = document.getElementById('dash-task-list-select');
+    try {
+      const lists = await API.get('/api/tasks/lists');
+      lists.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id; opt.textContent = l.name;
+        listSel.appendChild(opt);
+      });
+    } catch {}
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        await API.post('/api/tasks/', {
+          title:       form.title.value.trim(),
+          description: form.description.value.trim(),
+          list_id:     listSel.value ? parseInt(listSel.value) : null,
+          member_ids:  FP.getSelectedMemberIds('task-member-picker'),
+          due_date:    form.due_date.value || null,
+        });
+        Modal.close();
+        Toast.show('Taak toegevoegd!');
+        loadTasks();
+      } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+  }
+
+  // ── Quick-add: Maaltijd ───────────────────────────────────────
+  async function openDashMealForm() {
+    Modal.open('tpl-dash-meal-form');
+    const form = document.getElementById('meal-form');
+
+    const today = new Date();
+    form.date.value = `${today.getFullYear()}-${FP.pad(today.getMonth()+1)}-${FP.pad(today.getDate())}`;
+
+    // Populate cook select
+    const cookSel = document.getElementById('dash-cook-select');
+    const members = FP.getMembers ? FP.getMembers() : [];
+    members.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = `${m.avatar} ${m.name}`;
+      cookSel.appendChild(opt);
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      try {
+        await API.post('/api/meals/', {
+          date:           form.date.value,
+          meal_type:      form.meal_type.value,
+          name:           form.name.value.trim(),
+          description:    form.description.value.trim(),
+          cook_member_id: cookSel.value ? parseInt(cookSel.value) : null,
+        });
+        Modal.close();
+        Toast.show('Maaltijd toegevoegd!');
+        loadMeals();
+      } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     await FP.loadMembers();
+    initFab();
     await Promise.all([loadEvents(), loadMeals(), loadTasks()]);
   }
 

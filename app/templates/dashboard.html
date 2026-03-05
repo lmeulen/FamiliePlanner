@@ -57,6 +57,116 @@
   </aside><!-- /.dashboard-sidebar -->
 
 </div><!-- /.dashboard-grid -->
+
+<!-- ── FAB speed dial ─────────────────────────────────────── -->
+<div class="fab-container" id="fab-container">
+  <div class="fab-speed-dial hidden" id="fab-speed-dial">
+    <button class="fab-option" id="fab-add-meal" aria-label="Maaltijd toevoegen">
+      <span class="fab-option-label">Maaltijd</span>🍽️
+    </button>
+    <button class="fab-option" id="fab-add-task" aria-label="Taak toevoegen">
+      <span class="fab-option-label">Taak</span>✅
+    </button>
+    <button class="fab-option" id="fab-add-event" aria-label="Afspraak toevoegen">
+      <span class="fab-option-label">Afspraak</span>📅
+    </button>
+  </div>
+  <button class="fab" id="fab-main" aria-label="Toevoegen" aria-expanded="false">＋</button>
+</div>
+
+<!-- Form templates (used by dashboard quick-add) -->
+<template id="tpl-dash-event-form">
+  <form id="event-form" class="modal-form">
+    <h3 class="modal-title">Afspraak toevoegen</h3>
+    <label>Titel *
+      <input type="text" name="title" required minlength="1" maxlength="200" placeholder="Bijv. Voetbaltraining" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2" maxlength="1000" placeholder="Optionele details"></textarea>
+    </label>
+    <label>Locatie
+      <input type="text" name="location" maxlength="200" placeholder="Bijv. Sporthal" />
+    </label>
+    <div class="form-row">
+      <label>Van *
+        <input type="datetime-local" name="start_time" required />
+      </label>
+      <label>Tot *
+        <input type="datetime-local" name="end_time" required />
+        <span class="field-error hidden" id="end-time-error">Eindtijd moet na starttijd liggen</span>
+      </label>
+    </div>
+    <label class="checkbox-label">
+      <input type="checkbox" name="all_day" /> Hele dag
+    </label>
+    <label>Gezinsleden
+      <div class="member-picker" id="event-member-picker"></div>
+    </label>
+    <label>Kleur
+      <input type="color" name="color" value="#4ECDC4" />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+    </div>
+  </form>
+</template>
+
+<template id="tpl-dash-task-form">
+  <form id="task-form" class="modal-form">
+    <h3 class="modal-title">Taak toevoegen</h3>
+    <label>Titel *
+      <input type="text" name="title" required minlength="1" maxlength="200" placeholder="Bijv. Melk kopen" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2" maxlength="1000"></textarea>
+    </label>
+    <label>Lijst
+      <select name="list_id" id="dash-task-list-select">
+        <option value="">Geen lijst</option>
+      </select>
+    </label>
+    <label>Gezinsleden
+      <div class="member-picker" id="task-member-picker"></div>
+    </label>
+    <label>Vervaldatum
+      <input type="date" name="due_date" />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+    </div>
+  </form>
+</template>
+
+<template id="tpl-dash-meal-form">
+  <form id="meal-form" class="modal-form">
+    <h3 class="modal-title">Maaltijd toevoegen</h3>
+    <label>Datum *
+      <input type="date" name="date" required />
+    </label>
+    <label>Type
+      <select name="meal_type">
+        <option value="breakfast">🌅 Ontbijt</option>
+        <option value="lunch">☀️ Lunch</option>
+        <option value="dinner" selected>🌙 Diner</option>
+        <option value="snack">🍎 Tussendoor</option>
+      </select>
+    </label>
+    <label>Naam *
+      <input type="text" name="name" required minlength="1" maxlength="200" placeholder="Bijv. Spaghetti bolognese" />
+    </label>
+    <label>Beschrijving
+      <textarea name="description" rows="2" maxlength="1000"></textarea>
+    </label>
+    <label>Wie kookt er?
+      <select name="cook_member_id" id="dash-cook-select">
+        <option value="">Niemand geselecteerd</option>
+      </select>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+    </div>
+  </form>
+</template>
 {% endblock %}
 
 {% block extra_js %}
