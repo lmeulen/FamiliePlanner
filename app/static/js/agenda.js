@@ -117,7 +117,7 @@
       html += '<div class="cal-allday-cell">';
       chips.forEach(ev => {
         const m = ev.member_ids?.length === 1 ? FP.getMember(ev.member_ids[0]) : null;
-        html += `<div class="cal-event-chip" style="background:${ev.color}" data-id="${ev.id}">${recurIcon(ev)}${m ? m.avatar + ' ' : ''}${ev.title}</div>`;
+        html += `<div class="cal-event-chip" style="background:${ev.color}" data-id="${ev.id}">${recurIcon(ev)}${m ? m.avatar + ' ' : ''}${FP.esc(ev.title)}</div>`;
       });
       html += '</div>';
     });
@@ -155,9 +155,9 @@
         const isShort = h < 46;
         const m      = ev.member_ids?.length === 1 ? FP.getMember(ev.member_ids[0]) : null;
         const colW   = 100 / totalCols;
-        html += `<div class="cal-event-block" style="top:${topPx}px;height:${h}px;background:${ev.color};left:calc(${lane*colW}% + 2px);width:calc(${colW}% - 4px);right:auto" data-id="${ev.id}" title="${ev.title}">
-          <div class="cal-event-block-title">${recurIcon(ev)}${ev.title}</div>
-          ${!isShort && m ? `<div class="cal-event-block-member">${m.avatar} ${m.name}</div>` : ''}
+        html += `<div class="cal-event-block" style="top:${topPx}px;height:${h}px;background:${ev.color};left:calc(${lane*colW}% + 2px);width:calc(${colW}% - 4px);right:auto" data-id="${ev.id}" title="${FP.esc(ev.title)}">
+          <div class="cal-event-block-title">${recurIcon(ev)}${FP.esc(ev.title)}</div>
+          ${!isShort && m ? `<div class="cal-event-block-member">${m.avatar} ${FP.esc(m.name)}</div>` : ''}
         </div>`;
       });
       html += '</div>';
@@ -213,7 +213,7 @@
       html += `<div class="cal-month-day ${FP.isToday(day) ? 'cal-day--today' : ''}" data-date="${dayStr}">
         <div class="cal-month-day-num">${d}</div>
         <div class="cal-month-events">
-          ${dayEvents.slice(0,3).map(ev => `<div class="cal-event-chip" style="background:${ev.color}" data-id="${ev.id}">${recurIcon(ev)}${ev.title}</div>`).join('')}
+          ${dayEvents.slice(0,3).map(ev => `<div class="cal-event-chip" style="background:${ev.color}" data-id="${ev.id}">${recurIcon(ev)}${FP.esc(ev.title)}</div>`).join('')}
           ${dayEvents.length > 3 ? `<div style="font-size:.65rem;color:var(--text-muted);padding:.1rem .2rem">+${dayEvents.length-3}</div>` : ''}
         </div></div>`;
     }
@@ -256,10 +256,10 @@
       return `<div class="card event-card" data-id="${ev.id}" style="cursor:pointer">
         <div class="event-color-bar" style="background:${ev.color}"></div>
         <div class="event-body">
-          <div class="event-title">${recurIcon(ev)}${ev.title}</div>
+          <div class="event-title">${recurIcon(ev)}${FP.esc(ev.title)}</div>
           <div class="event-meta">
             ${FP.formatDate(start)} · ${ev.all_day ? 'Hele dag' : FP.formatTime(start)+' – '+FP.formatTime(end)}
-            ${ev.location ? ` · 📍 ${ev.location}` : ''}
+            ${ev.location ? ` · 📍 ${FP.esc(ev.location)}` : ''}
           </div>
         </div>
         ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}

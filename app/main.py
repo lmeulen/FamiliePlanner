@@ -11,8 +11,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from loguru import logger
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import APP_TITLE, APP_VERSION
+from app.auth import AuthMiddleware, login_get, login_post, logout
+from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.database import init_db
 from app.logging_config import setup_logging
 from app.routers import agenda, family, meals, tasks
@@ -39,6 +41,10 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# ── Middleware (outermost last = SessionMiddleware runs first) ────
+app.add_middleware(AuthMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 
 # ── Request logging middleware ────────────────────────────────────
@@ -70,6 +76,11 @@ app.include_router(family.router)
 app.include_router(agenda.router)
 app.include_router(tasks.router)
 app.include_router(meals.router)
+
+# Auth routes
+app.get("/login", response_class=HTMLResponse)(login_get)
+app.post("/login")(login_post)
+app.get("/logout")(logout)
 
 # ────────────────────────────────────────────────
 # Page routes – each renders a Jinja2 template

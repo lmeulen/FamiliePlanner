@@ -2,6 +2,13 @@
    app.js – Global utilities, shared state, date helpers
    ================================================================ */
 window.FP = (() => {
+  // ── HTML escaping (XSS prevention) ───────────────────────────
+  const _esc_map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function esc(str) {
+    if (str == null) return '';
+    return String(str).replace(/[&<>"']/g, c => _esc_map[c]);
+  }
+
   // ── Shared family member state ────────────────────────────────
   let _members = [];
 
@@ -133,7 +140,7 @@ window.FP = (() => {
       const btn = document.createElement('button');
       btn.className = 'chip';
       btn.dataset.member = m.id;
-      btn.innerHTML = `<span class="chip-avatar">${m.avatar}</span>${m.name}`;
+      btn.innerHTML = `<span class="chip-avatar">${m.avatar}</span>${esc(m.name)}`;
       btn.style.setProperty('--chip-color', m.color);
       container.appendChild(btn);
     });
@@ -197,6 +204,7 @@ window.FP = (() => {
   });
 
   return {
+    esc,
     loadMembers, getMembers, getMember, memberColor, memberAvatar,
     today, todayStr, pad, formatDate, formatTime, formatDateShort,
     dayName, dayNameFull, isToday, isSameDay, addDays, startOfWeek,

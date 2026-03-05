@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inloggen – FamiliePlanner</title>
+  <link rel="stylesheet" href="/static/css/themes.css" />
+  <link rel="stylesheet" href="/static/css/main.css" />
+  <style>
+    .login-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      background: var(--color-bg);
+      padding: 1.5rem;
+    }
+    .login-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 1.25rem;
+      padding: 2rem 2.25rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+    }
+    .login-logo { font-size: 2.5rem; text-align: center; margin-bottom: .25rem; }
+    .login-title { text-align: center; font-size: 1.25rem; font-weight: 700; color: var(--color-text); margin-bottom: 1.75rem; }
+    .login-error {
+      background: #fff0f0;
+      color: var(--color-danger);
+      border: 1px solid #ffcdd2;
+      border-radius: .5rem;
+      padding: .6rem .9rem;
+      font-size: .875rem;
+      margin-bottom: 1rem;
+    }
+    .login-card label { display: block; margin-bottom: 1rem; font-size: .875rem; color: var(--color-text-muted); }
+    .login-card input[type="text"],
+    .login-card input[type="password"] {
+      width: 100%;
+      margin-top: .3rem;
+      padding: .65rem .85rem;
+      border: 1px solid var(--color-border);
+      border-radius: .5rem;
+      font-size: 1rem;
+      background: var(--color-bg);
+      color: var(--color-text);
+      box-sizing: border-box;
+    }
+    .login-card input:focus { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+    .login-submit { width: 100%; margin-top: .5rem; padding: .75rem; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">🏠</div>
+      <div class="login-title">FamiliePlanner</div>
+
+      {% if error %}
+      <div class="login-error">Gebruikersnaam of wachtwoord is onjuist.</div>
+      {% endif %}
+
+      <form method="post" action="/login">
+        <label>Gebruikersnaam
+          <input type="text" name="username" autocomplete="username" autofocus required />
+        </label>
+        <label>Wachtwoord
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn btn--primary login-submit">Inloggen</button>
+      </form>
+    </div>
+  </div>
+  <script src="/static/js/theme.js"></script>
+</body>
+</html>

@@ -59,8 +59,8 @@
             <div class="meal-card" data-id="${meal.id}" style="flex:0 0 auto;max-width:160px">
               <span class="meal-type-badge ${meal.meal_type}">${FP.mealTypeLabel(meal.meal_type)}</span>
               <div class="meal-name-row">
-                <div class="meal-name">${meal.name}</div>
-                ${cook ? `<div class="meal-cook">${cook.avatar} ${cook.name}</div>` : ''}
+                <div class="meal-name">${FP.esc(meal.name)}</div>
+                ${cook ? `<div class="meal-cook">${cook.avatar} ${FP.esc(cook.name)}</div>` : ''}
               </div>
               ${meal.recipe_url ? `<a href="${meal.recipe_url}" target="_blank" rel="noopener" style="font-size:.72rem;color:var(--accent)" onclick="event.stopPropagation()">🔗 Recept</a>` : ''}
             </div>`;

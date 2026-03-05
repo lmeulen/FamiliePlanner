@@ -36,7 +36,7 @@
       const btn = document.createElement('button');
       btn.className = `list-tab${activeList == l.id ? ' active' : ''}`;
       btn.dataset.list = l.id;
-      btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${l.color};margin-right:.3rem;vertical-align:middle"></span>${l.name}`;
+      btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${l.color};margin-right:.3rem;vertical-align:middle"></span>${FP.esc(l.name)}`;
       tabs.appendChild(btn);
     });
 
@@ -72,7 +72,7 @@
         const list = lists.find(l => l.id === parseInt(listId)) || { name: 'Geen lijst', color: '#9EA7C4' };
         html += `<div class="task-group-header">
           <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${list.color};margin-right:.4rem;vertical-align:middle"></span>
-          ${list.name}
+          ${FP.esc(list.name)}
         </div>`;
         html += group.map(renderTaskRow).join('');
       });
@@ -99,12 +99,12 @@
     const list   = lists.find(l => l.id === task.list_id);
     const isOverdue = task.due_date && !task.done && new Date(task.due_date) < new Date();
     const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
-    const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${m.name}">${m.avatar}</div>`).join('');
+    const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${FP.esc(m.name)}">${m.avatar}</div>`).join('');
     return `
       <div class="card task-card${isOverdue ? ' task-overdue' : ''}" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body" style="cursor:pointer" data-edit="${task.id}">
-          <div class="task-title ${task.done ? 'done' : ''}">${task.title}${recurIcon}</div>
+          <div class="task-title ${task.done ? 'done' : ''}">${FP.esc(task.title)}${recurIcon}</div>
           <div class="task-meta">
             ${task.due_date ? FP.formatDate(task.due_date) : ''}
           </div>
@@ -357,7 +357,7 @@
       container.innerHTML = items.map((item, idx) => `
         <div class="manage-list-row" data-idx="${idx}">
           <span class="manage-list-dot" style="background:${item.color}"></span>
-          <span class="manage-list-name">${item.name}</span>
+          <span class="manage-list-name">${FP.esc(item.name)}</span>
           <div class="manage-list-btns">
             <button class="icon-btn manage-up" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} title="Omhoog">▲</button>
             <button class="icon-btn manage-down" data-idx="${idx}" ${idx === items.length - 1 ? 'disabled' : ''} title="Omlaag">▼</button>

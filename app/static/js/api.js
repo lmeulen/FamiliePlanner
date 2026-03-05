@@ -9,10 +9,18 @@ window.API = (() => {
     const opts = {
       method,
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
     };
     if (data !== undefined) opts.body = JSON.stringify(data);
 
     const res = await fetch(BASE + path, opts);
+
+    // Session expired or not logged in → redirect to login
+    if (res.status === 401) {
+      window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
     if (res.status === 204) return null;
 
     const json = await res.json().catch(() => ({ detail: res.statusText }));

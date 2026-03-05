@@ -7,3 +7,5 @@ aiosqlite==0.20.0
 python-dateutil==2.9.0
 loguru==0.7.2
 alembic==1.18.4
+itsdangerous==2.2.0
+python-dotenv==1.2.2

@@ -21,7 +21,7 @@
       <div class="family-card" data-id="${m.id}" style="border-color:${m.color}20">
         <div class="family-color-dot" style="background:${m.color}"></div>
         <div class="family-avatar" style="background:${m.color}22">${m.avatar}</div>
-        <div class="family-name">${m.name}</div>
+        <div class="family-name">${FP.esc(m.name)}</div>
       </div>`).join('');
 
     grid.querySelectorAll('.family-card').forEach(card => {

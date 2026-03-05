@@ -818,6 +818,8 @@ img { max-width: 100%; }
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-right: 3px solid var(--accent);
 }
+.nav-item--logout { margin-top: auto; opacity: .7; }
+.nav-item--logout:hover { opacity: 1; }
 .nav-icon  { font-size: 1.35rem; line-height: 1; }
 .nav-label { font-size: .6rem; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
 
