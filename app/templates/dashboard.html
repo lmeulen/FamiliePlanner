@@ -74,10 +74,10 @@
   <button class="fab" id="fab-main" aria-label="Toevoegen" aria-expanded="false">＋</button>
 </div>
 
-<!-- Form templates (used by dashboard quick-add) -->
+<!-- Form templates (used by dashboard quick-add / edit) -->
 <template id="tpl-dash-event-form">
   <form id="event-form" class="modal-form">
-    <h3 class="modal-title">Afspraak toevoegen</h3>
+    <h3 class="modal-title" id="dash-event-form-title">Afspraak toevoegen</h3>
     <label>Titel *
       <input type="text" name="title" required minlength="1" maxlength="200" placeholder="Bijv. Voetbaltraining" />
     </label>
@@ -107,13 +107,14 @@
     </label>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="dash-btn-delete-event">Verwijderen</button>
     </div>
   </form>
 </template>
 
 <template id="tpl-dash-task-form">
   <form id="task-form" class="modal-form">
-    <h3 class="modal-title">Taak toevoegen</h3>
+    <h3 class="modal-title" id="dash-task-form-title">Taak toevoegen</h3>
     <label>Titel *
       <input type="text" name="title" required minlength="1" maxlength="200" placeholder="Bijv. Melk kopen" />
     </label>
@@ -133,13 +134,14 @@
     </label>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="dash-btn-delete-task">Verwijderen</button>
     </div>
   </form>
 </template>
 
 <template id="tpl-dash-meal-form">
   <form id="meal-form" class="modal-form">
-    <h3 class="modal-title">Maaltijd toevoegen</h3>
+    <h3 class="modal-title" id="dash-meal-form-title">Maaltijd toevoegen</h3>
     <label>Datum *
       <input type="date" name="date" required />
     </label>
@@ -157,13 +159,17 @@
     <label>Beschrijving
       <textarea name="description" rows="2" maxlength="1000"></textarea>
     </label>
+    <label>Recept URL
+      <input type="url" name="recipe_url" placeholder="https://..." maxlength="500" />
+    </label>
     <label>Wie kookt er?
       <select name="cook_member_id" id="dash-cook-select">
-        <option value="">Niemand geselecteerd</option>
+        <option value="">— Niemand —</option>
       </select>
     </label>
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
+      <button type="button" class="btn btn--danger hidden" id="dash-btn-delete-meal">Verwijderen</button>
     </div>
   </form>
 </template>

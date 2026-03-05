@@ -3,6 +3,11 @@
    ================================================================ */
 (function () {
 
+  // ── Module-level data caches (used by edit forms) ─────────────
+  let _events = [];
+  let _meals  = [];
+  let _tasks  = [];   // combined today + overdue
+
   // ── Render helpers ────────────────────────────────────────────
   function renderEventCard(ev) {
     const start = new Date(ev.start_time);
@@ -60,13 +65,16 @@
     const container = document.getElementById('today-events');
     const empty     = document.getElementById('events-empty');
     try {
-      const events = await API.get('/api/agenda/today');
-      if (!events.length) {
+      _events = await API.get('/api/agenda/today');
+      if (!_events.length) {
         container.innerHTML = '';
         empty.classList.remove('hidden');
       } else {
-        container.innerHTML = events.map(renderEventCard).join('');
+        container.innerHTML = _events.map(renderEventCard).join('');
         empty.classList.add('hidden');
+        container.querySelectorAll('.event-card').forEach(card => {
+          card.addEventListener('click', () => openDashEventForm(parseInt(card.dataset.id)));
+        });
       }
     } catch {
       container.innerHTML = `<p class="text-muted">Kon agenda niet laden.</p>`;
@@ -77,13 +85,17 @@
     const container = document.getElementById('today-meals');
     const empty     = document.getElementById('meals-empty');
     try {
-      const meals = await API.get('/api/meals/today');
-      if (!meals.length) {
+      _meals = await API.get('/api/meals/today');
+      if (!_meals.length) {
         container.innerHTML = '';
         empty.classList.remove('hidden');
       } else {
-        container.innerHTML = meals.map(renderMealCard).join('');
+        container.innerHTML = _meals.map(renderMealCard).join('');
         empty.classList.add('hidden');
+        container.querySelectorAll('.meal-card').forEach(card => {
+          card.style.cursor = 'pointer';
+          card.addEventListener('click', () => openDashMealForm(parseInt(card.dataset.id)));
+        });
       }
     } catch {
       container.innerHTML = `<p class="text-muted">Kon maaltijden niet laden.</p>`;
@@ -99,9 +111,7 @@
         API.get('/api/tasks/overdue'),
         API.get('/api/tasks/lists'),
       ]);
-
-      // Build list lookup: id -> name
-      const listMap = Object.fromEntries(lists.map(l => [l.id, l.name]));
+      _tasks = [...today, ...overdue];
 
       // Priority order for known list names
       const PRIORITY = ['Taken', 'Huishouden'];
@@ -151,6 +161,14 @@
         container.innerHTML = html;
         empty.classList.add('hidden');
         bindTaskToggles(container);
+        // Click on task body → open edit form
+        container.querySelectorAll('.task-body').forEach(body => {
+          body.style.cursor = 'pointer';
+          body.addEventListener('click', () => {
+            const id = parseInt(body.closest('.task-card').dataset.id);
+            openDashTaskForm(id);
+          });
+        });
       }
     } catch {
       container.innerHTML = `<p class="text-muted">Kon taken niet laden.</p>`;
@@ -210,53 +228,86 @@
     });
   }
 
-  // ── Quick-add: Afspraak ───────────────────────────────────────
-  function openDashEventForm() {
+  // ── Form: Afspraak (create / edit) ───────────────────────────
+  function openDashEventForm(id = null) {
     Modal.open('tpl-dash-event-form');
-    const form = document.getElementById('event-form');
+    const form    = document.getElementById('event-form');
+    const titleEl = document.getElementById('dash-event-form-title');
+    const delBtn  = document.getElementById('dash-btn-delete-event');
+
     FP.buildMemberPicker('event-member-picker');
 
-    const now = new Date();
-    const roundedStart = new Date(now);
-    roundedStart.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
-    const roundedEnd = new Date(roundedStart);
-    roundedEnd.setHours(roundedEnd.getHours() + 1);
-    form.start_time.value = FP.toLocalDatetimeInput(roundedStart);
-    form.end_time.value   = FP.toLocalDatetimeInput(roundedEnd);
+    if (id) {
+      titleEl.textContent = 'Afspraak bewerken';
+      delBtn.classList.remove('hidden');
+      const ev = _events.find(e => e.id === id);
+      if (ev) {
+        form.title.value       = ev.title;
+        form.description.value = ev.description || '';
+        form.location.value    = ev.location || '';
+        form.start_time.value  = FP.toLocalDatetimeInput(new Date(ev.start_time));
+        form.end_time.value    = FP.toLocalDatetimeInput(new Date(ev.end_time));
+        form.all_day.checked   = ev.all_day;
+        form.color.value       = ev.color;
+        FP.buildMemberPicker('event-member-picker', ev.member_ids || []);
+      }
+    } else {
+      titleEl.textContent = 'Afspraak toevoegen';
+      delBtn.classList.add('hidden');
+      const now = new Date();
+      const s = new Date(now); s.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+      const e = new Date(s);   e.setHours(e.getHours() + 1);
+      form.start_time.value = FP.toLocalDatetimeInput(s);
+      form.end_time.value   = FP.toLocalDatetimeInput(e);
+    }
 
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
       const startDt = new Date(form.start_time.value);
       const endDt   = new Date(form.end_time.value);
       const endErr  = document.getElementById('end-time-error');
       if (endDt <= startDt) { endErr?.classList.remove('hidden'); return; }
       endErr?.classList.add('hidden');
+      const data = {
+        title:       form.title.value.trim(),
+        description: form.description.value.trim(),
+        location:    form.location.value.trim(),
+        start_time:  startDt.toISOString(),
+        end_time:    endDt.toISOString(),
+        all_day:     form.all_day.checked,
+        color:       form.color.value,
+        member_ids:  FP.getSelectedMemberIds('event-member-picker'),
+      };
       try {
-        await API.post('/api/agenda/', {
-          title:       form.title.value.trim(),
-          description: form.description.value.trim(),
-          location:    form.location.value.trim(),
-          start_time:  startDt.toISOString(),
-          end_time:    endDt.toISOString(),
-          all_day:     form.all_day.checked,
-          color:       form.color.value,
-          member_ids:  FP.getSelectedMemberIds('event-member-picker'),
-        });
-        Modal.close();
-        Toast.show('Afspraak toegevoegd!');
-        loadEvents();
+        if (id) {
+          await API.put(`/api/agenda/${id}`, data);
+          Toast.show('Afspraak bijgewerkt!');
+        } else {
+          await API.post('/api/agenda/', data);
+          Toast.show('Afspraak toegevoegd!');
+        }
+        Modal.close(); loadEvents();
       } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Afspraak verwijderen?')) return;
+      try {
+        await API.delete(`/api/agenda/${id}`);
+        Toast.show('Afspraak verwijderd', 'warning');
+        Modal.close(); loadEvents();
+      } catch { Toast.show('Fout bij verwijderen', 'error'); }
     }, { once: true });
   }
 
-  // ── Quick-add: Taak ───────────────────────────────────────────
-  async function openDashTaskForm() {
+  // ── Form: Taak (create / edit) ────────────────────────────────
+  async function openDashTaskForm(id = null) {
     Modal.open('tpl-dash-task-form');
-    const form = document.getElementById('task-form');
-    FP.buildMemberPicker('task-member-picker');
+    const form    = document.getElementById('task-form');
+    const titleEl = document.getElementById('dash-task-form-title');
+    const delBtn  = document.getElementById('dash-btn-delete-task');
 
-    const today = new Date();
-    form.due_date.value = `${today.getFullYear()}-${FP.pad(today.getMonth()+1)}-${FP.pad(today.getDate())}`;
+    FP.buildMemberPicker('task-member-picker');
 
     // Populate list select
     const listSel = document.getElementById('dash-task-list-select');
@@ -269,54 +320,116 @@
       });
     } catch {}
 
+    if (id) {
+      titleEl.textContent = 'Taak bewerken';
+      delBtn.classList.remove('hidden');
+      const task = _tasks.find(t => t.id === id);
+      if (task) {
+        form.title.value       = task.title;
+        form.description.value = task.description || '';
+        listSel.value          = task.list_id || '';
+        FP.buildMemberPicker('task-member-picker', task.member_ids || []);
+        form.due_date.value    = task.due_date || '';
+      }
+    } else {
+      titleEl.textContent = 'Taak toevoegen';
+      delBtn.classList.add('hidden');
+      form.due_date.value = FP.todayStr();
+    }
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      const data = {
+        title:       form.title.value.trim(),
+        description: form.description.value.trim(),
+        list_id:     listSel.value ? parseInt(listSel.value) : null,
+        member_ids:  FP.getSelectedMemberIds('task-member-picker'),
+        due_date:    form.due_date.value || null,
+      };
       try {
-        await API.post('/api/tasks/', {
-          title:       form.title.value.trim(),
-          description: form.description.value.trim(),
-          list_id:     listSel.value ? parseInt(listSel.value) : null,
-          member_ids:  FP.getSelectedMemberIds('task-member-picker'),
-          due_date:    form.due_date.value || null,
-        });
-        Modal.close();
-        Toast.show('Taak toegevoegd!');
-        loadTasks();
+        if (id) {
+          await API.put(`/api/tasks/${id}`, data);
+          Toast.show('Taak bijgewerkt!');
+        } else {
+          await API.post('/api/tasks/', data);
+          Toast.show('Taak toegevoegd!');
+        }
+        Modal.close(); loadTasks();
       } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Taak verwijderen?')) return;
+      try {
+        await API.delete(`/api/tasks/${id}`);
+        Toast.show('Taak verwijderd', 'warning');
+        Modal.close(); loadTasks();
+      } catch { Toast.show('Fout bij verwijderen', 'error'); }
     }, { once: true });
   }
 
-  // ── Quick-add: Maaltijd ───────────────────────────────────────
-  async function openDashMealForm() {
+  // ── Form: Maaltijd (create / edit) ────────────────────────────
+  async function openDashMealForm(id = null) {
     Modal.open('tpl-dash-meal-form');
-    const form = document.getElementById('meal-form');
-
-    const today = new Date();
-    form.date.value = `${today.getFullYear()}-${FP.pad(today.getMonth()+1)}-${FP.pad(today.getDate())}`;
+    const form    = document.getElementById('meal-form');
+    const titleEl = document.getElementById('dash-meal-form-title');
+    const delBtn  = document.getElementById('dash-btn-delete-meal');
 
     // Populate cook select
     const cookSel = document.getElementById('dash-cook-select');
-    const members = FP.getMembers ? FP.getMembers() : [];
-    members.forEach(m => {
+    (FP.getMembers?.() || []).forEach(m => {
       const opt = document.createElement('option');
       opt.value = m.id; opt.textContent = `${m.avatar} ${m.name}`;
       cookSel.appendChild(opt);
     });
 
+    if (id) {
+      titleEl.textContent = 'Maaltijd bewerken';
+      delBtn.classList.remove('hidden');
+      const meal = _meals.find(m => m.id === id);
+      if (meal) {
+        form.date.value        = meal.date;
+        form.meal_type.value   = meal.meal_type;
+        form.name.value        = meal.name;
+        form.description.value = meal.description || '';
+        form.recipe_url.value  = meal.recipe_url || '';
+        cookSel.value          = meal.cook_member_id || '';
+      }
+    } else {
+      titleEl.textContent = 'Maaltijd toevoegen';
+      delBtn.classList.add('hidden');
+      form.date.value = FP.todayStr();
+    }
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      const data = {
+        date:           form.date.value,
+        meal_type:      form.meal_type.value,
+        name:           form.name.value.trim(),
+        description:    form.description.value.trim(),
+        recipe_url:     form.recipe_url.value.trim(),
+        cook_member_id: cookSel.value ? parseInt(cookSel.value) : null,
+      };
       try {
-        await API.post('/api/meals/', {
-          date:           form.date.value,
-          meal_type:      form.meal_type.value,
-          name:           form.name.value.trim(),
-          description:    form.description.value.trim(),
-          cook_member_id: cookSel.value ? parseInt(cookSel.value) : null,
-        });
-        Modal.close();
-        Toast.show('Maaltijd toegevoegd!');
-        loadMeals();
+        if (id) {
+          await API.put(`/api/meals/${id}`, data);
+          Toast.show('Maaltijd bijgewerkt!');
+        } else {
+          await API.post('/api/meals/', data);
+          Toast.show('Maaltijd toegevoegd!');
+        }
+        Modal.close(); loadMeals();
       } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+    }, { once: true });
+
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Maaltijd verwijderen?')) return;
+      try {
+        await API.delete(`/api/meals/${id}`);
+        Toast.show('Maaltijd verwijderd', 'warning');
+        Modal.close(); loadMeals();
+      } catch { Toast.show('Fout bij verwijderen', 'error'); }
     }, { once: true });
   }
 
