@@ -17,7 +17,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.csrf import CSRFMiddleware
-from app.database import init_db
+from app.database import AsyncSessionLocal, init_db
 from app.logging_config import setup_logging
 from app.routers import agenda, family, meals, tasks, photos, settings as settings_router
 
@@ -98,6 +98,29 @@ async def log_requests(request: Request, call_next):
         duration=duration_ms,
     )
     return response
+
+
+
+# ── Health check ─────────────────────────────────────────────────
+
+@app.get("/health", tags=["health"], include_in_schema=True)
+async def health():
+    """Liveness + readiness probe. Returns 200 when the DB is reachable."""
+    db_ok = False
+    try:
+        async with AsyncSessionLocal() as db:
+            await db.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db_ok = True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("health check: DB unreachable – {}", exc)
+
+    status = "ok" if db_ok else "degraded"
+    payload = {
+        "status": status,
+        "version": APP_VERSION,
+        "database": "ok" if db_ok else "error",
+    }
+    return JSONResponse(payload, status_code=200 if db_ok else 503)
 
 
 # Static files

@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import APP_PASSWORD, APP_USERNAME, AUTH_REQUIRED, BASE_DIR, verify_password
 
 # Paths that are accessible without authentication
-_PUBLIC_PATHS = frozenset({"/login", "/logout"})
+_PUBLIC_PATHS = frozenset({"/login", "/logout", "/health"})
 
 # Legacy test bypass
 _TEST_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "yes")
