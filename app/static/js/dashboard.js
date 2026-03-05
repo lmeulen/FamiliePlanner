@@ -438,6 +438,56 @@
     }, { once: true });
   }
 
+  // ── Dashboard photo rotator ───────────────────────────────────
+  (function initDashboardPhoto() {
+    const wrap  = document.getElementById('dashboard-photo-wrap');
+    const img   = document.getElementById('dashboard-photo');
+    const dots  = document.getElementById('dashboard-photo-dots');
+    let photos  = [];
+    let current = 0;
+    let timer   = null;
+
+    function showPhoto(index) {
+      if (!photos.length) return;
+      current = (index + photos.length) % photos.length;
+      img.classList.add('fading');
+      setTimeout(() => {
+        img.src = photos[current].url;
+        img.alt = photos[current].display_name || 'Foto';
+        img.classList.remove('fading');
+      }, 250);
+      dots.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    }
+
+    function buildDots() {
+      dots.innerHTML = photos.map((_, i) =>
+        `<span class="dot${i === 0 ? ' active' : ''}" data-i="${i}" role="button" tabindex="0" aria-label="Foto ${i+1}"></span>`
+      ).join('');
+      dots.querySelectorAll('.dot').forEach(d => {
+        d.addEventListener('click', () => { clearInterval(timer); showPhoto(+d.dataset.i); startTimer(); });
+      });
+    }
+
+    function startTimer() {
+      if (photos.length > 1) timer = setInterval(() => showPhoto(current + 1), 8000);
+    }
+
+    async function load() {
+      try {
+        const data = await API.get('/api/photos/');
+        if (!data || !data.length) return;
+        photos = data.sort(() => Math.random() - .5);
+        wrap.style.display = '';
+        wrap.removeAttribute('aria-hidden');
+        buildDots();
+        showPhoto(0);
+        startTimer();
+      } catch { /* geen fotos beschikbaar */ }
+    }
+
+    load();
+  })();
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     await FP.loadMembers();

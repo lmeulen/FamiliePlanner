@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block body_class %}page-photos{% endblock %}
+{% block title %}Foto's – FamiliePlanner{% endblock %}
+{% block nav_photos %}active{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="section-header" style="margin-bottom:1rem">
+    <h1 class="section-title">🖼️ Foto's beheren</h1>
+  </div>
+
+  <!-- Upload area -->
+  <section class="card photos-upload-card">
+    <h2 class="card-subtitle">Foto uploaden</h2>
+    <label class="photo-drop-zone" id="drop-zone" tabindex="0" aria-label="Klik of sleep een foto hierheen">
+      <span class="drop-zone-icon">📷</span>
+      <span class="drop-zone-text">Klik of sleep een foto hierheen</span>
+      <span class="drop-zone-hint">JPEG, PNG, GIF of WebP · max 10 MB</span>
+      <input type="file" id="photo-file-input" accept="image/jpeg,image/png,image/gif,image/webp" hidden />
+    </label>
+    <div id="upload-progress" class="upload-progress hidden">
+      <span id="upload-status">Uploaden…</span>
+    </div>
+  </section>
+
+  <!-- Photo grid -->
+  <section style="margin-top:1.5rem">
+    <h2 class="card-subtitle">Beschikbare foto's (<span id="photo-count">0</span>)</h2>
+    <div class="photos-grid" id="photos-grid">
+      <div class="skeleton-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+    </div>
+    <p class="empty-state hidden" id="photos-empty">Nog geen foto's geüpload.</p>
+  </section>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="modal-overlay hidden" id="delete-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+  <div class="modal">
+    <h3 class="modal-title" id="delete-modal-title">Foto verwijderen?</h3>
+    <p id="delete-modal-name" style="margin-bottom:1rem;color:var(--color-text-muted)"></p>
+    <div class="form-actions">
+      <button class="btn btn--danger" id="delete-confirm-btn">Verwijderen</button>
+      <button class="btn" id="delete-cancel-btn">Annuleren</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/photos.js?v={{ static_v }}"></script>
+{% endblock %}

@@ -6,12 +6,13 @@ window.API = (() => {
   const BASE = '';   // same origin
 
   async function request(method, path, data) {
+    const isFormData = data instanceof FormData;
     const opts = {
       method,
-      headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
     };
-    if (data !== undefined) opts.body = JSON.stringify(data);
+    if (!isFormData) opts.headers = { 'Content-Type': 'application/json' };
+    if (data !== undefined) opts.body = isFormData ? data : JSON.stringify(data);
 
     const res = await fetch(BASE + path, opts);
 

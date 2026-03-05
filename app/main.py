@@ -18,7 +18,7 @@ from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.database import init_db
 from app.logging_config import setup_logging
-from app.routers import agenda, family, meals, tasks
+from app.routers import agenda, family, meals, tasks, photos
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -101,6 +101,7 @@ app.include_router(family.router)
 app.include_router(agenda.router)
 app.include_router(tasks.router)
 app.include_router(meals.router)
+app.include_router(photos.router)
 
 # Auth routes
 app.get("/login", response_class=HTMLResponse)(login_get)
@@ -129,6 +130,11 @@ async def page_tasks(request: Request):
 @app.get("/maaltijden", response_class=HTMLResponse)
 async def page_meals(request: Request):
     return templates.TemplateResponse("meals.html", {"request": request})
+
+
+@app.get("/fotos", response_class=HTMLResponse)
+async def page_photos(request: Request):
+    return templates.TemplateResponse("photos.html", {"request": request})
 
 
 @app.get("/gezin", response_class=HTMLResponse)
