@@ -94,14 +94,56 @@
     const container = document.getElementById('all-tasks');
     const empty     = document.getElementById('tasks-empty');
     try {
-      const [today, overdue] = await Promise.all([
+      const [today, overdue, lists] = await Promise.all([
         API.get('/api/tasks/today'),
         API.get('/api/tasks/overdue'),
+        API.get('/api/tasks/lists'),
       ]);
-      const html = [
-        ...today.map(t => renderTaskCard(t, false)),
-        ...overdue.map(t => renderTaskCard(t, true)),
-      ].join('');
+
+      // Build list lookup: id -> name
+      const listMap = Object.fromEntries(lists.map(l => [l.id, l.name]));
+
+      // Priority order for known list names
+      const PRIORITY = ['Taken', 'Huishouden'];
+      const sortedLists = [...lists].sort((a, b) => {
+        const ai = PRIORITY.indexOf(a.name), bi = PRIORITY.indexOf(b.name);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return  1;
+        return a.name.localeCompare(b.name);
+      });
+
+      // Group today's tasks by list_id (null = "Overige")
+      const grouped = new Map();
+      today.forEach(t => {
+        const key = t.list_id ?? null;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(t);
+      });
+
+      let html = '';
+
+      // Named lists in priority order
+      sortedLists.forEach(list => {
+        const tasks = grouped.get(list.id) || [];
+        if (!tasks.length) return;
+        html += `<div class="task-group-header">${list.name}</div>`;
+        html += tasks.map(t => renderTaskCard(t, false)).join('');
+      });
+
+      // Overige taken (no list)
+      const overige = grouped.get(null) || [];
+      if (overige.length) {
+        html += `<div class="task-group-header">Overige taken</div>`;
+        html += overige.map(t => renderTaskCard(t, false)).join('');
+      }
+
+      // Verlopen taken
+      if (overdue.length) {
+        html += `<div class="task-group-header task-group-header--overdue">Verlopen taken</div>`;
+        html += overdue.map(t => renderTaskCard(t, true)).join('');
+      }
+
       if (!html) {
         container.innerHTML = '';
         empty.classList.remove('hidden');

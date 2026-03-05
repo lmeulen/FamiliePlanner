@@ -729,6 +729,10 @@ img { max-width: 100%; }
   border-bottom: 1px solid var(--border);
   margin-bottom: .2rem;
 }
+.task-group-header--overdue {
+  color: var(--color-danger);
+  border-bottom-color: var(--color-danger);
+}
 
 /* ── FAMILY GRID ─────────────────────────────────────────────── */
 .family-grid {
