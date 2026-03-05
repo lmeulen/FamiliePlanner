@@ -1,6 +1,5 @@
 """CRUD router for TaskList, TaskRecurrenceSeries and Task."""
-import calendar as cal_mod
-from datetime import date, timedelta
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select, and_, delete as sa_delete
@@ -8,7 +7,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import RecurrenceType
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.models.settings import AppSetting
 from app.schemas.tasks import (
@@ -16,43 +14,10 @@ from app.schemas.tasks import (
     TaskOut, TaskUpdate,
     TaskRecurrenceSeriesCreate, TaskRecurrenceSeriesOut, TaskRecurrenceSeriesUpdate,
 )
+from app.utils.recurrence import generate_occurrence_dates
+from app.utils.db import set_junction_members
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
-
-
-# ── Occurrence generator ──────────────────────────────────────────
-
-def generate_task_occurrence_dates(series: TaskRecurrenceSeries) -> list[date]:
-    """Return every due_date for a task series (max 365 tasks)."""
-    results: list[date] = []
-    current: date = series.series_start
-    end: date = series.series_end
-    MAX = 365
-
-    while current <= end and len(results) < MAX:
-        if series.recurrence_type == RecurrenceType.weekdays:
-            if current.weekday() < 5:
-                results.append(current)
-            current += timedelta(days=1)
-        elif series.recurrence_type == RecurrenceType.monthly:
-            results.append(current)
-            mo = current.month + 1
-            yr = current.year
-            if mo > 12:
-                mo, yr = 1, yr + 1
-            day = min(series.series_start.day, cal_mod.monthrange(yr, mo)[1])
-            current = date(yr, mo, day)
-        else:
-            results.append(current)
-            delta = {
-                RecurrenceType.daily:           timedelta(days=1),
-                RecurrenceType.every_other_day: timedelta(days=2),
-                RecurrenceType.weekly:          timedelta(weeks=1),
-                RecurrenceType.biweekly:        timedelta(weeks=2),
-            }[series.recurrence_type]
-            current += delta
-
-    return results
 
 
 def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
@@ -66,23 +31,8 @@ def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
             series_id=series.id,
             is_exception=False,
         )
-        for d in generate_task_occurrence_dates(series)
+        for d in generate_occurrence_dates(series.recurrence_type, series.series_start, series.series_end)
     ]
-
-
-async def _set_task_members(db: AsyncSession, junction_table, key_col: str, key_val: int, member_ids: list[int]):
-    """Replace all member associations for a given task/series."""
-    try:
-        await db.execute(junction_table.delete().where(junction_table.c[key_col] == key_val))
-        if member_ids:
-            await db.execute(
-                junction_table.insert(),
-                [{key_col: key_val, "member_id": mid} for mid in member_ids]
-            )
-        logger.debug("_set_task_members table={} {}={} member_ids={}", junction_table.name, key_col, key_val, member_ids)
-    except Exception as exc:
-        logger.error("_set_task_members FAILED table={} {}={} member_ids={} error={}", junction_table.name, key_col, key_val, member_ids, exc)
-        raise
 
 
 # ---- Task Lists ----
@@ -171,13 +121,13 @@ async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSessi
     series = TaskRecurrenceSeries(**payload.model_dump(exclude={"member_ids"}))
     db.add(series)
     await db.flush()
-    await _set_task_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
+    await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     occurrences = _make_tasks_for_series(series)
     db.add_all(occurrences)
     await db.flush()
     if payload.member_ids:
         for t in occurrences:
-            await _set_task_members(db, task_members, "task_id", t.id, payload.member_ids)
+            await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
     await db.commit()
     result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series.id))
     series = result.scalar_one()
@@ -206,7 +156,7 @@ async def update_task_series(
         raise HTTPException(404, "Reeks niet gevonden")
     for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(series, k, v)
-    await _set_task_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
+    await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     # Regenerate all non-exception occurrences
     await db.execute(
         sa_delete(Task).where(
@@ -218,7 +168,7 @@ async def update_task_series(
     await db.flush()
     if payload.member_ids:
         for t in new_tasks:
-            await _set_task_members(db, task_members, "task_id", t.id, payload.member_ids)
+            await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
     await db.commit()
     db.expire(series)
     result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
@@ -301,7 +251,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     task = Task(**payload.model_dump(exclude={"member_ids"}))
     db.add(task)
     await db.flush()
-    await _set_task_members(db, task_members, "task_id", task.id, payload.member_ids)
+    await set_junction_members(db, task_members, "task_id", task.id, payload.member_ids)
     await db.commit()
     result = await db.execute(
         select(Task).options(selectinload(Task.members)).where(Task.id == task.id)
@@ -337,7 +287,7 @@ async def update_task(
     logger.debug("tasks.task.update id={} member_ids={}", task_id, payload.member_ids)
     for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(task, k, v)
-    await _set_task_members(db, task_members, "task_id", task.id, payload.member_ids)
+    await set_junction_members(db, task_members, "task_id", task.id, payload.member_ids)
     if task.series_id:
         task.is_exception = True   # mark as individually edited
     await db.commit()

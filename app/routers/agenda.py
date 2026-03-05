@@ -1,5 +1,4 @@
 """CRUD + query router for AgendaEvent and RecurrenceSeries."""
-import calendar as cal_mod
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
@@ -8,49 +7,15 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.schemas.agenda import (
     AgendaEventCreate, AgendaEventOut, AgendaEventUpdate,
     RecurrenceSeriesCreate, RecurrenceSeriesOut, RecurrenceSeriesUpdate,
 )
+from app.utils.recurrence import generate_occurrence_dates
+from app.utils.db import set_junction_members
 
 router = APIRouter(prefix="/api/agenda", tags=["agenda"])
-
-
-# ── Occurrence generator ──────────────────────────────────────────
-
-def generate_occurrence_dates(series: RecurrenceSeries) -> list[date]:
-    """Return every occurrence date for a series (max 365 events)."""
-    results: list[date] = []
-    current: date = series.series_start
-    end: date = series.series_end
-    MAX = 365
-
-    while current <= end and len(results) < MAX:
-        if series.recurrence_type == RecurrenceType.weekdays:
-            if current.weekday() < 5:   # Mon=0 … Fri=4
-                results.append(current)
-            current += timedelta(days=1)
-        elif series.recurrence_type == RecurrenceType.monthly:
-            results.append(current)
-            mo = current.month + 1
-            yr = current.year
-            if mo > 12:
-                mo, yr = 1, yr + 1
-            day = min(series.series_start.day, cal_mod.monthrange(yr, mo)[1])
-            current = date(yr, mo, day)
-        else:
-            results.append(current)
-            delta = {
-                RecurrenceType.daily:           timedelta(days=1),
-                RecurrenceType.every_other_day: timedelta(days=2),
-                RecurrenceType.weekly:          timedelta(weeks=1),
-                RecurrenceType.biweekly:        timedelta(weeks=2),
-            }[series.recurrence_type]
-            current += delta
-
-    return results
 
 
 def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
@@ -66,23 +31,8 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
             series_id=series.id,
             is_exception=False,
         )
-        for d in generate_occurrence_dates(series)
+        for d in generate_occurrence_dates(series.recurrence_type, series.series_start, series.series_end)
     ]
-
-
-async def _set_members(db: AsyncSession, junction_table, key_col: str, key_val: int, member_ids: list[int]):
-    """Replace all member associations for a given event/series."""
-    try:
-        await db.execute(junction_table.delete().where(junction_table.c[key_col] == key_val))
-        if member_ids:
-            await db.execute(
-                junction_table.insert(),
-                [{key_col: key_val, "member_id": mid} for mid in member_ids]
-            )
-        logger.debug("_set_members table={} {}={} member_ids={}", junction_table.name, key_col, key_val, member_ids)
-    except Exception as exc:
-        logger.error("_set_members FAILED table={} {}={} member_ids={} error={}", junction_table.name, key_col, key_val, member_ids, exc)
-        raise
 
 
 # ── Recurrence series endpoints ───────────────────────────────────
@@ -93,14 +43,14 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
     series = RecurrenceSeries(**data)
     db.add(series)
     await db.flush()
-    await _set_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
+    await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
     occurrences = _make_events_for_series(series)
     db.add_all(occurrences)
     await db.flush()
     # Set same members on all generated occurrences
     if payload.member_ids:
         for ev in occurrences:
-            await _set_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
+            await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
     await db.commit()
     result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series.id))
     series = result.scalar_one()
@@ -130,7 +80,7 @@ async def update_series(
 
     for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(series, k, v)
-    await _set_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
+    await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
 
     # Regenerate all non-exception occurrences
     await db.execute(
@@ -143,7 +93,7 @@ async def update_series(
     await db.flush()
     if payload.member_ids:
         for ev in new_events:
-            await _set_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
+            await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
     await db.commit()
     db.expire(series)
     result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
@@ -227,7 +177,7 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
     event = AgendaEvent(**payload.model_dump(exclude={"member_ids"}))
     db.add(event)
     await db.flush()
-    await _set_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
+    await set_junction_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
     await db.commit()
     result = await db.execute(
         select(AgendaEvent).options(selectinload(AgendaEvent.members)).where(AgendaEvent.id == event.id)
@@ -263,7 +213,7 @@ async def update_event(
     logger.debug("agenda.event.update id={} member_ids={}", event_id, payload.member_ids)
     for key, value in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(event, key, value)
-    await _set_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
+    await set_junction_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
     if event.series_id:
         event.is_exception = True   # mark as individually edited
     await db.commit()
