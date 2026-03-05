@@ -16,9 +16,7 @@ from starlette.requests import Request
 
 _SESSION_KEY = "csrf_token"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-# Paths where the token arrives as a form field instead of a header
-_FORM_PATHS = frozenset({"/login"})
-# Honour the same test-bypass flag used by AuthMiddleware
+# TEST bypass
 _TEST_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "yes")
 
 
@@ -35,12 +33,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         token: str = request.session[_SESSION_KEY]
 
         if request.method not in _SAFE_METHODS:
-            if request.url.path in _FORM_PATHS:
-                form = await request.form()
-                submitted = form.get(_SESSION_KEY, "")
-            else:
-                submitted = request.headers.get("X-CSRF-Token", "")
-
+            # API calls send the token as a header (body is not consumed)
+            submitted = request.headers.get("X-CSRF-Token", "")
             if not secrets.compare_digest(submitted, token):
                 return JSONResponse({"detail": "CSRF token ongeldig"}, status_code=403)
 

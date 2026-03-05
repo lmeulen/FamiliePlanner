@@ -474,6 +474,9 @@
 
     async function load() {
       try {
+        await FP.settingsReady;
+        const s = FP.getSettings();
+        if (s && s.dashboard_photo_enabled === false) return;
         const data = await API.get('/api/photos/');
         if (!data || !data.length) return;
         photos = data.sort(() => Math.random() - .5);

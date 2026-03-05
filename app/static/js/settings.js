@@ -1,17 +1,26 @@
 /* global API */
 (function () {
-  const form        = document.getElementById('settings-form');
-  const authToggle  = document.getElementById('auth-required');
-  const photoSlider = document.getElementById('photo-height');
-  const photoValEl  = document.getElementById('photo-height-val');
-  const saveStatus  = document.getElementById('save-status');
+  const form           = document.getElementById('settings-form');
+  const authToggle     = document.getElementById('auth-required');
+  const photoToggle    = document.getElementById('dashboard-photo-enabled');
+  const photoHeightRow = document.getElementById('photo-height-row');
+  const photoSlider    = document.getElementById('photo-height');
+  const photoValEl     = document.getElementById('photo-height-val');
+  const saveStatus     = document.getElementById('save-status');
+
+  function updatePhotoHeightRow() {
+    const enabled = photoToggle.checked;
+    photoHeightRow.style.opacity = enabled ? '' : '0.4';
+    photoSlider.disabled = !enabled;
+  }
 
   // ── Load current settings ────────────────────────────────────
   async function load() {
     const s = await API.get('/api/settings/');
     if (!s) return;
 
-    authToggle.checked = !!s.auth_required;
+    authToggle.checked  = !!s.auth_required;
+    photoToggle.checked = s.dashboard_photo_enabled !== false;
 
     const h = s.dashboard_photo_height || 35;
     photoSlider.value = h;
@@ -20,6 +29,8 @@
     const theme = s.theme || 'system';
     const radio = form.querySelector(`input[name="theme"][value="${theme}"]`);
     if (radio) radio.checked = true;
+
+    updatePhotoHeightRow();
   }
 
   // ── Live slider label ────────────────────────────────────────
@@ -27,12 +38,15 @@
     photoValEl.textContent = photoSlider.value;
   });
 
+  photoToggle.addEventListener('change', updatePhotoHeightRow);
+
   // ── Save ─────────────────────────────────────────────────────
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const theme = form.querySelector('input[name="theme"]:checked')?.value || 'system';
     const payload = {
       auth_required: authToggle.checked,
+      dashboard_photo_enabled: photoToggle.checked,
       dashboard_photo_height: parseInt(photoSlider.value, 10),
       theme,
     };

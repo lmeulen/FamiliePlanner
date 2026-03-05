@@ -63,7 +63,6 @@
       {% endif %}
 
       <form method="post" action="/login">
-        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}" />
         <label>Gebruikersnaam
           <input type="text" name="username" autocomplete="username" autofocus required />
         </label>

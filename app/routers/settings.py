@@ -11,7 +11,7 @@ from app.models.settings import AppSetting
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Keys managed by this router
-_KEYS = {"auth_required", "dashboard_photo_height", "theme"}
+_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "theme"}
 
 
 async def _get(db: AsyncSession, key: str, default: str) -> str:
@@ -33,6 +33,7 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
     return {
         "auth_required": (await _get(db, "auth_required", str(get_auth_required()))).lower() in ("1", "true"),
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
+        "dashboard_photo_enabled": (await _get(db, "dashboard_photo_enabled", "true")).lower() in ("1", "true"),
         "theme": await _get(db, "theme", "system"),
     }
 
@@ -43,6 +44,9 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
         val = bool(payload["auth_required"])
         await _set(db, "auth_required", str(val).lower())
         set_auth_required(val)
+
+    if "dashboard_photo_enabled" in payload:
+        await _set(db, "dashboard_photo_enabled", str(bool(payload["dashboard_photo_enabled"])).lower())
 
     if "dashboard_photo_height" in payload:
         h = max(10, min(80, int(payload["dashboard_photo_height"])))

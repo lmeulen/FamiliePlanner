@@ -197,22 +197,31 @@ window.FP = (() => {
   }
 
   // ── Init ──────────────────────────────────────────────────────
+  // settingsReady resolves once /api/settings/ has been fetched.
+  // Other modules can await FP.settingsReady before checking FP.settings.
+  let _settingsResolve;
+  let _settings = null;
+  const settingsReady = new Promise(res => { _settingsResolve = res; });
+
   async function applyPersistedSettings() {
     try {
       const s = await API.get('/api/settings/');
-      if (!s) return;
-      // Photo height CSS variable
-      if (s.dashboard_photo_height) {
-        document.documentElement.style.setProperty(
-          '--dashboard-photo-height', s.dashboard_photo_height + 'vh'
-        );
-      }
-      // Theme (only if not already overridden by localStorage)
-      if (s.theme && s.theme !== 'system' && !localStorage.getItem('fp-theme')) {
-        document.documentElement.setAttribute('data-theme', s.theme);
-        localStorage.setItem('fp-theme', s.theme);
+      if (s) {
+        _settings = s;
+        // Photo height CSS variable
+        if (s.dashboard_photo_height) {
+          document.documentElement.style.setProperty(
+            '--dashboard-photo-height', s.dashboard_photo_height + 'vh'
+          );
+        }
+        // Theme (only if not already overridden by localStorage)
+        if (s.theme && s.theme !== 'system' && !localStorage.getItem('fp-theme')) {
+          document.documentElement.setAttribute('data-theme', s.theme);
+          localStorage.setItem('fp-theme', s.theme);
+        }
       }
     } catch { /* silently ignore – non-critical */ }
+    finally { _settingsResolve(); }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -230,5 +239,7 @@ window.FP = (() => {
     toLocalDatetimeInput, mealTypeLabel,
     buildMemberChips, populateMemberSelect, buildMemberPicker, getSelectedMemberIds,
     NL_DAYS, NL_DAYS_FULL, NL_MONTHS, NL_MONTHS_SHORT,
+    settingsReady,
+    getSettings: () => _settings,
   };
 })();

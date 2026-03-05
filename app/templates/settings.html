@@ -48,7 +48,18 @@
         </div>
       </div>
 
-      <div class="settings-row settings-row--col">
+      <label class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Foto tonen op overzichtspagina</span>
+          <span class="settings-label-hint">Schakel de foto-diashow op de overzichtspagina in of uit</span>
+        </span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="dashboard-photo-enabled" name="dashboard_photo_enabled" role="switch" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </span>
+      </label>
+
+      <div class="settings-row settings-row--col" id="photo-height-row">
         <span class="settings-label">
           <span class="settings-label-main">Fotogrootte op overzichtspagina</span>
           <span class="settings-label-hint">Hoogte als percentage van het scherm (<span id="photo-height-val">35</span>%)</span>
