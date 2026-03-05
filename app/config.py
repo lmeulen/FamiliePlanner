@@ -49,6 +49,9 @@ FAMILY_MEMBERS_DEFAULT = [
     {"id": 5, "name": "Hayden", "color": "#FF8E53", "avatar": "🧒"},
 ]
 
+# Weather API (OpenWeatherMap)
+OPENWEATHER_API_KEY: str = os.environ.get("OPENWEATHER_API_KEY", "")
+
 # App metadata
 APP_TITLE = "FamiliePlanner"
 APP_VERSION = "1.0.0"

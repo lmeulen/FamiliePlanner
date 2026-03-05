@@ -3,6 +3,7 @@ import json
 from datetime import date, datetime, time
 from io import BytesIO
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_auth_required, set_auth_required
+from app.config import OPENWEATHER_API_KEY
 from app.database import get_db
 from app.models.settings import AppSetting
 from app.models.family import FamilyMember
@@ -21,7 +23,7 @@ from app.models.photos import Photo
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Keys managed by this router
-_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "theme"}
+_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "theme", "weather_enabled", "weather_location"}
 
 
 async def _get(db: AsyncSession, key: str, default: str) -> str:
@@ -45,6 +47,8 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
         "dashboard_photo_enabled": (await _get(db, "dashboard_photo_enabled", "true")).lower() in ("1", "true"),
         "theme": await _get(db, "theme", "system"),
+        "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
+        "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
     }
 
 
@@ -65,6 +69,13 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "theme" in payload:
         t = payload["theme"] if payload["theme"] in ("light", "dark", "system") else "system"
         await _set(db, "theme", t)
+
+    if "weather_enabled" in payload:
+        await _set(db, "weather_enabled", str(bool(payload["weather_enabled"])).lower())
+
+    if "weather_location" in payload:
+        loc = str(payload["weather_location"]).strip()[:100]  # max 100 chars
+        await _set(db, "weather_location", loc)
 
     logger.info("settings.updated payload={}", {k: v for k, v in payload.items() if k in _KEYS})
     return await get_settings(db)
@@ -260,3 +271,38 @@ async def restore_database(file: UploadFile = File(...), db: AsyncSession = Depe
         await db.rollback()
         logger.error("restore.failed error={}", str(e))
         raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
+
+
+@router.get("/weather")
+async def get_weather(location: str, db: AsyncSession = Depends(get_db)):
+    """Fetch weather data from OpenWeatherMap API."""
+    if not OPENWEATHER_API_KEY:
+        logger.warning("weather.fetch.failed: API key not configured")
+        raise HTTPException(status_code=503, detail="Geen API key geconfigureerd. Voeg OPENWEATHER_API_KEY toe aan .env")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            url = f"https://api.openweathermap.org/data/2.5/weather"
+            params = {
+                "q": location,
+                "appid": OPENWEATHER_API_KEY,
+                "units": "metric",
+                "lang": "nl"
+            }
+            response = await client.get(url, params=params, timeout=5.0)
+
+            if response.status_code == 401:
+                logger.error("weather.fetch.failed location={} error=Invalid API key", location)
+                raise HTTPException(status_code=401, detail="Ongeldige API key. Vraag een nieuwe aan op openweathermap.org")
+
+            if response.status_code != 200:
+                logger.error("weather.fetch.failed location={} status={} response={}", location, response.status_code, response.text)
+                raise HTTPException(status_code=response.status_code, detail=f"Weather API error: {response.status_code}")
+
+            return response.json()
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Weather API timeout")
+    except Exception as e:
+        logger.error("weather.fetch.failed location={} error={}", location, str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch weather data")

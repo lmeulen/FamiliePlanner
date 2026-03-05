@@ -1,17 +1,26 @@
 /* global API */
 (function () {
-  const form           = document.getElementById('settings-form');
-  const authToggle     = document.getElementById('auth-required');
-  const photoToggle    = document.getElementById('dashboard-photo-enabled');
-  const photoHeightRow = document.getElementById('photo-height-row');
-  const photoSlider    = document.getElementById('photo-height');
-  const photoValEl     = document.getElementById('photo-height-val');
-  const saveStatus     = document.getElementById('save-status');
+  const form              = document.getElementById('settings-form');
+  const authToggle        = document.getElementById('auth-required');
+  const photoToggle       = document.getElementById('dashboard-photo-enabled');
+  const photoHeightRow    = document.getElementById('photo-height-row');
+  const photoSlider       = document.getElementById('photo-height');
+  const photoValEl        = document.getElementById('photo-height-val');
+  const weatherToggle     = document.getElementById('weather-enabled');
+  const weatherLocationRow = document.getElementById('weather-location-row');
+  const weatherLocationInput = document.getElementById('weather-location');
+  const saveStatus        = document.getElementById('save-status');
 
   function updatePhotoHeightRow() {
     const enabled = photoToggle.checked;
     photoHeightRow.style.opacity = enabled ? '' : '0.4';
     photoSlider.disabled = !enabled;
+  }
+
+  function updateWeatherLocationRow() {
+    const enabled = weatherToggle.checked;
+    weatherLocationRow.style.opacity = enabled ? '' : '0.4';
+    weatherLocationInput.disabled = !enabled;
   }
 
   // ── Load current settings ────────────────────────────────────
@@ -30,7 +39,11 @@
     const radio = form.querySelector(`input[name="theme"][value="${theme}"]`);
     if (radio) radio.checked = true;
 
+    weatherToggle.checked = !!s.weather_enabled;
+    weatherLocationInput.value = s.weather_location || 'Amsterdam,NL';
+
     updatePhotoHeightRow();
+    updateWeatherLocationRow();
   }
 
   // ── Live slider label ────────────────────────────────────────
@@ -39,6 +52,7 @@
   });
 
   photoToggle.addEventListener('change', updatePhotoHeightRow);
+  weatherToggle.addEventListener('change', updateWeatherLocationRow);
 
   // ── Save ─────────────────────────────────────────────────────
   form.addEventListener('submit', async e => {
@@ -49,6 +63,8 @@
       dashboard_photo_enabled: photoToggle.checked,
       dashboard_photo_height: parseInt(photoSlider.value, 10),
       theme,
+      weather_enabled: weatherToggle.checked,
+      weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',
     };
 
     await API.put('/api/settings/', payload);

@@ -8,6 +8,113 @@
   let _meals  = [];
   let _tasks  = [];   // combined today + overdue
 
+  // ── Weather Widget ────────────────────────────────────────────
+  async function initWeatherWidget() {
+    const weatherWidget = document.getElementById('weather-widget');
+    const widgetDate = document.getElementById('widget-date');
+    const widgetTime = document.getElementById('widget-time');
+    const weatherInfo = document.getElementById('weather-info');
+
+    if (!weatherWidget) {
+      console.warn('[Weather] Weather widget element not found');
+      return;
+    }
+
+    console.log('[Weather] Initializing weather widget');
+    const settings = await API.get('/api/settings/').catch(err => {
+      console.error('[Weather] Failed to load settings:', err);
+      return null;
+    });
+
+    console.log('[Weather] Settings loaded:', settings);
+
+    // Widget is altijd zichtbaar (toont minimaal datum/tijd)
+    updateDateTime();
+    setInterval(updateDateTime, 30000); // Update elke 30 seconden
+
+    // Laad weer alleen als ingeschakeld
+    if (settings && settings.weather_enabled) {
+      console.log('[Weather] Weather is enabled, location:', settings.weather_location);
+      loadWeather(settings.weather_location || 'Amsterdam,NL');
+    } else {
+      console.log('[Weather] Weather is disabled');
+      weatherInfo.innerHTML = ''; // Verberg weer sectie
+    }
+
+    function updateDateTime() {
+      const now = new Date();
+      const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+      const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+
+      const dayName = days[now.getDay()];
+      const day = now.getDate();
+      const month = months[now.getMonth()];
+      const year = now.getFullYear();
+
+      widgetDate.textContent = `${dayName} ${day} ${month} ${year}`;
+
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      widgetTime.textContent = `${hours}:${minutes}`;
+    }
+
+    async function loadWeather(location) {
+      try {
+        weatherInfo.innerHTML = '<div class="weather-widget-loading">⏳</div>';
+
+        console.log('[Weather] Fetching weather for:', location);
+        const data = await API.get(`/api/settings/weather?location=${encodeURIComponent(location)}`);
+        console.log('[Weather] Received data:', data);
+
+        if (!data || !data.main || !data.weather || !data.weather[0]) {
+          throw new Error('Invalid weather data structure');
+        }
+
+        const temp = Math.round(data.main.temp);
+        const description = data.weather[0].description;
+        const icon = getWeatherIcon(data.weather[0].icon);
+
+        weatherInfo.innerHTML = `
+          <div class="weather-widget-icon">${icon}</div>
+          <div>
+            <div class="weather-widget-temp">${temp}°C</div>
+            <div class="weather-widget-details">${description}</div>
+          </div>
+        `;
+        console.log('[Weather] Successfully displayed');
+      } catch (err) {
+        console.error('[Weather] Failed to load weather:', err);
+        console.error('[Weather] Error details:', err.message);
+
+        let errorMsg = 'Weer niet beschikbaar';
+        if (err.message) {
+          if (err.message.includes('API key') || err.message.includes('401')) {
+            errorMsg = '⚠️ Ongeldige API key';
+          } else if (err.message.includes('503')) {
+            errorMsg = '⚙️ Geen API key ingesteld';
+          }
+        }
+
+        weatherInfo.innerHTML = `<div class="weather-widget-details" style="font-size: 0.75rem; color: var(--text-muted);">${errorMsg}</div>`;
+      }
+    }
+
+    function getWeatherIcon(code) {
+      const icons = {
+        '01d': '☀️', '01n': '🌙',
+        '02d': '⛅', '02n': '☁️',
+        '03d': '☁️', '03n': '☁️',
+        '04d': '☁️', '04n': '☁️',
+        '09d': '🌧️', '09n': '🌧️',
+        '10d': '🌦️', '10n': '🌧️',
+        '11d': '⛈️', '11n': '⛈️',
+        '13d': '❄️', '13n': '❄️',
+        '50d': '🌫️', '50n': '🌫️',
+      };
+      return icons[code] || '🌤️';
+    }
+  }
+
   // ── Render helpers ────────────────────────────────────────────
   function renderEventCard(ev) {
     const start = new Date(ev.start_time);
@@ -493,6 +600,7 @@
 
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
+    initWeatherWidget();
     await FP.loadMembers();
     initFab();
     await Promise.all([loadEvents(), loadMeals(), loadTasks()]);

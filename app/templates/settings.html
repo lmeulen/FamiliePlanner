@@ -70,6 +70,27 @@
                min="10" max="70" step="5" value="35"
                class="settings-slider" aria-label="Fotogrootte" />
       </div>
+
+      <label class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Weer widget op overzichtspagina</span>
+          <span class="settings-label-hint">Toont datum, tijd en het huidige weer boven de taken</span>
+        </span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="weather-enabled" name="weather_enabled" role="switch" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </span>
+      </label>
+
+      <div class="settings-row settings-row--col" id="weather-location-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Locatie voor weer</span>
+          <span class="settings-label-hint">Plaats, Land (bijv. Amsterdam,NL)</span>
+        </span>
+        <input type="text" id="weather-location" name="weather_location"
+               placeholder="Amsterdam,NL" maxlength="100"
+               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+      </div>
     </section>
 
         <div class="settings-actions">
