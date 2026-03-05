@@ -197,10 +197,29 @@ window.FP = (() => {
   }
 
   // ── Init ──────────────────────────────────────────────────────
+  async function applyPersistedSettings() {
+    try {
+      const s = await API.get('/api/settings/');
+      if (!s) return;
+      // Photo height CSS variable
+      if (s.dashboard_photo_height) {
+        document.documentElement.style.setProperty(
+          '--dashboard-photo-height', s.dashboard_photo_height + 'vh'
+        );
+      }
+      // Theme (only if not already overridden by localStorage)
+      if (s.theme && s.theme !== 'system' && !localStorage.getItem('fp-theme')) {
+        document.documentElement.setAttribute('data-theme', s.theme);
+        localStorage.setItem('fp-theme', s.theme);
+      }
+    } catch { /* silently ignore – non-critical */ }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     renderHeaderDate();
     setInterval(renderHeaderDate, 30_000);  // update clock every 30s
     loadMembers();   // pre-load for all pages
+    applyPersistedSettings();
   });
 
   return {

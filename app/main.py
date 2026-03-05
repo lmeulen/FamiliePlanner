@@ -18,7 +18,7 @@ from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.database import init_db
 from app.logging_config import setup_logging
-from app.routers import agenda, family, meals, tasks, photos
+from app.routers import agenda, family, meals, tasks, photos, settings as settings_router
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -31,6 +31,14 @@ async def lifespan(app: FastAPI):
     logger.info("Starting {} v{}", APP_TITLE, APP_VERSION)
     await init_db()
     logger.info("Database ready")
+    # Load persisted auth_required setting from DB
+    from app.auth import set_auth_required
+    from app.database import AsyncSessionLocal
+    from app.models.settings import AppSetting
+    async with AsyncSessionLocal() as db:
+        row = await db.get(AppSetting, "auth_required")
+        if row is not None:
+            set_auth_required(row.value.lower() in ("1", "true"))
     yield
     logger.info("Shutting down {}", APP_TITLE)
 
@@ -102,6 +110,7 @@ app.include_router(agenda.router)
 app.include_router(tasks.router)
 app.include_router(meals.router)
 app.include_router(photos.router)
+app.include_router(settings_router.router)
 
 # Auth routes
 app.get("/login", response_class=HTMLResponse)(login_get)
@@ -130,6 +139,11 @@ async def page_tasks(request: Request):
 @app.get("/maaltijden", response_class=HTMLResponse)
 async def page_meals(request: Request):
     return templates.TemplateResponse("meals.html", {"request": request})
+
+
+@app.get("/instellingen", response_class=HTMLResponse)
+async def page_settings(request: Request):
+    return templates.TemplateResponse("settings.html", {"request": request})
 
 
 @app.get("/fotos", response_class=HTMLResponse)

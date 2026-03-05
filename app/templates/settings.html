@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block body_class %}page-settings{% endblock %}
+{% block title %}Instellingen – FamiliePlanner{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block content %}
+<div class="page-container settings-page">
+  <h1 class="page-title">⚙️ Instellingen</h1>
+
+  <form id="settings-form" class="settings-form" novalidate>
+
+    <!-- ── Beveiliging ─────────────────────────────────────────── -->
+    <section class="settings-section card">
+      <h2 class="settings-section-title">🔒 Beveiliging</h2>
+      <label class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Inloggen vereist</span>
+          <span class="settings-label-hint">Als uitgeschakeld is de app direct toegankelijk zonder wachtwoord</span>
+        </span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="auth-required" name="auth_required" role="switch" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </span>
+      </label>
+    </section>
+
+    <!-- ── Weergave ────────────────────────────────────────────── -->
+    <section class="settings-section card">
+      <h2 class="settings-section-title">🎨 Weergave</h2>
+
+      <div class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Thema</span>
+        </span>
+        <div class="theme-options" role="radiogroup" aria-label="Thema kiezen">
+          <label class="theme-option">
+            <input type="radio" name="theme" value="light" />
+            <span>☀️ Licht</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="dark" />
+            <span>🌙 Donker</span>
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="system" />
+            <span>🖥️ Systeem</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Fotogrootte op overzichtspagina</span>
+          <span class="settings-label-hint">Hoogte als percentage van het scherm (<span id="photo-height-val">35</span>%)</span>
+        </span>
+        <input type="range" id="photo-height" name="dashboard_photo_height"
+               min="10" max="70" step="5" value="35"
+               class="settings-slider" aria-label="Fotogrootte" />
+      </div>
+    </section>
+
+    <div class="settings-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+      <span class="settings-save-status hidden" id="save-status">✅ Opgeslagen</span>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/settings.js?v={{ static_v }}"></script>
+{% endblock %}
