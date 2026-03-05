@@ -86,3 +86,6 @@ data/status.json.tmp
 *.db
 # Uploaded photos
 app/static/uploads/
+# Claude en Github
+.github/
+.claude/
