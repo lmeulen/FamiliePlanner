@@ -11,7 +11,7 @@ class RecurrenceSeriesCreate(BaseModel):
     description: str = Field(default="", max_length=1000)
     location: str = Field(default="", max_length=200)
     all_day: bool = False
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
     series_start: date
@@ -32,7 +32,7 @@ class RecurrenceSeriesUpdate(BaseModel):
     description: str = Field(default="", max_length=1000)
     location: str = Field(default="", max_length=200)
     all_day: bool = False
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
     series_end: date
@@ -40,8 +40,19 @@ class RecurrenceSeriesUpdate(BaseModel):
     end_time_of_day: time
 
 
-class RecurrenceSeriesOut(RecurrenceSeriesCreate):
+class RecurrenceSeriesOut(BaseModel):
     id: int
+    title: str
+    description: str
+    location: str
+    all_day: bool
+    member_ids: list[int] = Field(default_factory=list)
+    color: str
+    recurrence_type: RecurrenceType
+    series_start: date
+    series_end: date
+    start_time_of_day: time
+    end_time_of_day: time
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -56,7 +67,7 @@ class AgendaEventBase(BaseModel):
     start_time: datetime
     end_time: datetime
     all_day: bool = False
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     color: str = "#4ECDC4"
 
     @model_validator(mode="after")
@@ -74,10 +85,19 @@ class AgendaEventUpdate(AgendaEventBase):
     pass
 
 
-class AgendaEventOut(AgendaEventBase):
+class AgendaEventOut(BaseModel):
     id: int
-    created_at: datetime
+    title: str
+    description: str
+    location: str
+    start_time: datetime
+    end_time: datetime
+    all_day: bool
+    member_ids: list[int] = Field(default_factory=list)
+    color: str
     series_id: int | None = None
     is_exception: bool = False
+    created_at: datetime
 
     model_config = {"from_attributes": True}
+

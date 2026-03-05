@@ -148,6 +148,30 @@ window.FP = (() => {
     });
   }
 
+  // ── Member picker (multi-select toggle buttons) ───────────────
+  function buildMemberPicker(containerId, selectedIds = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    _members.forEach(m => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'member-toggle-btn' + (selectedIds.includes(m.id) ? ' active' : '');
+      btn.dataset.memberId = m.id;
+      btn.textContent = `${m.avatar} ${m.name}`;
+      btn.style.setProperty('--member-color', m.color || '#ccc');
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+      container.appendChild(btn);
+    });
+  }
+
+  function getSelectedMemberIds(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.member-toggle-btn.active'))
+      .map(btn => parseInt(btn.dataset.memberId, 10));
+  }
+
   // ── Populate member <select> inside a form ────────────────────
   function populateMemberSelect(sel, includeAll = true) {
     if (!sel) return;
@@ -177,7 +201,7 @@ window.FP = (() => {
     today, todayStr, pad, formatDate, formatTime, formatDateShort,
     dayName, dayNameFull, isToday, isSameDay, addDays, startOfWeek,
     toLocalDatetimeInput, mealTypeLabel,
-    buildMemberChips, populateMemberSelect,
+    buildMemberChips, populateMemberSelect, buildMemberPicker, getSelectedMemberIds,
     NL_DAYS, NL_DAYS_FULL, NL_MONTHS, NL_MONTHS_SHORT,
   };
 })();

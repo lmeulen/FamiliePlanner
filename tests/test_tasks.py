@@ -14,14 +14,14 @@ TASK_BASE = {
     "done": False,
     "due_date": TODAY,
     "list_id": None,
-    "member_id": None,
+    "member_ids": [],
 }
 
 SERIES_BASE = {
     "title": "Dagelijkse taak",
     "description": "",
     "list_id": None,
-    "member_id": None,
+    "member_ids": [],
     "recurrence_type": "daily",
     "series_start": TODAY,
     "series_end": TOMORROW,

@@ -5,14 +5,14 @@ Run:  python seed.py
 import asyncio
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import delete
+from sqlalchemy import delete, insert
 
 from app.config import FAMILY_MEMBERS_DEFAULT
 from app.database import AsyncSessionLocal, init_db
-from app.models.agenda import AgendaEvent, RecurrenceSeries
+from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members
 from app.models.family import FamilyMember
 from app.models.meals import Meal, MealType
-from app.models.tasks import Task, TaskList, TaskRecurrenceSeries
+from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
 
 
 async def seed():
@@ -47,39 +47,44 @@ async def seed():
             await db.refresh(tl)
 
         today = date.today()
-        db.add_all([
+        tasks_seed = [
             Task(title="Doktersafspraak plannen",  done=False, due_date=today,                    list_id=lists[0].id),
             Task(title="Verzekering nakijken",     done=False, due_date=today + timedelta(days=3), list_id=lists[0].id),
             Task(title="Stofzuigen",               done=False, due_date=today,                    list_id=lists[1].id),
             Task(title="Badkamer schoonmaken",     done=False, due_date=today + timedelta(days=1), list_id=lists[1].id),
             Task(title="Ramen lappen",             done=False, due_date=today + timedelta(days=5), list_id=lists[1].id),
-        ])
+        ]
+        db.add_all(tasks_seed)
+        await db.flush()
+        # Assign member 3 (child) to the first task as example
+        await db.execute(task_members.insert().values(task_id=tasks_seed[0].id, member_id=3))
         await db.commit()
         print("[OK] Task lists & tasks created")
 
         # ---- Agenda events ----
-        db.add_all([
-            AgendaEvent(
-                title="Voetbaltraining",
-                start_time=datetime.combine(today, datetime.strptime("16:00", "%H:%M").time()),
-                end_time=datetime.combine(today, datetime.strptime("17:30", "%H:%M").time()),
-                color="#FF6B6B",
-                member_id=3,
-            ),
-            AgendaEvent(
-                title="Gezinsavond",
-                start_time=datetime.combine(today, datetime.strptime("19:00", "%H:%M").time()),
-                end_time=datetime.combine(today, datetime.strptime("21:00", "%H:%M").time()),
-                color="#4ECDC4",
-            ),
-            AgendaEvent(
-                title="Tandarts",
-                start_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:00", "%H:%M").time()),
-                end_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:30", "%H:%M").time()),
-                color="#FF8E53",
-                member_id=1,
-            ),
-        ])
+        ev1 = AgendaEvent(
+            title="Voetbaltraining",
+            start_time=datetime.combine(today, datetime.strptime("16:00", "%H:%M").time()),
+            end_time=datetime.combine(today, datetime.strptime("17:30", "%H:%M").time()),
+            color="#FF6B6B",
+        )
+        ev2 = AgendaEvent(
+            title="Gezinsavond",
+            start_time=datetime.combine(today, datetime.strptime("19:00", "%H:%M").time()),
+            end_time=datetime.combine(today, datetime.strptime("21:00", "%H:%M").time()),
+            color="#4ECDC4",
+        )
+        ev3 = AgendaEvent(
+            title="Tandarts",
+            start_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:00", "%H:%M").time()),
+            end_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:30", "%H:%M").time()),
+            color="#FF8E53",
+        )
+        db.add_all([ev1, ev2, ev3])
+        await db.flush()
+        # Assign members
+        await db.execute(agenda_event_members.insert().values(event_id=ev1.id, member_id=3))
+        await db.execute(agenda_event_members.insert().values(event_id=ev3.id, member_id=1))
         await db.commit()
         print("[OK] Agenda events created")
 

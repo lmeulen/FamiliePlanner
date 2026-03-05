@@ -172,6 +172,33 @@ img { max-width: 100%; }
   color: white;
   font-weight: 700;
 }
+.event-member-badges {
+  display: flex;
+  gap: .2rem;
+  flex-shrink: 0;
+}
+
+/* Member picker (multi-select toggle buttons) */
+.member-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .25rem;
+}
+.member-toggle-btn {
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: .85rem;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.member-toggle-btn.active {
+  background: var(--member-color, var(--primary));
+  border-color: var(--member-color, var(--primary));
+  color: white;
+}
 
 /* Task card */
 .task-card {

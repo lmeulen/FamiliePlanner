@@ -31,7 +31,7 @@
 
   function filteredEvents() {
     return activeMember
-      ? events.filter(e => !e.member_id || e.member_id === activeMember)
+      ? events.filter(e => !e.member_ids?.length || e.member_ids.includes(activeMember))
       : events;
   }
 
@@ -116,7 +116,7 @@
       const chips = allDayEvents.filter(e => FP.isSameDay(new Date(e.start_time), d));
       html += '<div class="cal-allday-cell">';
       chips.forEach(ev => {
-        const m = FP.getMember(ev.member_id);
+        const m = ev.member_ids?.length === 1 ? FP.getMember(ev.member_ids[0]) : null;
         html += `<div class="cal-event-chip" style="background:${ev.color}" data-id="${ev.id}">${recurIcon(ev)}${m ? m.avatar + ' ' : ''}${ev.title}</div>`;
       });
       html += '</div>';
@@ -153,7 +153,7 @@
         const botPx  = Math.min((end.getHours() + end.getMinutes() / 60 - START_HOUR) * HOUR_HEIGHT, (END_HOUR - START_HOUR) * HOUR_HEIGHT);
         const h      = Math.max(26, botPx - topPx);
         const isShort = h < 46;
-        const m      = FP.getMember(ev.member_id);
+        const m      = ev.member_ids?.length === 1 ? FP.getMember(ev.member_ids[0]) : null;
         const colW   = 100 / totalCols;
         html += `<div class="cal-event-block" style="top:${topPx}px;height:${h}px;background:${ev.color};left:calc(${lane*colW}% + 2px);width:calc(${colW}% - 4px);right:auto" data-id="${ev.id}" title="${ev.title}">
           <div class="cal-event-block-title">${recurIcon(ev)}${ev.title}</div>
@@ -251,7 +251,8 @@
 
     listView.innerHTML = fe.map(ev => {
       const start = new Date(ev.start_time), end = new Date(ev.end_time);
-      const m = FP.getMember(ev.member_id);
+      const members = (ev.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
+      const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}">${m.avatar}</div>`).join('');
       return `<div class="card event-card" data-id="${ev.id}" style="cursor:pointer">
         <div class="event-color-bar" style="background:${ev.color}"></div>
         <div class="event-body">
@@ -261,7 +262,7 @@
             ${ev.location ? ` · 📍 ${ev.location}` : ''}
           </div>
         </div>
-        ${m ? `<div class="event-member-badge" style="background:${m.color}">${m.avatar}</div>` : ''}
+        ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}
       </div>`;
     }).join('');
 
@@ -302,7 +303,7 @@
     const scopeSelector    = document.getElementById('series-scope-selector');
     const recurFields      = document.getElementById('recurrence-fields');
 
-    FP.populateMemberSelect(form.querySelector('select[name="member_id"]'));
+    FP.buildMemberPicker('event-member-picker');
 
     if (id) {
       // ── Editing existing event ──────────────────────────────
@@ -317,7 +318,7 @@
         form.end_time.value    = FP.toLocalDatetimeInput(new Date(ev.end_time));
         form.all_day.checked   = ev.all_day;
         form.color.value       = ev.color;
-        form.querySelector('select[name="member_id"]').value = ev.member_id || '';
+        FP.buildMemberPicker('event-member-picker', ev.member_ids || []);
 
         if (ev.series_id) {
           // Part of a series – show scope selector
@@ -326,13 +327,6 @@
           recurSection.classList.remove('hidden');
           scopeSelector.classList.remove('hidden');
           recurFields.classList.add('hidden');   // hidden until scope=series
-
-          // Fetch series data to pre-fill recurrence fields
-          try {
-            currentSeries = await API.get(`/api/agenda/series/${seriesId}`);
-            form.querySelector('select[name="recurrence_type"]').value = currentSeries.recurrence_type;
-            form.querySelector('input[name="series_end"]').value = currentSeries.series_end;
-          } catch { /* non-critical */ }
 
           // Scope radio change handler
           form.querySelectorAll('input[name="edit_scope"]').forEach(radio => {
@@ -385,11 +379,10 @@
       });
     }
 
-    // ── Submit ───────────────────────────────────────────────
+    // ── Submit (registered here, before any async series-data fetch) ─────
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      const memberIdEl = form.querySelector('select[name="member_id"]');
-      const memberId = memberIdEl.value ? parseInt(memberIdEl.value) : null;
+      const memberIds = FP.getSelectedMemberIds('event-member-picker');
       const startDt  = new Date(form.start_time.value);
       const endDt    = new Date(form.end_time.value);
 
@@ -429,7 +422,7 @@
         end_time:    endDt.toISOString(),
         all_day:     form.all_day.checked,
         color:       form.color.value,
-        member_id:   memberId,
+        member_ids:  memberIds,
       };
 
       try {
@@ -464,7 +457,10 @@
             });
             Toast.show('Reeks bijgewerkt!');
           } else {
-            await API.put(`/api/agenda/${editId}`, eventData);
+            const updated = await API.put(`/api/agenda/${editId}`, eventData);
+            // Update local array immediately so reopening the form shows fresh data
+            const idx = events.findIndex(e => e.id === editId);
+            if (idx !== -1) events[idx] = updated;
             Toast.show('Afspraak bijgewerkt!');
           }
         }
@@ -491,6 +487,15 @@
         loadEvents();
       } catch { Toast.show('Fout bij verwijderen', 'error'); }
     }, { once: true });
+
+    // Fetch series data non-blocking (recurrence fields pre-fill)
+    if (seriesId) {
+      API.get(`/api/agenda/series/${seriesId}`).then(s => {
+        currentSeries = s;
+        form.querySelector('select[name="recurrence_type"]').value = s.recurrence_type;
+        form.querySelector('input[name="series_end"]').value = s.series_end;
+      }).catch(() => {});
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────

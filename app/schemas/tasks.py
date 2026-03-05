@@ -32,7 +32,7 @@ class TaskRecurrenceSeriesCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
     list_id: int | None = None
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     recurrence_type: RecurrenceType
     series_start: date
     series_end: date
@@ -49,13 +49,20 @@ class TaskRecurrenceSeriesUpdate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
     list_id: int | None = None
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     recurrence_type: RecurrenceType
     series_end: date
 
 
-class TaskRecurrenceSeriesOut(TaskRecurrenceSeriesCreate):
+class TaskRecurrenceSeriesOut(BaseModel):
     id: int
+    title: str
+    description: str
+    list_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
+    recurrence_type: RecurrenceType
+    series_start: date
+    series_end: date
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -69,7 +76,7 @@ class TaskBase(BaseModel):
     done: bool = False
     due_date: date | None = None
     list_id: int | None = None
-    member_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
 
 
 class TaskCreate(TaskBase):
@@ -80,10 +87,17 @@ class TaskUpdate(TaskBase):
     pass
 
 
-class TaskOut(TaskBase):
+class TaskOut(BaseModel):
     id: int
-    created_at: datetime
+    title: str
+    description: str
+    done: bool
+    due_date: date | None = None
+    list_id: int | None = None
+    member_ids: list[int] = Field(default_factory=list)
     series_id: int | None = None
     is_exception: bool = False
+    created_at: datetime
 
     model_config = {"from_attributes": True}
+

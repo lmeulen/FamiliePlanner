@@ -1,10 +1,27 @@
 """Agenda / calendar event model – includes recurring series support."""
 from datetime import datetime, time
-from sqlalchemy import String, DateTime, Boolean, Integer, ForeignKey, Text, Date, Time, func
+from sqlalchemy import String, DateTime, Boolean, Integer, ForeignKey, Text, Date, Time, Table, Column, func
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 from app.enums import RecurrenceType
+
+
+# ── Many-to-many junction tables ────────────────────────────────────────────
+
+recurrence_series_members = Table(
+    "recurrence_series_members",
+    Base.metadata,
+    Column("series_id", Integer, ForeignKey("recurrence_series.id", ondelete="CASCADE"), primary_key=True),
+    Column("member_id", Integer, ForeignKey("family_members.id", ondelete="CASCADE"), primary_key=True),
+)
+
+agenda_event_members = Table(
+    "agenda_event_members",
+    Base.metadata,
+    Column("event_id", Integer, ForeignKey("agenda_events.id", ondelete="CASCADE"), primary_key=True),
+    Column("member_id", Integer, ForeignKey("family_members.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class RecurrenceSeries(Base):
@@ -16,9 +33,6 @@ class RecurrenceSeries(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     location: Mapped[str] = mapped_column(String(200), default="")
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    member_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True
-    )
     color: Mapped[str] = mapped_column(String(7), default="#4ECDC4")
     recurrence_type: Mapped[RecurrenceType] = mapped_column(SAEnum(RecurrenceType), nullable=False)
     series_start: Mapped[datetime] = mapped_column(Date, nullable=False)
@@ -26,6 +40,12 @@ class RecurrenceSeries(Base):
     start_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
     end_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
+
+    members = relationship("FamilyMember", secondary=recurrence_series_members, lazy="selectin", uselist=True)
+
+    @property
+    def member_ids(self) -> list[int]:
+        return [m.id for m in (self.members or [])]
 
 
 class AgendaEvent(Base):
@@ -38,9 +58,6 @@ class AgendaEvent(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    member_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, index=True
-    )
     color: Mapped[str] = mapped_column(String(7), default="#4ECDC4")
     # Recurring series linkage (NULL = standalone event)
     series_id: Mapped[int | None] = mapped_column(
@@ -48,3 +65,10 @@ class AgendaEvent(Base):
     )
     is_exception: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
+
+    members = relationship("FamilyMember", secondary=agenda_event_members, lazy="selectin", uselist=True)
+
+    @property
+    def member_ids(self) -> list[int]:
+        return [m.id for m in (self.members or [])]
+

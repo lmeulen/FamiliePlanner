@@ -4,11 +4,12 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 from sqlalchemy import select, and_, delete as sa_delete
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.enums import RecurrenceType
-from app.models.tasks import Task, TaskList, TaskRecurrenceSeries
+from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.tasks import (
     TaskCreate, TaskListCreate, TaskListOut, TaskListUpdate,
     TaskOut, TaskUpdate,
@@ -59,7 +60,6 @@ def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
             title=series.title,
             description=series.description,
             list_id=series.list_id,
-            member_id=series.member_id,
             due_date=d,
             done=False,
             series_id=series.id,
@@ -67,6 +67,21 @@ def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
         )
         for d in generate_task_occurrence_dates(series)
     ]
+
+
+async def _set_task_members(db: AsyncSession, junction_table, key_col: str, key_val: int, member_ids: list[int]):
+    """Replace all member associations for a given task/series."""
+    try:
+        await db.execute(junction_table.delete().where(junction_table.c[key_col] == key_val))
+        if member_ids:
+            await db.execute(
+                junction_table.insert(),
+                [{key_col: key_val, "member_id": mid} for mid in member_ids]
+            )
+        logger.debug("_set_task_members table={} {}={} member_ids={}", junction_table.name, key_col, key_val, member_ids)
+    except Exception as exc:
+        logger.error("_set_task_members FAILED table={} {}={} member_ids={} error={}", junction_table.name, key_col, key_val, member_ids, exc)
+        raise
 
 
 # ---- Task Lists ----
@@ -118,20 +133,27 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/series", response_model=TaskRecurrenceSeriesOut, status_code=201)
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
-    series = TaskRecurrenceSeries(**payload.model_dump())
+    series = TaskRecurrenceSeries(**payload.model_dump(exclude={"member_ids"}))
     db.add(series)
     await db.flush()
+    await _set_task_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     occurrences = _make_tasks_for_series(series)
     db.add_all(occurrences)
+    await db.flush()
+    if payload.member_ids:
+        for t in occurrences:
+            await _set_task_members(db, task_members, "task_id", t.id, payload.member_ids)
     await db.commit()
-    await db.refresh(series)
+    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series.id))
+    series = result.scalar_one()
     logger.info("tasks.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
     return series
 
 
 @router.get("/series/{series_id}", response_model=TaskRecurrenceSeriesOut)
 async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
-    series = await db.get(TaskRecurrenceSeries, series_id)
+    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+    series = result.scalar_one_or_none()
     if not series:
         logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
@@ -142,12 +164,14 @@ async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
 async def update_task_series(
     series_id: int, payload: TaskRecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)
 ):
-    series = await db.get(TaskRecurrenceSeries, series_id)
+    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+    series = result.scalar_one_or_none()
     if not series:
         logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(series, k, v)
+    await _set_task_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     # Regenerate all non-exception occurrences
     await db.execute(
         sa_delete(Task).where(
@@ -156,22 +180,30 @@ async def update_task_series(
     )
     new_tasks = _make_tasks_for_series(series)
     db.add_all(new_tasks)
+    await db.flush()
+    if payload.member_ids:
+        for t in new_tasks:
+            await _set_task_members(db, task_members, "task_id", t.id, payload.member_ids)
     await db.commit()
-    await db.refresh(series)
+    db.expire(series)
+    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+    series = result.scalar_one()
     logger.info("tasks.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_tasks))
     return series
 
 
 @router.delete("/series/{series_id}", status_code=204)
 async def delete_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
-    series = await db.get(TaskRecurrenceSeries, series_id)
+    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+    series = result.scalar_one_or_none()
     if not series:
         logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
+    title = series.title
     await db.execute(sa_delete(Task).where(Task.series_id == series_id))
     await db.delete(series)
     await db.commit()
-    logger.info("tasks.series.deleted id={} title='{}'", series_id, series.title)
+    logger.info("tasks.series.deleted id={} title='{}'", series_id, title)
 
 
 # ---- Tasks ----
@@ -184,12 +216,14 @@ async def list_tasks(
     due_date: date | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Task)
+    stmt = select(Task).options(selectinload(Task.members))
     conditions = []
     if list_id is not None:
         conditions.append(Task.list_id == list_id)
     if member_id is not None:
-        conditions.append(Task.member_id == member_id)
+        stmt = stmt.join(task_members, Task.id == task_members.c.task_id).where(
+            task_members.c.member_id == member_id
+        )
     if done is not None:
         conditions.append(Task.done == done)
     if due_date is not None:
@@ -206,6 +240,7 @@ async def today_tasks(db: AsyncSession = Depends(get_db)):
     today = date.today()
     stmt = (
         select(Task)
+        .options(selectinload(Task.members))
         .where(and_(Task.due_date == today, Task.done == False))  # noqa: E712
         .order_by(Task.created_at)
     )
@@ -218,6 +253,7 @@ async def overdue_tasks(db: AsyncSession = Depends(get_db)):
     today = date.today()
     stmt = (
         select(Task)
+        .options(selectinload(Task.members))
         .where(and_(Task.due_date < today, Task.done == False))  # noqa: E712
         .order_by(Task.due_date.asc(), Task.created_at)
     )
@@ -227,17 +263,25 @@ async def overdue_tasks(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=TaskOut, status_code=201)
 async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
-    task = Task(**payload.model_dump())
+    task = Task(**payload.model_dump(exclude={"member_ids"}))
     db.add(task)
+    await db.flush()
+    await _set_task_members(db, task_members, "task_id", task.id, payload.member_ids)
     await db.commit()
-    await db.refresh(task)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task.id)
+    )
+    task = result.scalar_one()
     logger.info("tasks.task.created id={} title='{}'", task.id, task.title)
     return task
 
 
 @router.get("/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
-    task = await db.get(Task, task_id)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
+    )
+    task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
@@ -248,29 +292,44 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
 async def update_task(
     task_id: int, payload: TaskUpdate, db: AsyncSession = Depends(get_db)
 ):
-    task = await db.get(Task, task_id)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
+    )
+    task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
-    for k, v in payload.model_dump(exclude_unset=True).items():
+    logger.debug("tasks.task.update id={} member_ids={}", task_id, payload.member_ids)
+    for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(task, k, v)
+    await _set_task_members(db, task_members, "task_id", task.id, payload.member_ids)
     if task.series_id:
         task.is_exception = True   # mark as individually edited
     await db.commit()
-    await db.refresh(task)
-    logger.info("tasks.task.updated id={} title='{}'", task.id, task.title)
+    db.expire(task)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
+    )
+    task = result.scalar_one()
+    logger.info("tasks.task.updated id={} title='{}' member_ids={}", task.id, task.title, task.member_ids)
     return task
 
 
 @router.patch("/{task_id}/toggle", response_model=TaskOut)
 async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
-    task = await db.get(Task, task_id)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
+    )
+    task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     task.done = not task.done
     await db.commit()
-    await db.refresh(task)
+    result = await db.execute(
+        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
+    )
+    task = result.scalar_one()
     logger.info("tasks.task.toggled id={} done={}", task.id, task.done)
     return task
 

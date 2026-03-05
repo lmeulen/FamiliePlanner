@@ -95,10 +95,11 @@
   }
 
   function renderTaskRow(task) {
-    const member = FP.getMember(task.member_id);
+    const members = (task.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
     const list   = lists.find(l => l.id === task.list_id);
     const isOverdue = task.due_date && !task.done && new Date(task.due_date) < new Date();
     const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
+    const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${m.name}">${m.avatar}</div>`).join('');
     return `
       <div class="card task-card" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
@@ -110,7 +111,7 @@
         </div>
         ${task.due_date ? `<span class="task-due-badge ${isOverdue ? 'overdue' : ''}">${FP.formatDateShort(task.due_date)}</span>` : ''}
         ${list ? `<span class="task-list-dot" style="background:${list.color}"></span>` : ''}
-        ${member ? `<div class="event-member-badge" style="background:${member.color}" title="${member.name}">${member.avatar}</div>` : ''}
+        ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}
       </div>`;
   }
 
@@ -144,7 +145,7 @@
     const recurRow    = document.getElementById('recurrence-toggle-row');
     const scopeSel    = document.getElementById('scope-selector');
 
-    FP.populateMemberSelect(form.querySelector('select[name="member_id"]'));
+    FP.buildMemberPicker('task-member-picker');
 
     // Populate list select
     const listSel = form.querySelector('select[name="list_id"]');
@@ -171,7 +172,7 @@
         form.title.value       = task.title;
         form.description.value = task.description || '';
         listSel.value          = task.list_id || '';
-        form.querySelector('select[name="member_id"]').value = task.member_id || '';
+        FP.buildMemberPicker('task-member-picker', task.member_ids || []);
         form.due_date.value    = task.due_date || '';
 
         if (task.series_id) {
@@ -198,6 +199,7 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
+      const memberIds = FP.getSelectedMemberIds('task-member-picker');
 
       // Trim text inputs
       form.title.value       = form.title.value.trim();
@@ -224,8 +226,7 @@
           title:           form.title.value,
           description:     form.description.value,
           list_id:         listSel.value ? parseInt(listSel.value) : null,
-          member_id:       form.querySelector('select[name="member_id"]').value
-                             ? parseInt(form.querySelector('select[name="member_id"]').value) : null,
+          member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]').value,
           series_start:    form.due_date.value,
           series_end:      seriesEnd,
@@ -245,8 +246,7 @@
           title:           form.title.value,
           description:     form.description.value,
           list_id:         listSel.value ? parseInt(listSel.value) : null,
-          member_id:       form.querySelector('select[name="member_id"]').value
-                             ? parseInt(form.querySelector('select[name="member_id"]').value) : null,
+          member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]')?.value || 'weekly',
           series_end:      form.due_date.value,
         };
@@ -264,15 +264,17 @@
         title:       form.title.value,
         description: form.description.value,
         list_id:     listSel.value ? parseInt(listSel.value) : null,
-        member_id:   form.querySelector('select[name="member_id"]').value
-                       ? parseInt(form.querySelector('select[name="member_id"]').value) : null,
+        member_ids:  memberIds,
         due_date:    form.due_date.value || null,
         done:        false,
       };
       try {
         if (editTaskId) {
           const cur = tasks.find(t => t.id === editTaskId);
-          await API.put(`/api/tasks/${editTaskId}`, { ...data, done: cur?.done ?? false });
+          const updated = await API.put(`/api/tasks/${editTaskId}`, { ...data, done: cur?.done ?? false });
+          // Update local array immediately so reopening the form shows fresh data
+          const idx = tasks.findIndex(t => t.id === editTaskId);
+          if (idx !== -1) tasks[idx] = updated;
           Toast.show('Taak bijgewerkt!');
         } else {
           await API.post('/api/tasks/', data);
