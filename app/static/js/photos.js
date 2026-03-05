@@ -62,7 +62,18 @@ async function loadPhotos() {
 }
 
 // ── Upload ────────────────────────────────────────────────────────
+const MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png']);
+
+function validateFile(file) {
+  if (!ALLOWED_MIME.has(file.type)) return 'Alleen JPG en PNG bestanden zijn toegestaan.';
+  if (file.size > MAX_BYTES) return `Bestand te groot (max 10 MB, dit bestand is ${(file.size / 1024 / 1024).toFixed(1)} MB).`;
+  return null;
+}
+
 async function uploadFile(file) {
+  const err = validateFile(file);
+  if (err) { statusEl.textContent = err; progress.classList.remove('hidden'); return; }
   progress.classList.remove('hidden');
   statusEl.textContent = `Uploaden: ${file.name}…`;
   const form = new FormData();

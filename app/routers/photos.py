@@ -14,8 +14,22 @@ from app.models.photos import Photo
 router = APIRouter(prefix="/api/photos", tags=["photos"])
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "static" / "uploads"
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-MAX_SIZE_MB = 10
+ALLOWED_TYPES = {"image/jpeg", "image/png"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+# Magic bytes: JPEG starts with FF D8 FF; PNG starts with 89 50 4E 47
+_MAGIC = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG": "image/png",
+}
+
+
+def _detect_type(data: bytes) -> str | None:
+    for magic, mime in _MAGIC.items():
+        if data[:len(magic)] == magic:
+            return mime
+    return None
 
 
 @router.get("/", response_model=list[dict])
@@ -40,13 +54,18 @@ async def upload_photo(
     db: AsyncSession = Depends(get_db),
 ):
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(422, f"Bestandstype niet toegestaan. Gebruik: {', '.join(ALLOWED_TYPES)}")
+        raise HTTPException(422, "Alleen JPG en PNG bestanden zijn toegestaan.")
 
     data = await file.read()
-    if len(data) > MAX_SIZE_MB * 1024 * 1024:
-        raise HTTPException(422, f"Bestand te groot (max {MAX_SIZE_MB} MB).")
 
-    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if len(data) > MAX_SIZE_BYTES:
+        raise HTTPException(422, f"Bestand te groot (max {MAX_SIZE_BYTES // 1024 // 1024} MB).")
+
+    actual_type = _detect_type(data)
+    if actual_type not in ALLOWED_TYPES:
+        raise HTTPException(422, "Bestandsinhoud herkend niet als JPG of PNG.")
+
+    ext = ".jpg" if actual_type == "image/jpeg" else ".png"
     filename = f"{uuid.uuid4().hex}{ext}"
     dest = UPLOADS_DIR / filename
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
