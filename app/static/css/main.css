@@ -1205,9 +1205,22 @@ img { max-width: 100%; }
   padding-right: 1rem;
 }
 /* Stack on narrow screens */
-@media (max-width: 700px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .dashboard-sidebar { position: static; }
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem 0;
+  }
+  .dashboard-sidebar {
+    position: static;
+    order: 2;
+  }
+  .dashboard-main {
+    order: 1;
+  }
+  /* Hide photo on mobile */
+  .dashboard-photo-wrap {
+    display: none !important;
+  }
 }
 
 /* ── DASHBOARD PHOTO ─────────────────────────────────────────── */
