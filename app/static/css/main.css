@@ -1395,3 +1395,69 @@ img { max-width: 100%; }
 
 .settings-actions { display: flex; align-items: center; gap: 1rem; }
 .settings-save-status { font-size: .9rem; color: var(--color-success, #27ae60); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FULLSIZE PHOTO MODAL
+   ═══════════════════════════════════════════════════════════════════ */
+.fullsize-photo-modal {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullsize-photo-modal img {
+  max-width: 100%;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.fullsize-close {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 40px;
+  height: 40px;
+  background: var(--color-bg);
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+  transition: background 0.2s, border-color 0.2s;
+  z-index: 10;
+}
+
+.fullsize-close:hover {
+  background: var(--color-danger, #e74c3c);
+  border-color: var(--color-danger, #e74c3c);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .fullsize-photo-modal {
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+
+  .fullsize-photo-modal img {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .fullsize-close {
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+  }
+}

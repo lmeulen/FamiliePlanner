@@ -30,6 +30,29 @@ confirmBtn.addEventListener('click', async () => {
   pendingDeleteId = null;
 });
 
+// ── Fullsize modal ────────────────────────────────────────────────
+function openFullsizeModal(url, name) {
+  const html = `
+    <div class="fullsize-photo-modal">
+      <button class="fullsize-close" aria-label="Sluiten">&times;</button>
+      <img src="${FP.esc(url)}" alt="${FP.esc(name)}" />
+    </div>
+  `;
+  const content = document.getElementById('modal-content');
+  content.innerHTML = html;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+
+  content.querySelector('.fullsize-close').addEventListener('click', () => {
+    document.getElementById('modal-overlay').classList.add('hidden');
+  });
+}
+
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-overlay') {
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+});
+
 // ── Render ────────────────────────────────────────────────────────
 function renderPhotos(photos) {
   countEl.textContent = photos.length;
@@ -41,8 +64,8 @@ function renderPhotos(photos) {
   emptyEl.classList.add('hidden');
   grid.innerHTML = photos.map(p => `
     <div class="photo-card" data-id="${p.id}">
-      <div class="photo-card-img-wrap">
-        <img src="${FP.esc(p.url)}" alt="${FP.esc(p.display_name || p.filename)}" loading="lazy" />
+      <div class="photo-card-img-wrap" data-fullsize-url="${FP.esc(p.url)}" data-name="${FP.esc(p.display_name || p.filename)}" style="cursor: pointer;" role="button" tabindex="0" aria-label="Toon volledige foto">
+        <img src="${FP.esc(p.thumbnail_url || p.url)}" alt="${FP.esc(p.display_name || p.filename)}" loading="lazy" />
       </div>
       <div class="photo-card-footer">
         <span class="photo-card-name" title="${FP.esc(p.display_name || p.filename)}">${FP.esc(p.display_name || p.filename)}</span>
@@ -51,8 +74,23 @@ function renderPhotos(photos) {
     </div>
   `).join('');
 
+  // Attach click handlers for fullsize view
+  grid.querySelectorAll('.photo-card-img-wrap').forEach(wrap => {
+    const clickHandler = () => openFullsizeModal(wrap.dataset.fullsizeUrl, wrap.dataset.name);
+    wrap.addEventListener('click', clickHandler);
+    wrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        clickHandler();
+      }
+    });
+  });
+
   grid.querySelectorAll('.photo-delete-btn').forEach(btn => {
-    btn.addEventListener('click', () => openDeleteModal(+btn.dataset.id, btn.dataset.name));
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent fullsize modal from opening
+      openDeleteModal(+btn.dataset.id, btn.dataset.name);
+    });
   });
 }
 

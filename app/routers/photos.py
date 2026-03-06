@@ -1,10 +1,12 @@
 """API router for photo management (upload, list, delete)."""
 import uuid
 from pathlib import Path
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from loguru import logger
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,9 +16,11 @@ from app.models.photos import Photo
 router = APIRouter(prefix="/api/photos", tags=["photos"])
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "static" / "uploads"
+THUMBNAILS_DIR = UPLOADS_DIR / "thumbnails"
 ALLOWED_TYPES = {"image/jpeg", "image/png"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+THUMBNAIL_WIDTH = 200  # pixels
 
 # Magic bytes: JPEG starts with FF D8 FF; PNG starts with 89 50 4E 47
 _MAGIC = {
@@ -32,6 +36,36 @@ def _detect_type(data: bytes) -> str | None:
     return None
 
 
+def _generate_thumbnail(image_data: bytes, filename: str) -> None:
+    """Generate thumbnail (200px wide) from image data."""
+    THUMBNAILS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Open image and create thumbnail
+    img = Image.open(BytesIO(image_data))
+
+    # Convert RGBA to RGB if needed (for PNG with transparency)
+    if img.mode == 'RGBA':
+        background = Image.new('RGB', img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[3])  # 3 is the alpha channel
+        img = background
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    # Calculate thumbnail size maintaining aspect ratio
+    width, height = img.size
+    new_width = THUMBNAIL_WIDTH
+    new_height = int((new_width / width) * height)
+
+    # Create thumbnail
+    img.thumbnail((new_width, new_height), Image.Resampling.LANCZOS)
+
+    # Save thumbnail
+    thumb_path = THUMBNAILS_DIR / filename
+    img.save(thumb_path, "JPEG", quality=85, optimize=True)
+
+    logger.debug("Thumbnail generated: {}", thumb_path)
+
+
 @router.get("/", response_model=list[dict])
 async def list_photos(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Photo).order_by(Photo.uploaded_at.desc()))
@@ -42,6 +76,7 @@ async def list_photos(db: AsyncSession = Depends(get_db)):
             "filename": p.filename,
             "display_name": p.display_name,
             "url": f"/static/uploads/{p.filename}",
+            "thumbnail_url": f"/static/uploads/thumbnails/{p.filename}",
             "uploaded_at": p.uploaded_at.isoformat(),
         }
         for p in photos
@@ -71,17 +106,25 @@ async def upload_photo(
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
 
+    # Generate thumbnail
+    try:
+        _generate_thumbnail(data, filename)
+    except Exception as e:
+        logger.error("Failed to generate thumbnail for {}: {}", filename, e)
+        # Continue even if thumbnail fails
+
     display_name = Path(file.filename).stem if file.filename else filename
     photo = Photo(filename=filename, display_name=display_name)
     db.add(photo)
     await db.commit()
     await db.refresh(photo)
-    logger.info("photos.uploaded id={} filename='{}'", photo.id, filename)
+    logger.info("photos.uploaded id={} filename='{}' (with thumbnail)", photo.id, filename)
     return {
         "id": photo.id,
         "filename": photo.filename,
         "display_name": photo.display_name,
         "url": f"/static/uploads/{photo.filename}",
+        "thumbnail_url": f"/static/uploads/thumbnails/{photo.filename}",
         "uploaded_at": photo.uploaded_at.isoformat(),
     }
 
@@ -91,9 +134,17 @@ async def delete_photo(photo_id: int, db: AsyncSession = Depends(get_db)):
     photo = await db.get(Photo, photo_id)
     if not photo:
         raise HTTPException(404, "Foto niet gevonden")
+
+    # Delete original photo
     path = UPLOADS_DIR / photo.filename
     if path.exists():
         path.unlink()
+
+    # Delete thumbnail
+    thumb_path = THUMBNAILS_DIR / photo.filename
+    if thumb_path.exists():
+        thumb_path.unlink()
+
     await db.delete(photo)
     await db.commit()
-    logger.info("photos.deleted id={} filename='{}'", photo_id, photo.filename)
+    logger.info("photos.deleted id={} filename='{}' (including thumbnail)", photo_id, photo.filename)
