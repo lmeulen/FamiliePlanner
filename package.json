@@ -1,0 +1,13 @@
+{
+  "name": "familieplanner",
+  "version": "1.0.0",
+  "description": "Family planning and organization application",
+  "scripts": {},
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
