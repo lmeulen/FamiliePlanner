@@ -20,7 +20,6 @@ from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
 async def seed():
     await init_db()
     async with AsyncSessionLocal() as db:
-
         # ---- Clear all tables (order respects FK constraints) ----
         await db.execute(delete(AgendaEvent))
         await db.execute(delete(RecurrenceSeries))

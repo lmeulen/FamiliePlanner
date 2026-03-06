@@ -285,9 +285,9 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
 
 def _build_rrule(series: RecurrenceSeries) -> dict:
     """Convert RecurrenceSeries to iCalendar RRULE dict."""
-    rrule = {"UNTIL": datetime.combine(series.series_end, datetime.max.time())}
+    rrule: dict = {"UNTIL": datetime.combine(series.series_end, datetime.max.time())}
 
-    recurrence_map = {
+    recurrence_map: dict[RecurrenceType, dict] = {
         RecurrenceType.daily: {"FREQ": "DAILY"},
         RecurrenceType.every_other_day: {"FREQ": "DAILY", "INTERVAL": 2},
         RecurrenceType.weekly: {"FREQ": "WEEKLY"},

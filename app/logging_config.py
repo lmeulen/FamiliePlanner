@@ -22,7 +22,7 @@ LOG_FORMAT = (
     "{message}"
 )
 
-FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | " "{level: <8} | " "{name}:{function}:{line} | " "{message}"
+FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} | {message}"
 
 
 class InterceptHandler(logging.Handler):
@@ -32,11 +32,12 @@ class InterceptHandler(logging.Handler):
         try:
             level = logger.level(record.levelname).name
         except ValueError:
-            level = record.levelno
+            level = str(record.levelno)
 
-        frame, depth = logging.currentframe(), 2
+        frame = logging.currentframe()
+        depth = 2
         while frame and frame.f_code.co_filename == logging.__file__:
-            frame = frame.f_back
+            frame = frame.f_back  # type: ignore[assignment]
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())

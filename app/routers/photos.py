@@ -47,9 +47,9 @@ def _generate_thumbnail(image_data: bytes, filename: str) -> None:
     if img.mode == "RGBA":
         background = Image.new("RGB", img.size, (255, 255, 255))
         background.paste(img, mask=img.split()[3])  # 3 is the alpha channel
-        img = background
+        img = background  # type: ignore[assignment]
     elif img.mode != "RGB":
-        img = img.convert("RGB")
+        img = img.convert("RGB")  # type: ignore[assignment]
 
     # Calculate thumbnail size maintaining aspect ratio
     width, height = img.size

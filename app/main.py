@@ -62,7 +62,7 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
 # Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → SlowAPI → routes

@@ -58,7 +58,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # ── Login / logout route handlers ────────────────────────────────
 
 
-async def login_get(request: Request) -> HTMLResponse:
+async def login_get(request: Request) -> HTMLResponse | RedirectResponse:
     """Show the login form.  Redirect to dashboard if already logged in."""
     if request.session.get("authenticated"):
         return RedirectResponse(url="/", status_code=302)

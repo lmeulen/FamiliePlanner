@@ -8,6 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,7 +98,7 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
 
 def _serialize_value(value):
     """Convert database values to JSON-serializable format."""
-    if isinstance(value, (datetime, date, time)):
+    if isinstance(value, datetime | date | time):
         return value.isoformat()
     return value
 
@@ -182,7 +183,7 @@ async def _clear_all_data(db: AsyncSession):
         FamilyMember,
         AppSetting,
     ]:
-        await db.execute(model.__table__.delete())
+        await db.execute(sa_delete(model))
 
     await db.commit()
 

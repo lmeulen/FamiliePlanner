@@ -24,9 +24,6 @@ jobs:
       - name: Run Ruff linting
         run: ruff check .
 
-      - name: Run Ruff format check
-        run: ruff format --check .
-
   format-python:
     name: Python Formatting (Black)
     runs-on: ubuntu-latest
