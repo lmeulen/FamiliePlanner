@@ -293,9 +293,10 @@
     editScope     = 'this';
 
     Modal.open('tpl-event-form');
-    const form    = document.getElementById('event-form');
-    const titleEl = document.getElementById('event-form-title');
-    const delBtn  = document.getElementById('btn-delete-event');
+    const form      = document.getElementById('event-form');
+    const titleEl   = document.getElementById('event-form-title');
+    const delBtn    = document.getElementById('btn-delete-event');
+    const exportBtn = document.getElementById('btn-export-event');
 
     const toggleRow        = document.getElementById('recurrence-toggle-row');
     const recurToggle      = document.getElementById('recurrence-toggle');
@@ -309,6 +310,7 @@
       // ── Editing existing event ──────────────────────────────
       titleEl.textContent = 'Afspraak bewerken';
       delBtn.classList.remove('hidden');
+      exportBtn.classList.remove('hidden');
       const ev = events.find(e => e.id === id);
       if (ev) {
         form.title.value       = ev.title;
@@ -353,6 +355,7 @@
       // ── Creating new event ──────────────────────────────────
       titleEl.textContent = 'Afspraak toevoegen';
       delBtn.classList.add('hidden');
+      exportBtn.classList.add('hidden');
       toggleRow.classList.remove('hidden');
       recurSection.classList.add('hidden');
       scopeSelector.classList.add('hidden');
@@ -490,6 +493,13 @@
         Modal.close();
         loadEvents();
       } catch { Toast.show('Fout bij verwijderen', 'error'); }
+    }, { once: true });
+
+    // ── Export ───────────────────────────────────────────────
+    exportBtn.addEventListener('click', () => {
+      if (!editId) return;
+      window.location.href = `/api/agenda/${editId}/export`;
+      Toast.show('Afspraak geëxporteerd!');
     }, { once: true });
 
     // Fetch series data non-blocking (recurrence fields pre-fill)

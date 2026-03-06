@@ -1,10 +1,12 @@
 """CRUD + query router for AgendaEvent and RecurrenceSeries."""
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from loguru import logger
 from sqlalchemy import select, and_, delete as sa_delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from icalendar import Calendar, Event as ICalEvent
 
 from app.database import get_db
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
@@ -14,6 +16,7 @@ from app.schemas.agenda import (
 )
 from app.utils.recurrence import generate_occurrence_dates
 from app.utils.db import set_junction_members
+from app.enums import RecurrenceType
 
 router = APIRouter(prefix="/api/agenda", tags=["agenda"])
 
@@ -197,6 +200,102 @@ async def get_event(event_id: int, db: AsyncSession = Depends(get_db)):
         logger.warning("agenda.event.not_found id={}", event_id)
         raise HTTPException(404, "Event not found")
     return event
+
+
+@router.get("/{event_id}/export", response_class=Response)
+async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
+    """Export a single event as .ics file compatible with Google Calendar, Outlook, and Apple Calendar."""
+    result = await db.execute(
+        select(AgendaEvent).options(selectinload(AgendaEvent.members)).where(AgendaEvent.id == event_id)
+    )
+    event = result.scalar_one_or_none()
+    if not event:
+        logger.warning("agenda.event.not_found id={}", event_id)
+        raise HTTPException(404, "Event not found")
+
+    # Fetch series data if this is a recurring event
+    series = None
+    if event.series_id:
+        series_result = await db.execute(
+            select(RecurrenceSeries).where(RecurrenceSeries.id == event.series_id)
+        )
+        series = series_result.scalar_one_or_none()
+
+    # Create iCalendar
+    cal = Calendar()
+    cal.add('prodid', '-//FamiliePlanner//Agenda//NL')
+    cal.add('version', '2.0')
+    cal.add('calscale', 'GREGORIAN')
+    cal.add('method', 'PUBLISH')
+
+    # Create event
+    ical_event = ICalEvent()
+    ical_event.add('uid', f'familieplanner-event-{event.id}@familieplanner')
+    ical_event.add('summary', event.title)
+
+    if event.description:
+        ical_event.add('description', event.description)
+
+    if event.location:
+        ical_event.add('location', event.location)
+
+    # Add timestamps
+    ical_event.add('dtstamp', datetime.now())
+    ical_event.add('created', event.created_at)
+
+    # Handle all-day events
+    if event.all_day:
+        # For all-day events, use DATE type (not DATETIME)
+        event_date = event.start_time.date()
+        ical_event.add('dtstart', event_date)
+        # End date is exclusive in iCalendar for all-day events
+        end_date = event.end_time.date() + timedelta(days=1)
+        ical_event.add('dtend', end_date)
+    else:
+        ical_event.add('dtstart', event.start_time)
+        ical_event.add('dtend', event.end_time)
+
+    # Add recurrence rule if this is part of a series
+    if series and not event.is_exception:
+        rrule = _build_rrule(series)
+        if rrule:
+            ical_event.add('rrule', rrule)
+
+    cal.add_component(ical_event)
+
+    # Generate filename
+    safe_title = "".join(c for c in event.title if c.isalnum() or c in (' ', '-', '_')).strip()
+    safe_title = safe_title[:50]  # Limit length
+    filename = f"{safe_title or 'event'}.ics"
+
+    logger.info("agenda.event.exported id={} title='{}'", event.id, event.title)
+
+    return Response(
+        content=cal.to_ical(),
+        media_type='text/calendar',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        }
+    )
+
+
+def _build_rrule(series: RecurrenceSeries) -> dict:
+    """Convert RecurrenceSeries to iCalendar RRULE dict."""
+    rrule = {'UNTIL': datetime.combine(series.series_end, datetime.max.time())}
+
+    recurrence_map = {
+        RecurrenceType.daily: {'FREQ': 'DAILY'},
+        RecurrenceType.every_other_day: {'FREQ': 'DAILY', 'INTERVAL': 2},
+        RecurrenceType.weekly: {'FREQ': 'WEEKLY'},
+        RecurrenceType.biweekly: {'FREQ': 'WEEKLY', 'INTERVAL': 2},
+        RecurrenceType.weekdays: {'FREQ': 'WEEKLY', 'BYDAY': ['MO', 'TU', 'WE', 'TH', 'FR']},
+        RecurrenceType.monthly: {'FREQ': 'MONTHLY'},
+    }
+
+    if series.recurrence_type in recurrence_map:
+        rrule.update(recurrence_map[series.recurrence_type])
+
+    return rrule
 
 
 @router.put("/{event_id}", response_model=AgendaEventOut)
