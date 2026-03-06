@@ -1,0 +1,224 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+FamiliePlanner is a family organization webapp with FastAPI backend and vanilla HTML/CSS/JS frontend. No build tools required for frontend. Uses SQLite with SQLAlchemy async ORM, session-based authentication, and comprehensive recurring event/task system.
+
+**Tech Stack:**
+- Backend: FastAPI 0.115+, SQLAlchemy 2.0 (async), Uvicorn, Pydantic, Loguru
+- Frontend: Vanilla JS (no frameworks), Jinja2 templates
+- Database: SQLite with async (aiosqlite)
+- Testing: pytest + pytest-asyncio (~73 tests)
+- CI: GitHub Actions (ruff, black, mypy, pytest, commitlint)
+
+## Development Commands
+
+### Setup
+```bash
+python -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -r requirements.txt
+cp .env.example .env       # Edit SECRET_KEY, APP_USERNAME, APP_PASSWORD
+```
+
+### Running
+```bash
+python run.py --host 0.0.0.0 --port 8000 --reload  # Development
+python seed.py                                      # Populate test data
+```
+
+### Testing & Linting
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_agenda.py -v
+
+# Run single test
+pytest tests/test_agenda.py::test_create_event -v
+
+# CI checks (must all pass)
+ruff check .                      # Linting
+ruff format .                     # Auto-format
+black .                           # Code formatting
+mypy app/ --ignore-missing-imports  # Type checking
+pytest tests/ -v                  # Tests
+```
+
+### Database Migrations
+```bash
+alembic revision --autogenerate -m "Description"
+alembic upgrade head
+```
+
+## Architecture
+
+### Backend Structure
+
+**Request Flow:**
+```
+Request → SessionMiddleware → CSRFMiddleware → AuthMiddleware →
+SlowAPI (rate limiting) → FastAPI router → Pydantic validation →
+SQLAlchemy ORM → SQLite
+```
+
+**Module Organization:**
+- `app/main.py` - FastAPI app, middleware stack, page routes, exception handlers
+- `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, settings)
+- `app/models/*.py` - SQLAlchemy ORM models (Base from database.py)
+- `app/schemas/*.py` - Pydantic request/response schemas with validation
+- `app/utils/*.py` - Shared utilities (recurrence logic, DB helpers)
+- `app/auth.py` - Session-based auth middleware + login/logout handlers
+- `app/database.py` - Async engine, session factory, `get_db()` dependency
+
+### Frontend Architecture
+
+**No build step.** Vanilla JavaScript with manual module organization:
+- `app/static/js/app.js` - Global utilities (`FP` object), API wrapper, Toast, theme
+- `app/static/js/modal.js` - Reusable modal controller
+- `app/static/js/api.js` - Fetch wrapper with CSRF token handling
+- `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, etc.)
+- `app/templates/*.html` - Jinja2 templates extending `base.html`
+
+**Global Objects:**
+- `window.FP` - Date/time formatting, member utilities, UI helpers
+- `window.API` - GET/POST/PUT/DELETE wrappers with error handling
+- `window.Toast` - Notification system
+- `window.Modal` - Modal dialog controller
+
+### Recurring Series Pattern
+
+**Critical Pattern:** Both agenda events and tasks support recurring series with individual exception handling.
+
+**Two-entity model:**
+1. **Series table** (`recurrence_series`, `task_recurrence_series`) - Stores recurrence rule
+2. **Instance table** (`agenda_events`, `tasks`) - Individual occurrences with `series_id` FK
+
+**Workflow:**
+- Creating series → generates all occurrences (max 365) via `utils/recurrence.py`
+- Updating single instance → sets `is_exception=True`, detaches from series updates
+- Updating series → regenerates all non-exception occurrences
+- Deleting series → cascades to all instances
+
+**Recurrence types** (`app/enums.py`):
+- `daily`, `every_other_day`, `weekly`, `biweekly`, `weekdays`, `monthly`
+
+### Database Patterns
+
+**Async Session Management:**
+```python
+# Router dependency injection
+async def endpoint(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Model).where(...))
+    item = result.scalar_one_or_none()
+```
+
+**Many-to-many relationships:**
+- Use junction tables: `agenda_event_members`, `task_members`, etc.
+- Helper: `app/utils/db.py::set_junction_members()` for atomic updates
+- Always use `selectin` loading strategy: `.options(selectinload(Model.members))`
+
+**Important:** Foreign keys have `ON DELETE CASCADE` or `SET NULL` - check models before deleting!
+
+## Key Conventions
+
+### Type Safety (mypy)
+
+- **Union return types in FastAPI routes need `response_model=None`**
+  ```python
+  @app.get("/route", response_model=None)  # Required for Union[HTMLResponse, RedirectResponse]
+  async def handler() -> HTMLResponse | RedirectResponse:
+  ```
+
+- Use `# type: ignore[specific-code]` for unavoidable issues (PIL Image types, slowapi handlers)
+- Prefer explicit dict typing: `dict[str, Any]` over `dict`
+
+### Testing
+
+- Tests use in-memory SQLite (`:memory:`)
+- Authentication disabled via `os.environ["AUTH_DISABLED"] = "1"` in `conftest.py`
+- Each test gets fresh DB (function scope)
+- Use `AsyncClient` from httpx, not TestClient
+
+### Pydantic Schemas
+
+- `Create` - POST request body, excludes id/timestamps
+- `Update` - PUT request body, may have optional fields
+- `Out` - Response model, includes id/timestamps, uses `model_config = ConfigDict(from_attributes=True)`
+- Schemas separate from models to avoid circular imports
+
+### Frontend Data Flow
+
+1. Page loads → fetch data via `API.get()`
+2. Render to DOM (no virtual DOM/reactivity)
+3. User action → form submit/button click
+4. POST/PUT/DELETE via `API.*()`
+5. Success → re-fetch and re-render OR update local state
+6. Show Toast notification
+
+### CSRF Protection
+
+- Enabled via `CSRFMiddleware` in main.py
+- Token auto-injected in base.html: `<meta name="csrf-token" content="{{ request.session.csrf }}">`
+- `api.js` reads token and adds to all non-GET requests
+
+### Commit Messages
+
+Follow conventional commits (enforced by commitlint in CI):
+```
+feat: Add calendar export functionality
+fix: Resolve timezone issue in event display
+docs: Update API documentation
+refactor: Simplify recurring task generation
+test: Add tests for series deletion cascade
+```
+
+## Important Gotchas
+
+1. **Recurring series regeneration is expensive** - deletes and recreates all occurrences. Consider performance for large series.
+
+2. **member_ids handling** - Many-to-many relationships require separate junction table operations. Use `set_junction_members()` utility, not direct ORM assignment.
+
+3. **Datetime handling** - Frontend uses local datetime-local inputs. Backend stores UTC-naive datetime. All-day events store start-of-day datetime with `all_day=True` flag.
+
+4. **Photo uploads** - Original files stored in `app/static/uploads/`, thumbnails (200px) in `app/static/uploads/thumbnails/`. Both JPEG and PNG supported with RGBA→RGB conversion.
+
+5. **Authentication bypass** - Set `AUTH_REQUIRED=false` in .env OR `os.environ["AUTH_DISABLED"]="1"` for tests. Middleware checks both.
+
+6. **Static file versioning** - `base.html` appends `?v={{ static_v }}` to CSS/JS to bust cache. `static_v` is unix timestamp from app startup.
+
+7. **Alembic in async context** - `init_db()` runs Alembic upgrade in thread executor to avoid blocking event loop.
+
+## API Documentation
+
+Interactive docs available at: `http://localhost:8000/api/docs` (Swagger UI)
+
+All API routes return JSON. Common responses:
+- `200` - Success
+- `201` - Created
+- `204` - Deleted (no content)
+- `404` - Not found
+- `422` - Validation error (Pydantic)
+- `400` - SQLAlchemy error
+
+## Useful Queries
+
+**Find all recurring series:**
+```sql
+SELECT * FROM recurrence_series;
+SELECT * FROM task_recurrence_series;
+```
+
+**Find exceptions in a series:**
+```sql
+SELECT * FROM agenda_events WHERE series_id = ? AND is_exception = 1;
+```
+
+**Today's events:**
+```sql
+SELECT * FROM agenda_events
+WHERE date(start_time) = date('now');
+```
