@@ -1,6 +1,6 @@
 """CRUD router for TaskList, TaskRecurrenceSeries and Task."""
 
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
@@ -32,6 +32,15 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 
 def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
+    occurrence_dates = generate_occurrence_dates(
+        recurrence_type=series.recurrence_type,
+        series_start=series.series_start,
+        series_end=series.series_end,
+        interval=series.interval,
+        count=series.count,
+        monthly_pattern=series.monthly_pattern,
+        rrule_string=series.rrule,
+    )
     return [
         Task(
             title=series.title,
@@ -42,7 +51,7 @@ def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
             series_id=series.id,
             is_exception=False,
         )
-        for d in generate_occurrence_dates(series.recurrence_type, series.series_start, series.series_end)
+        for d in occurrence_dates
     ]
 
 
@@ -129,7 +138,27 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/series", response_model=TaskRecurrenceSeriesOut, status_code=201)
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
-    series = TaskRecurrenceSeries(**payload.model_dump(exclude={"member_ids"}))
+    data = payload.model_dump(exclude={"member_ids"})
+
+    # Calculate series_end if count is provided
+    if payload.count and not payload.series_end:
+        # Generate occurrence dates to determine actual end date
+        temp_dates = generate_occurrence_dates(
+            recurrence_type=payload.recurrence_type,
+            series_start=payload.series_start,
+            series_end=None,
+            interval=payload.interval,
+            count=payload.count,
+            monthly_pattern=payload.monthly_pattern,
+            rrule_string=payload.rrule,
+        )
+        if temp_dates:
+            data["series_end"] = temp_dates[-1]
+        else:
+            # Fallback: use series_start + 1 year
+            data["series_end"] = payload.series_start + timedelta(days=365)
+
+    series = TaskRecurrenceSeries(**data)
     db.add(series)
     await db.flush()
     await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
@@ -163,7 +192,27 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
     if not series:
         logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
-    for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
+
+    # Calculate series_end if count is provided
+    update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
+    if payload.count and not payload.series_end:
+        # Generate occurrence dates to determine actual end date
+        temp_dates = generate_occurrence_dates(
+            recurrence_type=payload.recurrence_type,
+            series_start=series.series_start,
+            series_end=None,
+            interval=payload.interval,
+            count=payload.count,
+            monthly_pattern=payload.monthly_pattern,
+            rrule_string=payload.rrule,
+        )
+        if temp_dates:
+            update_data["series_end"] = temp_dates[-1]
+        else:
+            # Fallback: use series_start + 1 year
+            update_data["series_end"] = series.series_start + timedelta(days=365)
+
+    for k, v in update_data.items():
         setattr(series, k, v)
     await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     # Regenerate all non-exception occurrences

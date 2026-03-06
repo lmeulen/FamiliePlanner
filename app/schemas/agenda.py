@@ -18,14 +18,26 @@ class RecurrenceSeriesCreate(BaseModel):
     color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
     series_start: date
-    series_end: date
+    series_end: date | None = None
     start_time_of_day: time
     end_time_of_day: time
+    interval: int = Field(default=1, ge=1, le=365)
+    count: int | None = Field(default=None, ge=1, le=365)
+    monthly_pattern: str | None = None
+    rrule: str | None = None
 
     @model_validator(mode="after")
-    def end_after_start(self) -> "RecurrenceSeriesCreate":
-        if self.series_end <= self.series_start:
+    def validate_recurrence(self) -> "RecurrenceSeriesCreate":
+        # Validate end condition: either count or series_end required
+        if not self.count and not self.series_end:
+            raise ValueError("Either count or series_end required")
+        if self.count and self.series_end:
+            raise ValueError("Cannot specify both count and series_end")
+
+        # Validate series_end is after series_start when provided
+        if self.series_end and self.series_end <= self.series_start:
             raise ValueError("series_end must be after series_start")
+
         return self
 
 
@@ -39,9 +51,22 @@ class RecurrenceSeriesUpdate(BaseModel):
     member_ids: list[int] = Field(default_factory=list)
     color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
-    series_end: date
+    series_end: date | None = None
     start_time_of_day: time
     end_time_of_day: time
+    interval: int = Field(default=1, ge=1, le=365)
+    count: int | None = Field(default=None, ge=1, le=365)
+    monthly_pattern: str | None = None
+    rrule: str | None = None
+
+    @model_validator(mode="after")
+    def validate_end_condition(self) -> "RecurrenceSeriesUpdate":
+        # Validate end condition: either count or series_end required
+        if not self.count and not self.series_end:
+            raise ValueError("Either count or series_end required")
+        if self.count and self.series_end:
+            raise ValueError("Cannot specify both count and series_end")
+        return self
 
 
 class RecurrenceSeriesOut(BaseModel):
@@ -57,6 +82,10 @@ class RecurrenceSeriesOut(BaseModel):
     series_end: date
     start_time_of_day: time
     end_time_of_day: time
+    interval: int = 1
+    count: int | None = None
+    monthly_pattern: str | None = None
+    rrule: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

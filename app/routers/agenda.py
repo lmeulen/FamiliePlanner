@@ -30,6 +30,15 @@ router = APIRouter(prefix="/api/agenda", tags=["agenda"])
 
 
 def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
+    occurrence_dates = generate_occurrence_dates(
+        recurrence_type=series.recurrence_type,
+        series_start=series.series_start,
+        series_end=series.series_end,
+        interval=series.interval,
+        count=series.count,
+        monthly_pattern=series.monthly_pattern,
+        rrule_string=series.rrule,
+    )
     return [
         AgendaEvent(
             title=series.title,
@@ -42,7 +51,7 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
             series_id=series.id,
             is_exception=False,
         )
-        for d in generate_occurrence_dates(series.recurrence_type, series.series_start, series.series_end)
+        for d in occurrence_dates
     ]
 
 
@@ -52,6 +61,25 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
 @router.post("/series", response_model=RecurrenceSeriesOut, status_code=201)
 async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
     data = payload.model_dump(exclude={"member_ids"})
+
+    # Calculate series_end if count is provided
+    if payload.count and not payload.series_end:
+        # Generate occurrence dates to determine actual end date
+        temp_dates = generate_occurrence_dates(
+            recurrence_type=payload.recurrence_type,
+            series_start=payload.series_start,
+            series_end=None,
+            interval=payload.interval,
+            count=payload.count,
+            monthly_pattern=payload.monthly_pattern,
+            rrule_string=payload.rrule,
+        )
+        if temp_dates:
+            data["series_end"] = temp_dates[-1]
+        else:
+            # Fallback: use series_start + 1 year
+            data["series_end"] = payload.series_start + timedelta(days=365)
+
     series = RecurrenceSeries(**data)
     db.add(series)
     await db.flush()
@@ -88,7 +116,26 @@ async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: Asy
         logger.warning("agenda.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
 
-    for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
+    # Calculate series_end if count is provided
+    update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
+    if payload.count and not payload.series_end:
+        # Generate occurrence dates to determine actual end date
+        temp_dates = generate_occurrence_dates(
+            recurrence_type=payload.recurrence_type,
+            series_start=series.series_start,
+            series_end=None,
+            interval=payload.interval,
+            count=payload.count,
+            monthly_pattern=payload.monthly_pattern,
+            rrule_string=payload.rrule,
+        )
+        if temp_dates:
+            update_data["series_end"] = temp_dates[-1]
+        else:
+            # Fallback: use series_start + 1 year
+            update_data["series_end"] = series.series_start + timedelta(days=365)
+
+    for k, v in update_data.items():
         setattr(series, k, v)
     await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
 
@@ -285,8 +332,15 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
 
 def _build_rrule(series: RecurrenceSeries) -> dict:
     """Convert RecurrenceSeries to iCalendar RRULE dict."""
-    rrule: dict = {"UNTIL": datetime.combine(series.series_end, datetime.max.time())}
+    rrule: dict = {}
 
+    # Set end condition (count or until)
+    if series.count:
+        rrule["COUNT"] = series.count
+    else:
+        rrule["UNTIL"] = datetime.combine(series.series_end, datetime.max.time())
+
+    # Base recurrence patterns
     recurrence_map: dict[RecurrenceType, dict] = {
         RecurrenceType.daily: {"FREQ": "DAILY"},
         RecurrenceType.every_other_day: {"FREQ": "DAILY", "INTERVAL": 2},
@@ -299,7 +353,45 @@ def _build_rrule(series: RecurrenceSeries) -> dict:
     if series.recurrence_type in recurrence_map:
         rrule.update(recurrence_map[series.recurrence_type])
 
+    # Apply custom interval (overrides legacy patterns like every_other_day)
+    if series.interval and series.interval > 1:
+        rrule["INTERVAL"] = series.interval
+
+    # Apply monthly pattern if set
+    if (
+        series.recurrence_type == RecurrenceType.monthly
+        and series.monthly_pattern
+        and series.monthly_pattern != "day_of_month"
+    ):
+        byday = _convert_monthly_pattern_to_ical(series.monthly_pattern)
+        if byday:
+            rrule["BYDAY"] = byday
+
     return rrule
+
+
+def _convert_monthly_pattern_to_ical(monthly_pattern: str) -> str | None:
+    """Convert monthly pattern to iCalendar BYDAY format (e.g., 'first_monday' -> '+1MO')."""
+    position_map = {"first": "+1", "second": "+2", "third": "+3", "fourth": "+4", "last": "-1"}
+    weekday_map = {
+        "monday": "MO",
+        "tuesday": "TU",
+        "wednesday": "WE",
+        "thursday": "TH",
+        "friday": "FR",
+        "saturday": "SA",
+        "sunday": "SU",
+    }
+
+    parts = monthly_pattern.split("_")
+    if len(parts) == 2:
+        position_str, weekday_str = parts
+        position = position_map.get(position_str)
+        weekday = weekday_map.get(weekday_str)
+        if position and weekday:
+            return f"{position}{weekday}"
+
+    return None
 
 
 @router.put("/{event_id}", response_model=AgendaEventOut)

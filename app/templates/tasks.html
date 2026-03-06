@@ -73,7 +73,7 @@
     <!-- Recurrence fields -->
     <div id="recurrence-fields" class="hidden">
       <label>Herhaling
-        <select name="recurrence_type">
+        <select name="recurrence_type" id="task-recurrence-type-select">
           <option value="daily">Dagelijks</option>
           <option value="every_other_day">Om de dag</option>
           <option value="weekdays">Werkdagen</option>
@@ -82,10 +82,60 @@
           <option value="monthly">Maandelijks</option>
         </select>
       </label>
-      <label>Einddatum reeks *
-        <input type="date" name="series_end" />
-        <span class="field-error hidden" id="task-series-end-error">Einddatum moet na vervaldatum liggen</span>
-      </label>
+
+      <!-- Interval input (shown for daily/weekly/monthly) -->
+      <div id="task-interval-section" class="hidden">
+        <label>Herhaal elke
+          <div class="form-row">
+            <input type="number" name="interval" value="1" min="1" max="365" style="width: 80px;" />
+            <span id="task-interval-unit" style="margin-left: 0.5rem;">weken</span>
+          </div>
+        </label>
+      </div>
+
+      <!-- Monthly pattern selector (shown when monthly selected) -->
+      <div id="task-monthly-pattern-section" class="hidden">
+        <label>Maandelijks op
+          <select name="monthly_pattern" id="task-monthly-pattern-select">
+            <option value="day_of_month">Dag van de maand</option>
+            <option value="first_monday">Eerste maandag</option>
+            <option value="first_tuesday">Eerste dinsdag</option>
+            <option value="first_wednesday">Eerste woensdag</option>
+            <option value="first_thursday">Eerste donderdag</option>
+            <option value="first_friday">Eerste vrijdag</option>
+            <option value="last_monday">Laatste maandag</option>
+            <option value="last_tuesday">Laatste dinsdag</option>
+            <option value="last_wednesday">Laatste woensdag</option>
+            <option value="last_thursday">Laatste donderdag</option>
+            <option value="last_friday">Laatste vrijdag</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- End condition toggle -->
+      <div class="end-condition-toggle">
+        <label class="radio-label">
+          <input type="radio" name="end_condition" value="date" checked />
+          Op datum
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="end_condition" value="count" />
+          Na aantal keren
+        </label>
+      </div>
+
+      <div id="task-end-date-section">
+        <label>Einddatum reeks *
+          <input type="date" name="series_end" />
+          <span class="field-error hidden" id="task-series-end-error">Einddatum moet na vervaldatum liggen</span>
+        </label>
+      </div>
+
+      <div id="task-end-count-section" class="hidden">
+        <label>Aantal herhalingen *
+          <input type="number" name="count" min="1" max="365" placeholder="Bijv. 10" />
+        </label>
+      </div>
     </div>
 
     <!-- Scope selector (edit of series task) -->

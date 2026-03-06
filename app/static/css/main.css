@@ -1485,3 +1485,17 @@ img { max-width: 100%; }
     color: white;
   }
 }
+
+/* ── RECURRENCE UI ──────────────────────────────────────────────── */
+.end-condition-toggle {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.end-condition-toggle .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}

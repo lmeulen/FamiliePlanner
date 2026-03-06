@@ -176,3 +176,83 @@ async def test_edit_single_event_marks_exception(client: AsyncClient):
     updated = r.json()
     assert updated["is_exception"] is True
     assert updated["series_id"] == series_id
+
+
+# ── Extended recurrence pattern tests ────────────────────────────────────
+
+
+async def test_custom_interval_every_3_days(client: AsyncClient):
+    """Test custom interval: every 3 days."""
+    r = await client.post(
+        "/api/agenda/series",
+        json={
+            **SERIES_BASE,
+            "recurrence_type": "daily",
+            "interval": 3,
+            "series_start": "2026-06-01",
+            "series_end": "2026-06-10",
+        },
+    )
+    assert r.status_code == 201
+
+    events = (await client.get("/api/agenda/", params={"start": "2026-06-01", "end": "2026-06-10"})).json()
+    dates = [e["start_time"][:10] for e in events]
+    assert dates == ["2026-06-01", "2026-06-04", "2026-06-07", "2026-06-10"]
+
+
+async def test_monthly_first_monday(client: AsyncClient):
+    """Test monthly pattern: first Monday of each month."""
+    r = await client.post(
+        "/api/agenda/series",
+        json={
+            **SERIES_BASE,
+            "recurrence_type": "monthly",
+            "monthly_pattern": "first_monday",
+            "series_start": "2026-06-01",  # June 1, 2026 is a Monday
+            "series_end": "2026-09-30",
+        },
+    )
+    assert r.status_code == 201
+
+    events = (await client.get("/api/agenda/", params={"start": "2026-06-01", "end": "2026-09-30"})).json()
+    dates = [e["start_time"][:10] for e in events]
+    # First Mondays: Jun 1, Jul 6, Aug 3, Sep 7
+    assert "2026-06-01" in dates
+    assert "2026-07-06" in dates
+    assert "2026-08-03" in dates
+    assert "2026-09-07" in dates
+
+
+async def test_end_after_count(client: AsyncClient):
+    """Test ending after a specific number of occurrences."""
+    payload = {**SERIES_BASE, "recurrence_type": "weekly", "series_start": "2026-06-01", "count": 5}
+    payload.pop("series_end")  # Remove series_end since we're using count
+
+    r = await client.post("/api/agenda/series", json=payload)
+    assert r.status_code == 201
+
+    events = (await client.get("/api/agenda/", params={"start": "2026-06-01", "end": "2026-12-31"})).json()
+    assert len(events) == 5
+
+
+async def test_validation_count_and_series_end_exclusive(client: AsyncClient):
+    """Test that both count and series_end cannot be specified together."""
+    r = await client.post(
+        "/api/agenda/series",
+        json={
+            **SERIES_BASE,
+            "recurrence_type": "weekly",
+            "series_start": "2026-06-01",
+            "count": 10,
+            "series_end": "2026-12-31",
+        },
+    )
+    assert r.status_code == 422  # Validation error
+
+
+async def test_validation_neither_count_nor_series_end(client: AsyncClient):
+    """Test that either count or series_end is required."""
+    payload = {**SERIES_BASE, "recurrence_type": "weekly", "series_start": "2026-06-01"}
+    payload.pop("series_end")  # Remove series_end
+    r = await client.post("/api/agenda/series", json=payload)
+    assert r.status_code == 422  # Validation error

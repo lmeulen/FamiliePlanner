@@ -42,6 +42,10 @@ class RecurrenceSeries(Base):
     series_end: Mapped[datetime] = mapped_column(Date, nullable=False)
     start_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
     end_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
+    interval: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    monthly_pattern: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    rrule: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
 
     members = relationship("FamilyMember", secondary=recurrence_series_members, lazy="selectin", uselist=True)

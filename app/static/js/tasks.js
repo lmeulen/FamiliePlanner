@@ -164,6 +164,51 @@
       }
     });
 
+    // ── Progressive disclosure for recurrence UI ─────
+    const taskRecurrenceTypeSelect = document.getElementById('task-recurrence-type-select');
+    const taskIntervalSection      = document.getElementById('task-interval-section');
+    const taskIntervalUnit         = document.getElementById('task-interval-unit');
+    const taskMonthlyPatternSection = document.getElementById('task-monthly-pattern-section');
+    const taskEndDateSection       = document.getElementById('task-end-date-section');
+    const taskEndCountSection      = document.getElementById('task-end-count-section');
+    const taskEndConditionRadios   = form.querySelectorAll('input[name="end_condition"]');
+
+    function updateTaskRecurrenceUI() {
+      const recurrenceType = taskRecurrenceTypeSelect.value;
+
+      // Show interval input for daily, weekly, monthly
+      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      taskIntervalSection?.classList.toggle('hidden', !showInterval);
+
+      // Update interval unit text
+      if (recurrenceType === 'daily') {
+        taskIntervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'monthly') {
+        taskIntervalUnit.textContent = 'maanden';
+      } else {
+        taskIntervalUnit.textContent = 'weken';
+      }
+
+      // Show monthly pattern selector only for monthly
+      taskMonthlyPatternSection?.classList.toggle('hidden', recurrenceType !== 'monthly');
+    }
+
+    function updateTaskEndConditionUI() {
+      const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+      taskEndDateSection?.classList.toggle('hidden', endCondition !== 'date');
+      taskEndCountSection?.classList.toggle('hidden', endCondition !== 'count');
+    }
+
+    // Attach event listeners
+    taskRecurrenceTypeSelect?.addEventListener('change', updateTaskRecurrenceUI);
+    taskEndConditionRadios?.forEach(radio => {
+      radio.addEventListener('change', updateTaskEndConditionUI);
+    });
+
+    // Initialize UI state
+    updateTaskRecurrenceUI();
+    updateTaskEndConditionUI();
+
     if (id) {
       titleEl.textContent = 'Taak bewerken';
       delBtn.classList.remove('hidden');
@@ -180,6 +225,36 @@
           recurRow.classList.add('hidden');    // hide toggle when editing
           recurFields.classList.add('hidden');
           scopeSel.classList.remove('hidden');
+
+          // Scope radio change handler - show recurrence fields when editing series
+          form.querySelectorAll('input[name="edit_scope"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+              const scope = radio.value;
+              recurFields.classList.toggle('hidden', scope !== 'series');
+              if (scope === 'series' && editSeriesId) {
+                // Load series data and populate fields
+                API.get(`/api/tasks/series/${editSeriesId}`).then(s => {
+                  form.querySelector('[name="recurrence_type"]').value = s.recurrence_type;
+                  form.querySelector('[name="interval"]').value = s.interval || 1;
+
+                  if (s.monthly_pattern) {
+                    form.querySelector('[name="monthly_pattern"]').value = s.monthly_pattern;
+                  }
+
+                  if (s.count) {
+                    form.querySelector('input[name="end_condition"][value="count"]').checked = true;
+                    form.querySelector('[name="count"]').value = s.count;
+                  } else {
+                    form.querySelector('input[name="end_condition"][value="date"]').checked = true;
+                    form.querySelector('[name="series_end"]').value = s.series_end;
+                  }
+
+                  updateTaskRecurrenceUI();
+                  updateTaskEndConditionUI();
+                }).catch(() => {});
+              }
+            });
+          });
         } else {
           recurRow.classList.remove('hidden');
           scopeSel.classList.add('hidden');
@@ -217,16 +292,7 @@
 
       // Creating a new recurring series
       if (!editTaskId && recurToggle.checked) {
-        const seriesEndInput = form.querySelector('[name="series_end"]');
-        const seriesEndErr   = document.getElementById('task-series-end-error');
-        const seriesEnd      = seriesEndInput.value;
-        const dueDate        = form.due_date.value;
-        if (!seriesEnd || seriesEnd <= dueDate) {
-          seriesEndErr?.classList.remove('hidden');
-          seriesEndInput.focus();
-          return;
-        }
-        seriesEndErr?.classList.add('hidden');
+        const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
         const payload = {
           title:           form.title.value,
           description:     form.description.value,
@@ -234,8 +300,34 @@
           member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]').value,
           series_start:    form.due_date.value,
-          series_end:      seriesEnd,
+          interval:        parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
         };
+
+        // Add monthly pattern if monthly type
+        const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
+        if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
+          payload.monthly_pattern = monthlyPattern.value;
+        }
+
+        // Add end condition (date or count)
+        if (endCondition === 'date') {
+          const seriesEndInput = form.querySelector('[name="series_end"]');
+          const seriesEndErr   = document.getElementById('task-series-end-error');
+          const seriesEnd      = seriesEndInput.value;
+          const dueDate        = form.due_date.value;
+          if (!seriesEnd || seriesEnd <= dueDate) {
+            seriesEndErr?.classList.remove('hidden');
+            seriesEndInput.focus();
+            return;
+          }
+          seriesEndErr?.classList.add('hidden');
+          payload.series_end = seriesEnd;
+        } else {
+          const countVal = form.querySelector('input[name="count"]')?.value;
+          if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
+          payload.count = parseInt(countVal);
+        }
+
         try {
           await API.post('/api/tasks/series', payload);
           Toast.show('Reeks aangemaakt!');
@@ -247,14 +339,31 @@
 
       // Editing series as a whole
       if (editSeriesId && scope === 'series') {
+        const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
         const payload = {
           title:           form.title.value,
           description:     form.description.value,
           list_id:         listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
           member_ids:      memberIds,
           recurrence_type: form.querySelector('[name="recurrence_type"]')?.value || 'weekly',
-          series_end:      form.due_date.value,
+          interval:        parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
         };
+
+        // Add monthly pattern if monthly type
+        const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
+        if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
+          payload.monthly_pattern = monthlyPattern.value;
+        }
+
+        // Add end condition (date or count)
+        if (endCondition === 'date') {
+          payload.series_end = form.due_date.value;
+        } else {
+          const countVal = form.querySelector('input[name="count"]')?.value;
+          if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
+          payload.count = parseInt(countVal);
+        }
+
         try {
           await API.put(`/api/tasks/series/${editSeriesId}`, payload);
           Toast.show('Reeks bijgewerkt!');
