@@ -553,6 +553,7 @@
     let photos  = [];
     let current = 0;
     let timer   = null;
+    let intervalSeconds = 8;
 
     function showPhoto(index) {
       if (!photos.length) return;
@@ -571,12 +572,16 @@
         `<span class="dot${i === 0 ? ' active' : ''}" data-i="${i}" role="button" tabindex="0" aria-label="Foto ${i+1}"></span>`
       ).join('');
       dots.querySelectorAll('.dot').forEach(d => {
-        d.addEventListener('click', () => { clearInterval(timer); showPhoto(+d.dataset.i); startTimer(); });
+        d.addEventListener('click', () => { clearInterval(timer); showPhoto(+d.dataset.i); startTimer(intervalSeconds); });
       });
     }
 
-    function startTimer() {
-      if (photos.length > 1) timer = setInterval(() => showPhoto(current + 1), 8000);
+    function startTimer(interval) {
+      if (photos.length > 1) {
+        intervalSeconds = interval || 8;
+        const intervalMs = intervalSeconds * 1000;
+        timer = setInterval(() => showPhoto(current + 1), intervalMs);
+      }
     }
 
     async function load() {
@@ -591,7 +596,8 @@
         wrap.removeAttribute('aria-hidden');
         buildDots();
         showPhoto(0);
-        startTimer();
+        intervalSeconds = s?.dashboard_photo_interval || 8;
+        startTimer(intervalSeconds);
       } catch { /* geen fotos beschikbaar */ }
     }
 

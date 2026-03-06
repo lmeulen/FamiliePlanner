@@ -6,6 +6,9 @@
   const photoHeightRow    = document.getElementById('photo-height-row');
   const photoSlider       = document.getElementById('photo-height');
   const photoValEl        = document.getElementById('photo-height-val');
+  const photoIntervalRow  = document.getElementById('photo-interval-row');
+  const photoIntervalSlider = document.getElementById('photo-interval');
+  const photoIntervalValEl = document.getElementById('photo-interval-val');
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
   const weatherLocationInput = document.getElementById('weather-location');
@@ -15,6 +18,8 @@
     const enabled = photoToggle.checked;
     photoHeightRow.style.opacity = enabled ? '' : '0.4';
     photoSlider.disabled = !enabled;
+    photoIntervalRow.style.opacity = enabled ? '' : '0.4';
+    photoIntervalSlider.disabled = !enabled;
   }
 
   function updateWeatherLocationRow() {
@@ -35,6 +40,10 @@
     photoSlider.value = h;
     photoValEl.textContent = h;
 
+    const interval = s.dashboard_photo_interval || 8;
+    photoIntervalSlider.value = interval;
+    photoIntervalValEl.textContent = interval;
+
     const theme = s.theme || 'system';
     const radio = form.querySelector(`input[name="theme"][value="${theme}"]`);
     if (radio) radio.checked = true;
@@ -51,6 +60,10 @@
     photoValEl.textContent = photoSlider.value;
   });
 
+  photoIntervalSlider.addEventListener('input', () => {
+    photoIntervalValEl.textContent = photoIntervalSlider.value;
+  });
+
   photoToggle.addEventListener('change', updatePhotoHeightRow);
   weatherToggle.addEventListener('change', updateWeatherLocationRow);
 
@@ -62,6 +75,7 @@
       auth_required: authToggle.checked,
       dashboard_photo_enabled: photoToggle.checked,
       dashboard_photo_height: parseInt(photoSlider.value, 10),
+      dashboard_photo_interval: parseInt(photoIntervalSlider.value, 10),
       theme,
       weather_enabled: weatherToggle.checked,
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',

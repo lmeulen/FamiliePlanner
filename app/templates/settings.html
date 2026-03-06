@@ -71,6 +71,16 @@
                class="settings-slider" aria-label="Fotogrootte" />
       </div>
 
+      <div class="settings-row settings-row--col" id="photo-interval-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Foto wissel interval</span>
+          <span class="settings-label-hint">Tijd tussen foto's in seconden (<span id="photo-interval-val">8</span>s)</span>
+        </span>
+        <input type="range" id="photo-interval" name="dashboard_photo_interval"
+               min="3" max="60" step="1" value="8"
+               class="settings-slider" aria-label="Foto interval" />
+      </div>
+
       <label class="settings-row">
         <span class="settings-label">
           <span class="settings-label-main">Weer widget op overzichtspagina</span>

@@ -23,7 +23,7 @@ from app.models.photos import Photo
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Keys managed by this router
-_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "theme", "weather_enabled", "weather_location"}
+_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "dashboard_photo_interval", "theme", "weather_enabled", "weather_location"}
 
 
 async def _get(db: AsyncSession, key: str, default: str) -> str:
@@ -46,6 +46,7 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
         "auth_required": (await _get(db, "auth_required", str(get_auth_required()))).lower() in ("1", "true"),
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
         "dashboard_photo_enabled": (await _get(db, "dashboard_photo_enabled", "true")).lower() in ("1", "true"),
+        "dashboard_photo_interval": int(await _get(db, "dashboard_photo_interval", "8")),
         "theme": await _get(db, "theme", "system"),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
@@ -65,6 +66,10 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "dashboard_photo_height" in payload:
         h = max(10, min(80, int(payload["dashboard_photo_height"])))
         await _set(db, "dashboard_photo_height", str(h))
+
+    if "dashboard_photo_interval" in payload:
+        i = max(3, min(60, int(payload["dashboard_photo_interval"])))
+        await _set(db, "dashboard_photo_interval", str(i))
 
     if "theme" in payload:
         t = payload["theme"] if payload["theme"] in ("light", "dark", "system") else "system"
