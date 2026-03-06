@@ -7,6 +7,7 @@ A per-session token is stored in the Starlette session and must be echoed:
 The token is exposed to templates via ``request.state.csrf_token``.
 Set ``AUTH_DISABLED=1`` in the environment to skip CSRF checks (tests only).
 """
+
 import os
 import secrets
 

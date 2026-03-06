@@ -1,13 +1,15 @@
 """CRUD router for Meal planner."""
+
 from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.meals import Meal
 from app.enums import MealType
+from app.models.meals import Meal
 from app.schemas.meals import MealCreate, MealOut, MealUpdate
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
@@ -38,11 +40,7 @@ async def list_meals(
 @router.get("/today", response_model=list[MealOut])
 async def today_meals(db: AsyncSession = Depends(get_db)):
     today = date.today()
-    stmt = (
-        select(Meal)
-        .where(Meal.date == today)
-        .order_by(Meal.meal_type)
-    )
+    stmt = select(Meal).where(Meal.date == today).order_by(Meal.meal_type)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -51,11 +49,7 @@ async def today_meals(db: AsyncSession = Depends(get_db)):
 async def week_meals(db: AsyncSession = Depends(get_db)):
     today = date.today()
     end = today + timedelta(days=7)
-    stmt = (
-        select(Meal)
-        .where(and_(Meal.date >= today, Meal.date <= end))
-        .order_by(Meal.date, Meal.meal_type)
-    )
+    stmt = select(Meal).where(and_(Meal.date >= today, Meal.date <= end)).order_by(Meal.date, Meal.meal_type)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -80,9 +74,7 @@ async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{meal_id}", response_model=MealOut)
-async def update_meal(
-    meal_id: int, payload: MealUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_meal(meal_id: int, payload: MealUpdate, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
         logger.warning("meals.meal.not_found id={}", meal_id)

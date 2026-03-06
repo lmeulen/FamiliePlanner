@@ -1,10 +1,13 @@
 """Pydantic schemas for AgendaEvent and RecurrenceSeries."""
+
 from datetime import date, datetime, time
+
 from pydantic import BaseModel, Field, model_validator
+
 from app.enums import RecurrenceType
 
-
 # ── Recurrence series ────────────────────────────────────────────
+
 
 class RecurrenceSeriesCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -28,6 +31,7 @@ class RecurrenceSeriesCreate(BaseModel):
 
 class RecurrenceSeriesUpdate(BaseModel):
     """series_start is immutable after creation; all other fields may be updated."""
+
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
     location: str = Field(default="", max_length=200)
@@ -59,6 +63,7 @@ class RecurrenceSeriesOut(BaseModel):
 
 
 # ── Agenda event ─────────────────────────────────────────────────
+
 
 class AgendaEventBase(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -100,4 +105,3 @@ class AgendaEventOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-

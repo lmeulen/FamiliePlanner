@@ -1,11 +1,13 @@
 """Task list model."""
-from datetime import datetime, date
-from sqlalchemy import String, Date, DateTime, Boolean, Integer, ForeignKey, Text, Table, Column, func
+
+from datetime import date, datetime
+
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 from app.enums import RecurrenceType
-
 
 # ── Many-to-many junction tables ────────────────────────────────────────────
 
@@ -36,6 +38,7 @@ class TaskList(Base):
 
 class TaskRecurrenceSeries(Base):
     """Stores the recurrence rule for a series of tasks."""
+
     __tablename__ = "task_recurrence_series"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -80,4 +83,3 @@ class Task(Base):
     @property
     def member_ids(self) -> list[int]:
         return [m.id for m in (self.members or [])]
-

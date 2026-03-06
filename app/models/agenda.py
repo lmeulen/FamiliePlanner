@@ -1,11 +1,13 @@
 """Agenda / calendar event model – includes recurring series support."""
+
 from datetime import datetime, time
-from sqlalchemy import String, DateTime, Boolean, Integer, ForeignKey, Text, Date, Time, Table, Column, func
+
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Table, Text, Time, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 from app.enums import RecurrenceType
-
 
 # ── Many-to-many junction tables ────────────────────────────────────────────
 
@@ -26,6 +28,7 @@ agenda_event_members = Table(
 
 class RecurrenceSeries(Base):
     """Stores the recurrence rule for a series of agenda events."""
+
     __tablename__ = "recurrence_series"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -71,4 +74,3 @@ class AgendaEvent(Base):
     @property
     def member_ids(self) -> list[int]:
         return [m.id for m in (self.members or [])]
-

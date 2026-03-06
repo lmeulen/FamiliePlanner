@@ -2,8 +2,9 @@
 FamiliePlanner – FastAPI application entry point.
 Mounts static files, registers routers, serves Jinja2 templates.
 """
-from contextlib import asynccontextmanager
+
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -23,7 +24,8 @@ from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
 from app.logging_config import setup_logging
-from app.routers import agenda, family, meals, tasks, photos, settings as settings_router
+from app.routers import agenda, family, meals, photos, tasks
+from app.routers import settings as settings_router
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI):
     from app.auth import set_auth_required
     from app.database import AsyncSessionLocal
     from app.models.settings import AppSetting
+
     async with AsyncSessionLocal() as db:
         row = await db.get(AppSetting, "auth_required")
         if row is not None:
@@ -71,6 +74,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 # ── Database exception handlers ───────────────────────────────────
 
+
 def _integrity_message(exc: IntegrityError) -> str:
     msg = str(exc.orig).lower()
     if "foreign key" in msg:
@@ -95,6 +99,7 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
 
 # ── Request logging middleware ────────────────────────────────────
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
@@ -109,9 +114,9 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
-
 
 # ── Health check ─────────────────────────────────────────────────
+
 
 @app.get("/health", tags=["health"], include_in_schema=True)
 async def health():
@@ -156,6 +161,7 @@ app.get("/logout")(logout)
 # ────────────────────────────────────────────────
 # Page routes – each renders a Jinja2 template
 # ────────────────────────────────────────────────
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):

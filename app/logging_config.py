@@ -5,6 +5,7 @@ Loguru logging configuration for FamiliePlanner.
 - File: logs/familieplanner-YYYY-MM-DD.log, rotated daily, retained 7 days
 - Stdlib logging (uvicorn, sqlalchemy) is routed through loguru via InterceptHandler
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -21,12 +22,7 @@ LOG_FORMAT = (
     "{message}"
 )
 
-FILE_FORMAT = (
-    "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
-    "{level: <8} | "
-    "{name}:{function}:{line} | "
-    "{message}"
-)
+FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss.SSS} | " "{level: <8} | " "{name}:{function}:{line} | " "{message}"
 
 
 class InterceptHandler(logging.Handler):
@@ -43,9 +39,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def setup_logging(level: str = "INFO") -> None:
@@ -67,11 +61,11 @@ def setup_logging(level: str = "INFO") -> None:
         LOGS_DIR / "familieplanner-{time:YYYY-MM-DD}.log",
         format=FILE_FORMAT,
         level=level,
-        rotation="00:00",       # new file every midnight
-        retention="7 days",     # delete files older than 7 days
-        compression="gz",       # compress rotated files
+        rotation="00:00",  # new file every midnight
+        retention="7 days",  # delete files older than 7 days
+        compression="gz",  # compress rotated files
         backtrace=True,
-        diagnose=False,         # avoid leaking sensitive data in file
+        diagnose=False,  # avoid leaking sensitive data in file
         encoding="utf-8",
     )
 

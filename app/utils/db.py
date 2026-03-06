@@ -21,11 +21,18 @@ async def set_junction_members(
             )
         logger.debug(
             "set_junction_members table={} {}={} member_ids={}",
-            junction_table.name, key_col, key_val, member_ids,
+            junction_table.name,
+            key_col,
+            key_val,
+            member_ids,
         )
     except Exception as exc:
         logger.error(
             "set_junction_members FAILED table={} {}={} member_ids={} error={}",
-            junction_table.name, key_col, key_val, member_ids, exc,
+            junction_table.name,
+            key_col,
+            key_val,
+            member_ids,
+            exc,
         )
         raise

@@ -1,4 +1,5 @@
 """API router for application settings."""
+
 import json
 from datetime import date, datetime, time
 from io import BytesIO
@@ -13,17 +14,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_auth_required, set_auth_required
 from app.config import OPENWEATHER_API_KEY
 from app.database import get_db
-from app.models.settings import AppSetting
+from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.models.family import FamilyMember
 from app.models.meals import Meal
-from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
-from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.models.photos import Photo
+from app.models.settings import AppSetting
+from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 # Keys managed by this router
-_KEYS = {"auth_required", "dashboard_photo_height", "dashboard_photo_enabled", "dashboard_photo_interval", "theme", "weather_enabled", "weather_location"}
+_KEYS = {
+    "auth_required",
+    "dashboard_photo_height",
+    "dashboard_photo_enabled",
+    "dashboard_photo_interval",
+    "theme",
+    "weather_enabled",
+    "weather_location",
+}
 
 
 async def _get(db: AsyncSession, key: str, default: str) -> str:
@@ -137,24 +146,20 @@ async def backup_database(db: AsyncSession = Depends(get_db)):
             "agenda_event_members": await _export_junction_table(db, agenda_event_members),
             "meals": await _export_table_data(db, Meal, "meals"),
             "photos": await _export_table_data(db, Photo, "photos"),
-        }
+        },
     }
 
     # Convert to formatted JSON
     json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
 
     # Create a streaming response with the JSON file
-    json_bytes = BytesIO(json_content.encode('utf-8'))
+    json_bytes = BytesIO(json_content.encode("utf-8"))
     filename = f"familieplanner-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
 
     logger.info("backup.completed filename={}", filename)
 
     return StreamingResponse(
-        json_bytes,
-        media_type="application/json",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
-        }
+        json_bytes, media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
@@ -166,7 +171,17 @@ async def _clear_all_data(db: AsyncSession):
     await db.execute(task_members.delete())
     await db.execute(task_recurrence_series_members.delete())
 
-    for model in [AgendaEvent, RecurrenceSeries, Task, TaskRecurrenceSeries, TaskList, Meal, Photo, FamilyMember, AppSetting]:
+    for model in [
+        AgendaEvent,
+        RecurrenceSeries,
+        Task,
+        TaskRecurrenceSeries,
+        TaskList,
+        Meal,
+        Photo,
+        FamilyMember,
+        AppSetting,
+    ]:
         await db.execute(model.__table__.delete())
 
     await db.commit()
@@ -178,15 +193,15 @@ def _deserialize_value(value, column_type):
         return None
 
     type_name = str(column_type)
-    if 'DATE' in type_name.upper() and 'TIME' not in type_name.upper():
+    if "DATE" in type_name.upper() and "TIME" not in type_name.upper():
         return datetime.fromisoformat(value).date() if isinstance(value, str) else value
-    elif 'DATETIME' in type_name.upper():
+    elif "DATETIME" in type_name.upper():
         return datetime.fromisoformat(value) if isinstance(value, str) else value
-    elif 'TIME' in type_name.upper() and 'DATE' not in type_name.upper():
+    elif "TIME" in type_name.upper() and "DATE" not in type_name.upper():
         # Parse time from ISO format (HH:MM:SS)
         if isinstance(value, str):
-            parts = value.split(':')
-            return time(int(parts[0]), int(parts[1]), int(parts[2].split('.')[0]) if len(parts) > 2 else 0)
+            parts = value.split(":")
+            return time(int(parts[0]), int(parts[1]), int(parts[2].split(".")[0]) if len(parts) > 2 else 0)
         return value
 
     return value
@@ -219,7 +234,7 @@ async def restore_database(file: UploadFile = File(...), db: AsyncSession = Depe
     try:
         # Read and parse JSON
         content = await file.read()
-        backup_data = json.loads(content.decode('utf-8'))
+        backup_data = json.loads(content.decode("utf-8"))
 
         # Validate structure
         if "data" not in backup_data:
@@ -270,12 +285,12 @@ async def restore_database(file: UploadFile = File(...), db: AsyncSession = Depe
         logger.info("restore.completed")
         return {"status": "success", "message": "Database restored successfully"}
 
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON file") from e
     except Exception as e:
         await db.rollback()
         logger.error("restore.failed error={}", str(e))
-        raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}") from e
 
 
 @router.get("/weather")
@@ -283,31 +298,37 @@ async def get_weather(location: str, db: AsyncSession = Depends(get_db)):
     """Fetch weather data from OpenWeatherMap API."""
     if not OPENWEATHER_API_KEY:
         logger.warning("weather.fetch.failed: API key not configured")
-        raise HTTPException(status_code=503, detail="Geen API key geconfigureerd. Voeg OPENWEATHER_API_KEY toe aan .env")
+        raise HTTPException(
+            status_code=503, detail="Geen API key geconfigureerd. Voeg OPENWEATHER_API_KEY toe aan .env"
+        )
 
     try:
         async with httpx.AsyncClient() as client:
-            url = f"https://api.openweathermap.org/data/2.5/weather"
-            params = {
-                "q": location,
-                "appid": OPENWEATHER_API_KEY,
-                "units": "metric",
-                "lang": "nl"
-            }
+            url = "https://api.openweathermap.org/data/2.5/weather"
+            params = {"q": location, "appid": OPENWEATHER_API_KEY, "units": "metric", "lang": "nl"}
             response = await client.get(url, params=params, timeout=5.0)
 
             if response.status_code == 401:
                 logger.error("weather.fetch.failed location={} error=Invalid API key", location)
-                raise HTTPException(status_code=401, detail="Ongeldige API key. Vraag een nieuwe aan op openweathermap.org")
+                raise HTTPException(
+                    status_code=401, detail="Ongeldige API key. Vraag een nieuwe aan op openweathermap.org"
+                )
 
             if response.status_code != 200:
-                logger.error("weather.fetch.failed location={} status={} response={}", location, response.status_code, response.text)
-                raise HTTPException(status_code=response.status_code, detail=f"Weather API error: {response.status_code}")
+                logger.error(
+                    "weather.fetch.failed location={} status={} response={}",
+                    location,
+                    response.status_code,
+                    response.text,
+                )
+                raise HTTPException(
+                    status_code=response.status_code, detail=f"Weather API error: {response.status_code}"
+                )
 
             return response.json()
 
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Weather API timeout")
+    except httpx.TimeoutException as e:
+        raise HTTPException(status_code=504, detail="Weather API timeout") from e
     except Exception as e:
         logger.error("weather.fetch.failed location={} error={}", location, str(e))
-        raise HTTPException(status_code=500, detail="Failed to fetch weather data")
+        raise HTTPException(status_code=500, detail="Failed to fetch weather data") from e

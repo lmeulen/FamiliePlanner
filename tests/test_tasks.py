@@ -1,8 +1,8 @@
 """Tests for /api/tasks endpoints."""
-import pytest
-from datetime import date, timedelta
-from httpx import AsyncClient
 
+from datetime import date, timedelta
+
+from httpx import AsyncClient
 
 TODAY = date.today().isoformat()
 YESTERDAY = (date.today() - timedelta(days=1)).isoformat()
@@ -29,6 +29,7 @@ SERIES_BASE = {
 
 
 # ── Task Lists ────────────────────────────────────────────────────
+
 
 async def test_list_task_lists_empty(client: AsyncClient):
     r = await client.get("/api/tasks/lists")
@@ -73,6 +74,7 @@ async def test_delete_task_list_not_found(client: AsyncClient):
 
 
 # ── Tasks CRUD ────────────────────────────────────────────────────
+
 
 async def test_list_tasks_empty(client: AsyncClient):
     r = await client.get("/api/tasks/")
@@ -148,6 +150,7 @@ async def test_delete_task_not_found(client: AsyncClient):
 
 # ── Task filters ──────────────────────────────────────────────────
 
+
 async def test_list_tasks_filter_done(client: AsyncClient):
     await client.post("/api/tasks/", json=TASK_BASE)
     created2 = (await client.post("/api/tasks/", json={**TASK_BASE, "title": "Taak 2"})).json()
@@ -181,6 +184,7 @@ async def test_overdue_tasks(client: AsyncClient):
 
 
 # ── Recurrence series ─────────────────────────────────────────────
+
 
 async def test_create_task_series_generates_tasks(client: AsyncClient):
     r = await client.post("/api/tasks/series", json=SERIES_BASE)

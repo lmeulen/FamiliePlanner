@@ -1,6 +1,9 @@
 """Pydantic schemas for Meal."""
+
 from datetime import date, datetime
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+from pydantic import BaseModel, Field, field_validator
+
 from app.enums import MealType
 
 

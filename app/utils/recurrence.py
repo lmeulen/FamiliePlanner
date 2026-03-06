@@ -32,10 +32,10 @@ def generate_occurrence_dates(
         else:
             results.append(current)
             delta = {
-                RecurrenceType.daily:           timedelta(days=1),
+                RecurrenceType.daily: timedelta(days=1),
                 RecurrenceType.every_other_day: timedelta(days=2),
-                RecurrenceType.weekly:          timedelta(weeks=1),
-                RecurrenceType.biweekly:        timedelta(weeks=2),
+                RecurrenceType.weekly: timedelta(weeks=1),
+                RecurrenceType.biweekly: timedelta(weeks=2),
             }[recurrence_type]
             current += delta
 

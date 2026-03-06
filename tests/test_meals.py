@@ -1,8 +1,8 @@
 """Tests for /api/meals endpoints."""
-import pytest
-from datetime import date, timedelta
-from httpx import AsyncClient
 
+from datetime import date, timedelta
+
+from httpx import AsyncClient
 
 TODAY = date.today().isoformat()
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()

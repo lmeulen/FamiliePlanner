@@ -1,5 +1,5 @@
 """Tests for /api/family endpoints."""
-import pytest
+
 from httpx import AsyncClient
 
 
@@ -37,7 +37,9 @@ async def test_get_member_not_found(client: AsyncClient):
 
 async def test_update_member(client: AsyncClient):
     created = (await client.post("/api/family/", json={"name": "Carol", "color": "#0000FF", "avatar": "🧒"})).json()
-    r = await client.put(f"/api/family/{created['id']}", json={"name": "Carol Updated", "color": "#0000FF", "avatar": "🧒"})
+    r = await client.put(
+        f"/api/family/{created['id']}", json={"name": "Carol Updated", "color": "#0000FF", "avatar": "🧒"}
+    )
     assert r.status_code == 200
     assert r.json()["name"] == "Carol Updated"
 

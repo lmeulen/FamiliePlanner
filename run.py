@@ -3,7 +3,9 @@ Entry point to start the FamiliePlanner server.
 Usage: python run.py
        or: python run.py --host 0.0.0.0 --port 8000 --reload
 """
+
 import argparse
+
 import uvicorn
 
 if __name__ == "__main__":

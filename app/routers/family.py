@@ -1,4 +1,5 @@
 """CRUD router for FamilyMember."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from sqlalchemy import select
@@ -37,9 +38,7 @@ async def get_member(member_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{member_id}", response_model=FamilyMemberOut)
-async def update_member(
-    member_id: int, payload: FamilyMemberUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_member(member_id: int, payload: FamilyMemberUpdate, db: AsyncSession = Depends(get_db)):
     member = await db.get(FamilyMember, member_id)
     if not member:
         logger.warning("family.member.not_found id={}", member_id)

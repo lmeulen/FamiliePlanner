@@ -1,10 +1,13 @@
 """Pydantic schemas for TaskList, TaskRecurrenceSeries and Task."""
+
 from datetime import date, datetime
+
 from pydantic import BaseModel, Field, model_validator
+
 from app.enums import RecurrenceType
 
-
 # ---- TaskList ----
+
 
 class TaskListBase(BaseModel):
     name: str = Field(min_length=1, max_length=100)
@@ -38,6 +41,7 @@ class OverduePositionOut(BaseModel):
 
 # ---- TaskRecurrenceSeries ----
 
+
 class TaskRecurrenceSeriesCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
@@ -56,6 +60,7 @@ class TaskRecurrenceSeriesCreate(BaseModel):
 
 class TaskRecurrenceSeriesUpdate(BaseModel):
     """series_start is immutable after creation."""
+
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
     list_id: int | None = None
@@ -79,6 +84,7 @@ class TaskRecurrenceSeriesOut(BaseModel):
 
 
 # ---- Task ----
+
 
 class TaskBase(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -110,4 +116,3 @@ class TaskOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-

@@ -4,9 +4,9 @@ Run this script after upgrading to add thumbnails for existing photos.
 
 Usage: python generate_missing_thumbnails.py
 """
+
 import asyncio
 from pathlib import Path
-from io import BytesIO
 
 from PIL import Image
 from sqlalchemy import select
@@ -26,12 +26,12 @@ def generate_thumbnail(image_path: Path, output_path: Path) -> bool:
         img = Image.open(image_path)
 
         # Convert RGBA to RGB if needed
-        if img.mode == 'RGBA':
-            background = Image.new('RGB', img.size, (255, 255, 255))
+        if img.mode == "RGBA":
+            background = Image.new("RGB", img.size, (255, 255, 255))
             background.paste(img, mask=img.split()[3])
             img = background
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
 
         # Calculate thumbnail size
         width, height = img.size

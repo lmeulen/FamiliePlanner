@@ -1,21 +1,32 @@
 """CRUD router for TaskList, TaskRecurrenceSeries and Task."""
+
 from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
-from sqlalchemy import select, and_, delete as sa_delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import and_, select
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.models.settings import AppSetting
+from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.tasks import (
-    TaskCreate, TaskListCreate, TaskListOut, TaskListUpdate, TaskListReorderItem, OverduePositionOut,
-    TaskOut, TaskUpdate,
-    TaskRecurrenceSeriesCreate, TaskRecurrenceSeriesOut, TaskRecurrenceSeriesUpdate,
+    OverduePositionOut,
+    TaskCreate,
+    TaskListCreate,
+    TaskListOut,
+    TaskListReorderItem,
+    TaskListUpdate,
+    TaskOut,
+    TaskRecurrenceSeriesCreate,
+    TaskRecurrenceSeriesOut,
+    TaskRecurrenceSeriesUpdate,
+    TaskUpdate,
 )
-from app.utils.recurrence import generate_occurrence_dates
 from app.utils.db import set_junction_members
+from app.utils.recurrence import generate_occurrence_dates
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -36,6 +47,7 @@ def _make_tasks_for_series(series: TaskRecurrenceSeries) -> list[Task]:
 
 
 # ---- Task Lists ----
+
 
 @router.get("/lists", response_model=list[TaskListOut])
 async def list_task_lists(db: AsyncSession = Depends(get_db)):
@@ -88,9 +100,7 @@ async def set_overdue_position(payload: OverduePositionOut, db: AsyncSession = D
 
 
 @router.put("/lists/{list_id}", response_model=TaskListOut)
-async def update_task_list(
-    list_id: int, payload: TaskListUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_task_list(list_id: int, payload: TaskListUpdate, db: AsyncSession = Depends(get_db)):
     tl = await db.get(TaskList, list_id)
     if not tl:
         logger.warning("tasks.list.not_found id={}", list_id)
@@ -115,6 +125,7 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 
 
 # ---- Task Recurrence Series ----
+
 
 @router.post("/series", response_model=TaskRecurrenceSeriesOut, status_code=201)
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
@@ -146,9 +157,7 @@ async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/series/{series_id}", response_model=TaskRecurrenceSeriesOut)
-async def update_task_series(
-    series_id: int, payload: TaskRecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
@@ -158,11 +167,7 @@ async def update_task_series(
         setattr(series, k, v)
     await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
     # Regenerate all non-exception occurrences
-    await db.execute(
-        sa_delete(Task).where(
-            and_(Task.series_id == series_id, Task.is_exception == False)  # noqa: E712
-        )
-    )
+    await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, Task.is_exception == False)))  # noqa: E712
     new_tasks = _make_tasks_for_series(series)
     db.add_all(new_tasks)
     await db.flush()
@@ -193,6 +198,7 @@ async def delete_task_series(series_id: int, db: AsyncSession = Depends(get_db))
 
 # ---- Tasks ----
 
+
 @router.get("/", response_model=list[TaskOut])
 async def list_tasks(
     list_id: int | None = Query(None),
@@ -206,9 +212,7 @@ async def list_tasks(
     if list_id is not None:
         conditions.append(Task.list_id == list_id)
     if member_id is not None:
-        stmt = stmt.join(task_members, Task.id == task_members.c.task_id).where(
-            task_members.c.member_id == member_id
-        )
+        stmt = stmt.join(task_members, Task.id == task_members.c.task_id).where(task_members.c.member_id == member_id)
     if done is not None:
         conditions.append(Task.done == done)
     if due_date is not None:
@@ -253,9 +257,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()
     await set_junction_members(db, task_members, "task_id", task.id, payload.member_ids)
     await db.commit()
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task.id)
-    )
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task.id))
     task = result.scalar_one()
     logger.info("tasks.task.created id={} title='{}'", task.id, task.title)
     return task
@@ -263,9 +265,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{task_id}", response_model=TaskOut)
 async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
-    )
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
@@ -274,12 +274,8 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{task_id}", response_model=TaskOut)
-async def update_task(
-    task_id: int, payload: TaskUpdate, db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
-    )
+async def update_task(task_id: int, payload: TaskUpdate, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
@@ -289,12 +285,10 @@ async def update_task(
         setattr(task, k, v)
     await set_junction_members(db, task_members, "task_id", task.id, payload.member_ids)
     if task.series_id:
-        task.is_exception = True   # mark as individually edited
+        task.is_exception = True  # mark as individually edited
     await db.commit()
     db.expire(task)
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
-    )
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one()
     logger.info("tasks.task.updated id={} title='{}' member_ids={}", task.id, task.title, task.member_ids)
     return task
@@ -302,18 +296,14 @@ async def update_task(
 
 @router.patch("/{task_id}/toggle", response_model=TaskOut)
 async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
-    )
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         logger.warning("tasks.task.not_found id={}", task_id)
         raise HTTPException(404, "Task not found")
     task.done = not task.done
     await db.commit()
-    result = await db.execute(
-        select(Task).options(selectinload(Task.members)).where(Task.id == task_id)
-    )
+    result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one()
     logger.info("tasks.task.toggled id={} done={}", task.id, task.done)
     return task

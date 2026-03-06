@@ -1,22 +1,30 @@
 """CRUD + query router for AgendaEvent and RecurrenceSeries."""
+
 from datetime import date, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
+from icalendar import Calendar
+from icalendar import Event as ICalEvent
 from loguru import logger
-from sqlalchemy import select, and_, delete as sa_delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import and_, select
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from icalendar import Calendar, Event as ICalEvent
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.enums import RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.schemas.agenda import (
-    AgendaEventCreate, AgendaEventOut, AgendaEventUpdate,
-    RecurrenceSeriesCreate, RecurrenceSeriesOut, RecurrenceSeriesUpdate,
+    AgendaEventCreate,
+    AgendaEventOut,
+    AgendaEventUpdate,
+    RecurrenceSeriesCreate,
+    RecurrenceSeriesOut,
+    RecurrenceSeriesUpdate,
 )
-from app.utils.recurrence import generate_occurrence_dates
 from app.utils.db import set_junction_members
-from app.enums import RecurrenceType
+from app.utils.recurrence import generate_occurrence_dates
 
 router = APIRouter(prefix="/api/agenda", tags=["agenda"])
 
@@ -39,6 +47,7 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
 
 
 # ── Recurrence series endpoints ───────────────────────────────────
+
 
 @router.post("/series", response_model=RecurrenceSeriesOut, status_code=201)
 async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
@@ -72,9 +81,7 @@ async def get_series(series_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/series/{series_id}", response_model=RecurrenceSeriesOut)
-async def update_series(
-    series_id: int, payload: RecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
@@ -120,6 +127,7 @@ async def delete_series(series_id: int, db: AsyncSession = Depends(get_db)):
 
 
 # ── Agenda event endpoints ────────────────────────────────────────
+
 
 @router.get("/", response_model=list[AgendaEventOut])
 async def list_events(
@@ -216,55 +224,53 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
     # Fetch series data if this is a recurring event
     series = None
     if event.series_id:
-        series_result = await db.execute(
-            select(RecurrenceSeries).where(RecurrenceSeries.id == event.series_id)
-        )
+        series_result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == event.series_id))
         series = series_result.scalar_one_or_none()
 
     # Create iCalendar
     cal = Calendar()
-    cal.add('prodid', '-//FamiliePlanner//Agenda//NL')
-    cal.add('version', '2.0')
-    cal.add('calscale', 'GREGORIAN')
-    cal.add('method', 'PUBLISH')
+    cal.add("prodid", "-//FamiliePlanner//Agenda//NL")
+    cal.add("version", "2.0")
+    cal.add("calscale", "GREGORIAN")
+    cal.add("method", "PUBLISH")
 
     # Create event
     ical_event = ICalEvent()
-    ical_event.add('uid', f'familieplanner-event-{event.id}@familieplanner')
-    ical_event.add('summary', event.title)
+    ical_event.add("uid", f"familieplanner-event-{event.id}@familieplanner")
+    ical_event.add("summary", event.title)
 
     if event.description:
-        ical_event.add('description', event.description)
+        ical_event.add("description", event.description)
 
     if event.location:
-        ical_event.add('location', event.location)
+        ical_event.add("location", event.location)
 
     # Add timestamps
-    ical_event.add('dtstamp', datetime.now())
-    ical_event.add('created', event.created_at)
+    ical_event.add("dtstamp", datetime.now())
+    ical_event.add("created", event.created_at)
 
     # Handle all-day events
     if event.all_day:
         # For all-day events, use DATE type (not DATETIME)
         event_date = event.start_time.date()
-        ical_event.add('dtstart', event_date)
+        ical_event.add("dtstart", event_date)
         # End date is exclusive in iCalendar for all-day events
         end_date = event.end_time.date() + timedelta(days=1)
-        ical_event.add('dtend', end_date)
+        ical_event.add("dtend", end_date)
     else:
-        ical_event.add('dtstart', event.start_time)
-        ical_event.add('dtend', event.end_time)
+        ical_event.add("dtstart", event.start_time)
+        ical_event.add("dtend", event.end_time)
 
     # Add recurrence rule if this is part of a series
     if series and not event.is_exception:
         rrule = _build_rrule(series)
         if rrule:
-            ical_event.add('rrule', rrule)
+            ical_event.add("rrule", rrule)
 
     cal.add_component(ical_event)
 
     # Generate filename
-    safe_title = "".join(c for c in event.title if c.isalnum() or c in (' ', '-', '_')).strip()
+    safe_title = "".join(c for c in event.title if c.isalnum() or c in (" ", "-", "_")).strip()
     safe_title = safe_title[:50]  # Limit length
     filename = f"{safe_title or 'event'}.ics"
 
@@ -272,24 +278,22 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
 
     return Response(
         content=cal.to_ical(),
-        media_type='text/calendar',
-        headers={
-            'Content-Disposition': f'attachment; filename="{filename}"'
-        }
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
 def _build_rrule(series: RecurrenceSeries) -> dict:
     """Convert RecurrenceSeries to iCalendar RRULE dict."""
-    rrule = {'UNTIL': datetime.combine(series.series_end, datetime.max.time())}
+    rrule = {"UNTIL": datetime.combine(series.series_end, datetime.max.time())}
 
     recurrence_map = {
-        RecurrenceType.daily: {'FREQ': 'DAILY'},
-        RecurrenceType.every_other_day: {'FREQ': 'DAILY', 'INTERVAL': 2},
-        RecurrenceType.weekly: {'FREQ': 'WEEKLY'},
-        RecurrenceType.biweekly: {'FREQ': 'WEEKLY', 'INTERVAL': 2},
-        RecurrenceType.weekdays: {'FREQ': 'WEEKLY', 'BYDAY': ['MO', 'TU', 'WE', 'TH', 'FR']},
-        RecurrenceType.monthly: {'FREQ': 'MONTHLY'},
+        RecurrenceType.daily: {"FREQ": "DAILY"},
+        RecurrenceType.every_other_day: {"FREQ": "DAILY", "INTERVAL": 2},
+        RecurrenceType.weekly: {"FREQ": "WEEKLY"},
+        RecurrenceType.biweekly: {"FREQ": "WEEKLY", "INTERVAL": 2},
+        RecurrenceType.weekdays: {"FREQ": "WEEKLY", "BYDAY": ["MO", "TU", "WE", "TH", "FR"]},
+        RecurrenceType.monthly: {"FREQ": "MONTHLY"},
     }
 
     if series.recurrence_type in recurrence_map:
@@ -299,9 +303,7 @@ def _build_rrule(series: RecurrenceSeries) -> dict:
 
 
 @router.put("/{event_id}", response_model=AgendaEventOut)
-async def update_event(
-    event_id: int, payload: AgendaEventUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_event(event_id: int, payload: AgendaEventUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(AgendaEvent).options(selectinload(AgendaEvent.members)).where(AgendaEvent.id == event_id)
     )
@@ -314,7 +316,7 @@ async def update_event(
         setattr(event, key, value)
     await set_junction_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
     if event.series_id:
-        event.is_exception = True   # mark as individually edited
+        event.is_exception = True  # mark as individually edited
     await db.commit()
     db.expire(event)
     result = await db.execute(

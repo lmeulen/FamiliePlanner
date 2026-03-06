@@ -2,18 +2,19 @@
 Seed script – clears the database and inserts fresh sample data.
 Run:  python seed.py
 """
+
 import asyncio
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import delete, insert
+from sqlalchemy import delete
 
 from app.config import FAMILY_MEMBERS_DEFAULT
 from app.database import AsyncSessionLocal, init_db
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members
 from app.models.family import FamilyMember
 from app.models.meals import Meal, MealType
-from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
 from app.models.settings import AppSetting
+from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
 
 
 async def seed():
@@ -40,7 +41,7 @@ async def seed():
 
         # ---- Task lists ----
         lists = [
-            TaskList(name="Taken",      color="#6C5CE7", sort_order=10),
+            TaskList(name="Taken", color="#6C5CE7", sort_order=10),
             TaskList(name="Huishouden", color="#4ECDC4", sort_order=20),
         ]
         db.add_all(lists)
@@ -55,11 +56,11 @@ async def seed():
 
         today = date.today()
         tasks_seed = [
-            Task(title="Doktersafspraak plannen",  done=False, due_date=today,                    list_id=lists[0].id),
-            Task(title="Verzekering nakijken",     done=False, due_date=today + timedelta(days=3), list_id=lists[0].id),
-            Task(title="Stofzuigen",               done=False, due_date=today,                    list_id=lists[1].id),
-            Task(title="Badkamer schoonmaken",     done=False, due_date=today + timedelta(days=1), list_id=lists[1].id),
-            Task(title="Ramen lappen",             done=False, due_date=today + timedelta(days=5), list_id=lists[1].id),
+            Task(title="Doktersafspraak plannen", done=False, due_date=today, list_id=lists[0].id),
+            Task(title="Verzekering nakijken", done=False, due_date=today + timedelta(days=3), list_id=lists[0].id),
+            Task(title="Stofzuigen", done=False, due_date=today, list_id=lists[1].id),
+            Task(title="Badkamer schoonmaken", done=False, due_date=today + timedelta(days=1), list_id=lists[1].id),
+            Task(title="Ramen lappen", done=False, due_date=today + timedelta(days=5), list_id=lists[1].id),
         ]
         db.add_all(tasks_seed)
         await db.flush()
@@ -96,15 +97,17 @@ async def seed():
         print("[OK] Agenda events created")
 
         # ---- Meals ----
-        db.add_all([
-            Meal(date=today,                       meal_type=MealType.breakfast, name="Havermout met fruit"),
-            Meal(date=today,                       meal_type=MealType.lunch,     name="Broodjes kaas en ham"),
-            Meal(date=today,                       meal_type=MealType.dinner,    name="Spaghetti bolognese"),
-            Meal(date=today + timedelta(days=1),   meal_type=MealType.dinner,    name="Kippensoep"),
-            Meal(date=today + timedelta(days=2),   meal_type=MealType.dinner,    name="Pizza margherita"),
-            Meal(date=today + timedelta(days=3),   meal_type=MealType.dinner,    name="Stamppot boerenkool"),
-            Meal(date=today + timedelta(days=4),   meal_type=MealType.dinner,    name="Zalm met groenten"),
-        ])
+        db.add_all(
+            [
+                Meal(date=today, meal_type=MealType.breakfast, name="Havermout met fruit"),
+                Meal(date=today, meal_type=MealType.lunch, name="Broodjes kaas en ham"),
+                Meal(date=today, meal_type=MealType.dinner, name="Spaghetti bolognese"),
+                Meal(date=today + timedelta(days=1), meal_type=MealType.dinner, name="Kippensoep"),
+                Meal(date=today + timedelta(days=2), meal_type=MealType.dinner, name="Pizza margherita"),
+                Meal(date=today + timedelta(days=3), meal_type=MealType.dinner, name="Stamppot boerenkool"),
+                Meal(date=today + timedelta(days=4), meal_type=MealType.dinner, name="Zalm met groenten"),
+            ]
+        )
         await db.commit()
         print("[OK] Meals created")
 

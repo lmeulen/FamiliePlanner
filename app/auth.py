@@ -1,4 +1,5 @@
 """Authentication middleware and login/logout route handlers."""
+
 import os
 import secrets
 
@@ -55,6 +56,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 
 # ── Login / logout route handlers ────────────────────────────────
+
 
 async def login_get(request: Request) -> HTMLResponse:
     """Show the login form.  Redirect to dashboard if already logged in."""

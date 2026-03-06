@@ -1,13 +1,13 @@
 """Shared pytest fixtures: in-memory SQLite + async test client."""
+
 import os
 
 # Disable authentication for all tests
 os.environ.setdefault("AUTH_DISABLED", "1")
 
-import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 
@@ -19,11 +19,12 @@ async def db_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         # Register all models
-        import app.models.family  # noqa: F401
         import app.models.agenda  # noqa: F401
-        import app.models.tasks   # noqa: F401
-        import app.models.meals   # noqa: F401
+        import app.models.family  # noqa: F401
+        import app.models.meals  # noqa: F401
         import app.models.settings  # noqa: F401
+        import app.models.tasks  # noqa: F401
+
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()

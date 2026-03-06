@@ -1,7 +1,6 @@
 """Tests for /api/agenda endpoints."""
-import pytest
-from httpx import AsyncClient
 
+from httpx import AsyncClient
 
 EVENT_BASE = {
     "title": "Vergadering",
@@ -30,6 +29,7 @@ SERIES_BASE = {
 
 
 # ── Single events ─────────────────────────────────────────────────
+
 
 async def test_list_events_empty(client: AsyncClient):
     r = await client.get("/api/agenda/")
@@ -111,6 +111,7 @@ async def test_week_events_endpoint(client: AsyncClient):
 
 # ── Recurrence series ─────────────────────────────────────────────
 
+
 async def test_create_series_generates_occurrences(client: AsyncClient):
     r = await client.post("/api/agenda/series", json=SERIES_BASE)
     assert r.status_code == 201
@@ -143,10 +144,13 @@ async def test_update_series_regenerates(client: AsyncClient):
     created = (await client.post("/api/agenda/series", json=SERIES_BASE)).json()
     series_id = created["id"]
     # Extend end date by 3 more days → 10 occurrences
-    r = await client.put(f"/api/agenda/series/{series_id}", json={
-        **SERIES_BASE,
-        "series_end": "2026-06-10",
-    })
+    r = await client.put(
+        f"/api/agenda/series/{series_id}",
+        json={
+            **SERIES_BASE,
+            "series_end": "2026-06-10",
+        },
+    )
     assert r.status_code == 200
     events = (await client.get("/api/agenda/", params={"start": "2026-06-01", "end": "2026-06-10"})).json()
     assert len(events) == 10
