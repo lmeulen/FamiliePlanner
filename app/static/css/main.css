@@ -190,6 +190,7 @@ img { max-width: 100%; }
   border-radius: 999px;
   border: 2px solid var(--border);
   background: var(--bg-card);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: .85rem;
   transition: background .15s, border-color .15s, color .15s;
