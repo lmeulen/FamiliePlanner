@@ -154,7 +154,7 @@ app.include_router(photos.router)
 app.include_router(settings_router.router)
 
 # Auth routes – login POST is rate-limited to 5 attempts per minute per IP
-app.get("/login", response_class=HTMLResponse)(login_get)
+app.get("/login", response_class=HTMLResponse, response_model=None)(login_get)
 app.post("/login")(limiter.limit("5/minute")(login_post))
 app.get("/logout")(logout)
 
