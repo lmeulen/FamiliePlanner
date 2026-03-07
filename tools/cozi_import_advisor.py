@@ -23,6 +23,10 @@ from typing import Any
 
 import httpx
 from icalendar import Calendar
+from sqlalchemy import select
+
+from app.database import AsyncSessionLocal
+from app.models.family import FamilyMember
 
 DEFAULT_COZI_ICS_URL = (
     "https://rest.cozi.com/api/ext/1103/071ca6fe-dfab-4b87-8240-6cc7fa3d43d3/" "icalendar/feed/feed.ics"
@@ -36,6 +40,12 @@ class MappingAdvice:
     monthly_pattern: str | None
     supported: bool
     reason: str
+
+
+@dataclass
+class FamilyMemberRecord:
+    id: int
+    name: str
 
 
 def _to_int(value: Any, default: int = 1) -> int:
@@ -102,6 +112,57 @@ def _extract_person_name(property_value: Any) -> str | None:
         raw = raw.split("@", 1)[0]
 
     return raw.strip() or None
+
+
+def _normalize_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def _tokenize_name(value: str) -> list[str]:
+    return [part for part in re.split(r"[^a-zA-Z0-9]+", value.casefold()) if part]
+
+
+def _map_name_to_member_ids(name: str, family_members: list[FamilyMemberRecord]) -> list[int]:
+    normalized = _normalize_name(name)
+    if not normalized:
+        return []
+
+    exact_ids = [member.id for member in family_members if _normalize_name(member.name) == normalized]
+    if exact_ids:
+        return exact_ids
+
+    # Group aliases (except 'all') map to all family members only when no exact match exists.
+    group_aliases = {"iedereen", "everyone", "heelgezin", "gezin"}
+    if normalized in group_aliases:
+        return [member.id for member in family_members]
+
+    # Fallback: match on first token (e.g. "Leo" against "Leo van Dijk")
+    fallback_ids: list[int] = []
+    for member in family_members:
+        tokens = _tokenize_name(member.name)
+        if tokens and tokens[0] == name.casefold().strip():
+            fallback_ids.append(member.id)
+    if fallback_ids:
+        return fallback_ids
+
+    return []
+
+
+def _build_found_name_mapping(
+    found_names: set[str],
+    family_members: list[FamilyMemberRecord],
+) -> dict[str, list[int]]:
+    return {name: _map_name_to_member_ids(name, family_members) for name in sorted(found_names)}
+
+
+async def _load_family_members() -> list[FamilyMemberRecord]:
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(FamilyMember).order_by(FamilyMember.id))
+            rows = result.scalars().all()
+            return [FamilyMemberRecord(id=row.id, name=row.name) for row in rows]
+    except Exception:
+        return []
 
 
 def _extract_members_from_summary(summary: str) -> tuple[list[str], str]:
@@ -209,10 +270,15 @@ def _map_rrule_to_familieplanner(rrule: dict[str, list[Any]]) -> MappingAdvice:
     return MappingAdvice(None, interval, None, False, f"Unsupported FREQ '{freq}'")
 
 
-def _build_event_preview(event: Any, advice: MappingAdvice) -> dict[str, Any]:
+def _build_event_preview(
+    event: Any,
+    advice: MappingAdvice,
+    name_to_member_ids: dict[str, list[int]],
+) -> dict[str, Any]:
     start_dt, end_dt, all_day = _extract_start_end(event)
     summary_raw = str(event.get("SUMMARY", "")).strip() or "(zonder titel)"
     summary_members, summary_title = _extract_members_from_summary(summary_raw)
+    mapped_member_ids = sorted({member_id for name in summary_members for member_id in name_to_member_ids.get(name, [])})
     description = str(event.get("DESCRIPTION", "") or "")
     location = str(event.get("LOCATION", "") or "")
     original_ics = event.to_ical().decode("utf-8", errors="replace")
@@ -224,7 +290,7 @@ def _build_event_preview(event: Any, advice: MappingAdvice) -> dict[str, Any]:
         "start_time": start_dt.isoformat(),
         "end_time": end_dt.isoformat(),
         "all_day": all_day,
-        "member_ids": [],
+        "member_ids": mapped_member_ids,
         "color": "#4ECDC4",
     }
 
@@ -235,7 +301,7 @@ def _build_event_preview(event: Any, advice: MappingAdvice) -> dict[str, Any]:
             "description": description,
             "location": location,
             "all_day": all_day,
-            "member_ids": [],
+            "member_ids": mapped_member_ids,
             "color": "#4ECDC4",
             "recurrence_type": advice.recurrence_type,
             "series_start": start_dt.date().isoformat(),
@@ -251,6 +317,7 @@ def _build_event_preview(event: Any, advice: MappingAdvice) -> dict[str, Any]:
     return {
         "uid": str(event.get("UID", "")),
         "summary_members": summary_members,
+        "mapped_member_ids": mapped_member_ids,
         "original_ics": original_ics,
         "event_payload": event_payload,
         "series_payload": series_payload,
@@ -265,6 +332,9 @@ def _print_recommendations(
     raw_rrule_counter: Counter[str],
     rrule_mapping_counter: dict[str, Counter[str]],
     family_member_counter: Counter[str],
+    found_name_mapping: dict[str, list[int]],
+    family_members: list[FamilyMemberRecord],
+    unmapped_field_counter: Counter[str],
     previews: list[dict[str, Any]],
 ) -> None:
     print("=" * 72)
@@ -281,14 +351,6 @@ def _print_recommendations(
             print(f"- {key}: {count}")
     else:
         print("- Geen herhalingen gevonden")
-    print()
-
-    print("Alle voorkomende RRULE patronen in importbestand:")
-    if raw_rrule_counter:
-        for pattern, count in raw_rrule_counter.most_common():
-            print(f"- {pattern}: {count}")
-    else:
-        print("- Geen RRULE patronen gevonden")
     print()
 
     print("RRULE -> FamiliePlanner herhalingspatroon mapping:")
@@ -310,6 +372,22 @@ def _print_recommendations(
         print("- Geen namen gevonden via ATTENDEE/ORGANIZER/SUMMARY")
     print()
 
+    print("Mapping gevonden gezinsleden -> FamiliePlanner member_ids:")
+    if found_name_mapping:
+        if family_members:
+            members_index = {member.id: member.name for member in family_members}
+            for found_name, member_ids in found_name_mapping.items():
+                if member_ids:
+                    mapped_names = ", ".join(f"{member_id} ({members_index.get(member_id, '?')})" for member_id in member_ids)
+                    print(f"- {found_name} -> [{mapped_names}]")
+                else:
+                    print(f"- {found_name} -> [geen match]")
+        else:
+            print("- Geen familieleden uit database geladen; mapping niet mogelijk")
+    else:
+        print("- Geen gevonden namen om te mappen")
+    print()
+
     print("Aanbevolen veldmapping naar FamiliePlanner:")
     print("- SUMMARY      -> title (zonder '<gezinsleden>: ' prefix)")
     print("- DESCRIPTION  -> description")
@@ -320,8 +398,16 @@ def _print_recommendations(
     print("- RRULE        -> recurrence_type / interval / monthly_pattern")
     print("- UID          -> extern referentieveld in importlog (niet in model)")
     print("- COLOR        -> default '#4ECDC4' (Cozi ICS levert meestal geen kleur)")
-    print("- SUMMARY prefix '<naam>/<naam>: ' -> kandidaat member_ids mapping")
+    print("- SUMMARY prefix '<naam>/<naam>: ' -> mapped member_ids waar mogelijk")
     print("- Gezinsleden  -> member_ids handmatig of via eigen mappingtabel")
+    print()
+
+    print("Niet gemapte veldnamen uit ICS (VEVENT):")
+    if unmapped_field_counter:
+        for field_name, count in unmapped_field_counter.most_common():
+            print(f"- {field_name}: {count}x")
+    else:
+        print("- Geen niet-gemapte veldnamen gevonden")
     print()
 
     if unsupported_recurring:
@@ -390,11 +476,30 @@ async def run() -> None:
     raw_rrule_counter: Counter[str] = Counter()
     rrule_mapping_counter: dict[str, Counter[str]] = {}
     family_member_counter: Counter[str] = Counter()
+    unmapped_field_counter: Counter[str] = Counter()
     recurring_events = 0
     unsupported_recurring = 0
     previews: list[dict[str, Any]] = []
+    found_names: set[str] = set()
+
+    family_members = await _load_family_members()
+    mapped_ics_fields = {
+        "SUMMARY",
+        "DESCRIPTION",
+        "LOCATION",
+        "DTSTART",
+        "DTEND",
+        "RRULE",
+        "UID",
+        "COLOR",
+    }
 
     for event in events:
+        for event_field in event.keys():
+            field_name = str(event_field).upper()
+            if field_name not in mapped_ics_fields:
+                unmapped_field_counter[field_name] += 1
+
         rrule = _normalize_rrule(event)
         pattern = ""
         if rrule:
@@ -405,18 +510,27 @@ async def run() -> None:
             name = _extract_person_name(attendee)
             if name:
                 family_member_counter[name] += 1
+                found_names.add(name)
 
         organizer = event.get("ORGANIZER")
         organizer_name = _extract_person_name(organizer)
         if organizer_name:
             family_member_counter[organizer_name] += 1
+            found_names.add(organizer_name)
 
         summary_raw = str(event.get("SUMMARY", "") or "")
         summary_members, _ = _extract_members_from_summary(summary_raw)
         for member_name in summary_members:
             family_member_counter[member_name] += 1
+            found_names.add(member_name)
 
+    found_name_mapping = _build_found_name_mapping(found_names, family_members)
+
+    for event in events:
+        rrule = _normalize_rrule(event)
+        pattern = _rrule_to_string(rrule) if rrule else ""
         advice = _map_rrule_to_familieplanner(rrule)
+
         if pattern:
             mapping_label = advice.recurrence_type if advice.recurrence_type else f"unsupported ({advice.reason})"
             rrule_mapping_counter.setdefault(pattern, Counter())[mapping_label] += 1
@@ -430,7 +544,7 @@ async def run() -> None:
             recurrence_counter[f"unsupported ({advice.reason})"] += 1
 
         if len(previews) < max(1, args.max_examples):
-            previews.append(_build_event_preview(event, advice))
+            previews.append(_build_event_preview(event, advice, found_name_mapping))
 
     _print_recommendations(
         total_events=len(events),
@@ -440,6 +554,9 @@ async def run() -> None:
         raw_rrule_counter=raw_rrule_counter,
         rrule_mapping_counter=rrule_mapping_counter,
         family_member_counter=family_member_counter,
+        found_name_mapping=found_name_mapping,
+        family_members=family_members,
+        unmapped_field_counter=unmapped_field_counter,
         previews=previews,
     )
 
