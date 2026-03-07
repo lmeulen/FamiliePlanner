@@ -4,6 +4,8 @@ import json
 
 from httpx import AsyncClient
 
+import app.routers.settings as settings_router
+
 
 async def test_backup_creates_valid_file(client: AsyncClient):
     """Test that backup creates a valid JSON file with metadata."""
@@ -229,6 +231,41 @@ async def test_restore_success_with_data(client: AsyncClient):
     tasks_after = await client.get("/api/tasks/")
     assert len(tasks_after.json()) == 1
     assert tasks_after.json()[0]["title"] == "Test Task"
+
+
+async def test_restore_failure_rolls_back_database(client: AsyncClient, monkeypatch):
+    """Test restore keeps original data when import fails mid-process."""
+    # Create baseline data that must survive failed restore
+    await client.post(
+        "/api/meals/",
+        json={
+            "date": "2026-03-12",
+            "meal_type": "dinner",
+            "name": "Original Meal",
+            "description": "",
+            "recipe_url": "",
+            "cook_member_id": None,
+        },
+    )
+
+    # Backup current database state for restore payload
+    backup_r = await client.get("/api/settings/backup")
+    files = {"file": ("backup.json", backup_r.content, "application/json")}
+
+    # Simulate an import failure after data has been cleared
+    async def fail_import(*args, **kwargs):
+        raise RuntimeError("simulated import crash")
+
+    monkeypatch.setattr(settings_router, "_import_table_data", fail_import)
+
+    # Restore should fail, but DB should remain unchanged
+    restore_r = await client.post("/api/settings/restore", files=files)
+    assert restore_r.status_code == 500
+
+    meals_after = await client.get("/api/meals/?start=2026-03-01&end=2026-03-31")
+    meals = meals_after.json()
+    assert len(meals) == 1
+    assert meals[0]["name"] == "Original Meal"
 
 
 async def test_restore_backward_compatibility_v1(client: AsyncClient):

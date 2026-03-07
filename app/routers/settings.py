@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import ValidationError
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_auth_required, set_auth_required
@@ -200,8 +200,6 @@ async def _clear_all_data(db: AsyncSession):
         AppSetting,
     ]:
         await db.execute(sa_delete(model))
-
-    await db.commit()
 
 
 def _deserialize_value(value, column_type):
@@ -419,11 +417,8 @@ async def restore_database(
     try:
         data = backup_data["data"]
 
-        # Disable foreign key constraints during restore
-        await db.execute(text("PRAGMA foreign_keys = OFF"))
-        await db.flush()
-        logger.info("Foreign key constraints disabled for restore")
-
+        # Restore atomically with one commit at the end.
+        # If any step fails, rollback keeps database unchanged.
         # Clear existing data
         await _clear_all_data(db)
 
@@ -435,14 +430,14 @@ async def restore_database(
             await _import_table_data(db, FamilyMember, data["family_members"])
         if "task_lists" in data:
             await _import_table_data(db, TaskList, data["task_lists"])
-        await db.flush()  # Ensure independent tables are committed
+        await db.flush()  # Ensure independent tables are staged
 
         # 2. Recurrence series
         if "task_recurrence_series" in data:
             await _import_table_data(db, TaskRecurrenceSeries, data["task_recurrence_series"])
         if "recurrence_series" in data:
             await _import_table_data(db, RecurrenceSeries, data["recurrence_series"])
-        await db.flush()  # Ensure recurrence series are committed
+        await db.flush()  # Ensure recurrence series are staged
 
         # 3. Main tables with foreign keys
         if "tasks" in data:
@@ -453,7 +448,7 @@ async def restore_database(
             await _import_table_data(db, Meal, data["meals"])
         if "photos" in data:
             await _import_table_data(db, Photo, data["photos"])
-        await db.flush()  # Ensure main tables are committed before junction tables
+        await db.flush()  # Ensure main tables are staged before junction tables
 
         # 4. Junction tables last (skip invalid foreign key references)
         if "task_recurrence_series_members" in data:
@@ -465,10 +460,6 @@ async def restore_database(
         if "agenda_event_members" in data:
             await _import_junction_data(db, agenda_event_members, data["agenda_event_members"])
 
-        await db.commit()
-
-        # Re-enable foreign key constraints
-        await db.execute(text("PRAGMA foreign_keys = ON"))
         await db.commit()
 
         total_records = sum(validation.record_counts.values())
@@ -483,9 +474,6 @@ async def restore_database(
 
     except Exception as e:
         await db.rollback()
-        # Re-enable foreign key constraints even on error
-        await db.execute(text("PRAGMA foreign_keys = ON"))
-        await db.commit()
         logger.error("restore.failed error={}", str(e))
         raise HTTPException(
             status_code=500,

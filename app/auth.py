@@ -63,7 +63,7 @@ async def login_get(request: Request) -> HTMLResponse | RedirectResponse:
     if request.session.get("authenticated"):
         return RedirectResponse(url="/", status_code=302)
     error = request.query_params.get("error")
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "error": error})
 
 
 async def login_post(

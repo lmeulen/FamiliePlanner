@@ -205,6 +205,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # For 404 on HTML pages, return HTML error page
     if exc.status_code == 404 and "text/html" in request.headers.get("accept", ""):
         return templates.TemplateResponse(
+            request,
             "error.html",
             {
                 "request": request,
@@ -238,6 +239,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     # Return 500 HTML page for browser requests
     if "text/html" in request.headers.get("accept", ""):
         return templates.TemplateResponse(
+            request,
             "error.html",
             {
                 "request": request,
@@ -350,44 +352,44 @@ app.get("/logout")(logout)
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request, "dashboard.html", {"request": request})
 
 
 @app.get("/agenda", response_class=HTMLResponse)
 async def page_agenda(request: Request):
-    return templates.TemplateResponse("agenda.html", {"request": request})
+    return templates.TemplateResponse(request, "agenda.html", {"request": request})
 
 
 @app.get("/taken", response_class=HTMLResponse)
 async def page_tasks(request: Request):
-    return templates.TemplateResponse("tasks.html", {"request": request})
+    return templates.TemplateResponse(request, "tasks.html", {"request": request})
 
 
 @app.get("/maaltijden", response_class=HTMLResponse)
 async def page_meals(request: Request):
-    return templates.TemplateResponse("meals.html", {"request": request})
+    return templates.TemplateResponse(request, "meals.html", {"request": request})
 
 
 @app.get("/instellingen", response_class=HTMLResponse)
 async def page_settings(request: Request):
-    return templates.TemplateResponse("settings.html", {"request": request})
+    return templates.TemplateResponse(request, "settings.html", {"request": request})
 
 
 @app.get("/fotos", response_class=HTMLResponse)
 async def page_photos(request: Request):
-    return templates.TemplateResponse("photos.html", {"request": request})
+    return templates.TemplateResponse(request, "photos.html", {"request": request})
 
 
 @app.get("/gezin", response_class=HTMLResponse)
 async def page_family(request: Request):
-    return templates.TemplateResponse("family.html", {"request": request})
+    return templates.TemplateResponse(request, "family.html", {"request": request})
 
 
 @app.get("/zoeken", response_class=HTMLResponse)
 async def page_search(request: Request):
-    return templates.TemplateResponse("search.html", {"request": request})
+    return templates.TemplateResponse(request, "search.html", {"request": request})
 
 
 @app.get("/statistieken", response_class=HTMLResponse)
 async def page_stats(request: Request):
-    return templates.TemplateResponse("stats.html", {"request": request})
+    return templates.TemplateResponse(request, "stats.html", {"request": request})
