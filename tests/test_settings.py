@@ -411,6 +411,7 @@ async def test_get_settings(client: AsyncClient):
     assert "auth_required" in settings
     assert "theme" in settings
     assert "language" in settings
+    assert "idle_redirect_seconds" in settings
     assert "weather_enabled" in settings
     assert "dashboard_photo_enabled" in settings
 
@@ -437,3 +438,15 @@ async def test_update_settings_language(client: AsyncClient):
     r_invalid = await client.put("/api/settings/", json={"language": "fr"})
     assert r_invalid.status_code == 200
     assert r_invalid.json()["language"] == "nl"
+
+
+async def test_update_settings_idle_redirect_seconds(client: AsyncClient):
+    """Test updating idle redirect timeout setting with bounds."""
+    r = await client.put("/api/settings/", json={"idle_redirect_seconds": 30})
+    assert r.status_code == 200
+    assert r.json()["idle_redirect_seconds"] == 30
+
+    # Lower bound clamps to 5 seconds
+    r_low = await client.put("/api/settings/", json={"idle_redirect_seconds": 1})
+    assert r_low.status_code == 200
+    assert r_low.json()["idle_redirect_seconds"] == 5

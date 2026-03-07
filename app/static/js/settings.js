@@ -9,8 +9,11 @@
   const photoIntervalRow  = document.getElementById('photo-interval-row');
   const photoIntervalSlider = document.getElementById('photo-interval');
   const photoIntervalValEl = document.getElementById('photo-interval-val');
+  const idleTimeoutSlider  = document.getElementById('idle-timeout');
+  const idleTimeoutValEl   = document.getElementById('idle-timeout-val');
   const photoHeightHint   = document.getElementById('photo-height-hint');
   const photoIntervalHint = document.getElementById('photo-interval-hint');
+  const idleTimeoutHint   = document.getElementById('idle-timeout-hint');
   const languageSelect    = document.getElementById('language');
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
@@ -27,6 +30,9 @@
     }
     if (photoIntervalHint) {
       photoIntervalHint.innerHTML = t('settings.photoIntervalHint', { value: photoIntervalSlider.value });
+    }
+    if (idleTimeoutHint) {
+      idleTimeoutHint.innerHTML = t('settings.idleTimeoutHint', { value: idleTimeoutSlider.value });
     }
   }
 
@@ -60,6 +66,10 @@
     photoIntervalSlider.value = interval;
     photoIntervalValEl.textContent = interval;
 
+    const idleTimeout = s.idle_redirect_seconds || 5;
+    idleTimeoutSlider.value = idleTimeout;
+    idleTimeoutValEl.textContent = idleTimeout;
+
     if (languageSelect) {
       languageSelect.value = s.language || 'nl';
     }
@@ -87,6 +97,11 @@
     renderSliderHints();
   });
 
+  idleTimeoutSlider.addEventListener('input', () => {
+    idleTimeoutValEl.textContent = idleTimeoutSlider.value;
+    renderSliderHints();
+  });
+
   photoToggle.addEventListener('change', updatePhotoHeightRow);
   weatherToggle.addEventListener('change', updateWeatherLocationRow);
 
@@ -99,13 +114,15 @@
       dashboard_photo_enabled: photoToggle.checked,
       dashboard_photo_height: parseInt(photoSlider.value, 10),
       dashboard_photo_interval: parseInt(photoIntervalSlider.value, 10),
+      idle_redirect_seconds: parseInt(idleTimeoutSlider.value, 10),
       language: languageSelect?.value || 'nl',
       theme,
       weather_enabled: weatherToggle.checked,
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',
     };
 
-    await API.put('/api/settings/', payload);
+    const updatedSettings = await API.put('/api/settings/', payload);
+    window.FP?.setSettings?.(updatedSettings);
 
     // Apply language immediately
     window.FP?.setLanguage(payload.language);

@@ -50,6 +50,8 @@ window.FP = (() => {
       'settings.photoSizeHint': 'Hoogte als percentage van het scherm ({value}%)',
       'settings.photoInterval': 'Foto wissel interval',
       'settings.photoIntervalHint': "Tijd tussen foto's in seconden ({value}s)",
+      'settings.idleTimeout': 'Terug naar overzicht bij inactiviteit',
+      'settings.idleTimeoutHint': 'Na {value} seconden zonder interactie (niet tijdens bewerken)',
       'settings.weatherWidget': 'Weer widget op overzichtspagina',
       'settings.weatherWidgetHint': 'Toont datum, tijd en het huidige weer boven de taken',
       'settings.weatherLocation': 'Locatie voor weer',
@@ -133,6 +135,8 @@ window.FP = (() => {
       'settings.photoSizeHint': 'Height as percentage of the screen ({value}%)',
       'settings.photoInterval': 'Photo switch interval',
       'settings.photoIntervalHint': 'Time between photos in seconds ({value}s)',
+      'settings.idleTimeout': 'Return to overview on inactivity',
+      'settings.idleTimeoutHint': 'After {value} seconds without interaction (not while editing)',
       'settings.weatherWidget': 'Weather widget on dashboard',
       'settings.weatherWidgetHint': 'Shows date, time and current weather above tasks',
       'settings.weatherLocation': 'Weather location',
@@ -216,6 +220,8 @@ window.FP = (() => {
       'settings.photoSizeHint': 'Höhe als Prozentsatz des Bildschirms ({value}%)',
       'settings.photoInterval': 'Foto-Wechselintervall',
       'settings.photoIntervalHint': 'Zeit zwischen Fotos in Sekunden ({value}s)',
+      'settings.idleTimeout': 'Zur Übersicht bei Inaktivität zurückkehren',
+      'settings.idleTimeoutHint': 'Nach {value} Sekunden ohne Interaktion (nicht während der Bearbeitung)',
       'settings.weatherWidget': 'Wetter-Widget auf der Übersichtsseite',
       'settings.weatherWidgetHint': 'Zeigt Datum, Uhrzeit und aktuelles Wetter über den Aufgaben',
       'settings.weatherLocation': 'Wetterstandort',
@@ -524,6 +530,57 @@ window.FP = (() => {
   let _settingsResolve;
   let _settings = null;
   const settingsReady = new Promise(res => { _settingsResolve = res; });
+  let _idleTimer = null;
+
+  function getIdleRedirectSeconds() {
+    const configured = Number(_settings?.idle_redirect_seconds ?? 5);
+    if (!Number.isFinite(configured)) return 5;
+    return Math.max(5, Math.min(3600, Math.floor(configured)));
+  }
+
+  function isEditorOpen() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay && !modalOverlay.classList.contains('hidden')) return true;
+
+    const active = document.activeElement;
+    if (active && active.matches && active.matches('input, textarea, select, [contenteditable="true"]')) {
+      return true;
+    }
+
+    return !!document.querySelector('[data-editor-open="true"]');
+  }
+
+  function scheduleIdleRedirect() {
+    if (_idleTimer) clearTimeout(_idleTimer);
+    _idleTimer = setTimeout(() => {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/' || currentPath === '/login') return;
+
+      if (isEditorOpen()) {
+        scheduleIdleRedirect();
+        return;
+      }
+
+      window.location.href = '/';
+    }, getIdleRedirectSeconds() * 1000);
+  }
+
+  function initIdleRedirectWatcher() {
+    const resetEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    resetEvents.forEach(eventName => {
+      document.addEventListener(eventName, scheduleIdleRedirect, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (_idleTimer) clearTimeout(_idleTimer);
+      } else {
+        scheduleIdleRedirect();
+      }
+    });
+
+    scheduleIdleRedirect();
+  }
 
   async function applyPersistedSettings() {
     try {
@@ -556,6 +613,7 @@ window.FP = (() => {
     setInterval(renderHeaderDate, 30_000);  // update clock every 30s
     loadMembers();   // pre-load for all pages
     applyPersistedSettings();
+    settingsReady.then(initIdleRedirectWatcher);
   });
 
   // ── Cache helpers ─────────────────────────────────────────────
@@ -565,6 +623,11 @@ window.FP = (() => {
 
   function clearAllCache() {
     Cache.clear();
+  }
+
+  function setSettings(newSettings) {
+    _settings = { ...(_settings || {}), ...(newSettings || {}) };
+    scheduleIdleRedirect();
   }
 
   return {
@@ -577,6 +640,7 @@ window.FP = (() => {
     NL_DAYS, NL_DAYS_FULL, NL_MONTHS, NL_MONTHS_SHORT,
     settingsReady,
     getSettings: () => _settings,
+    setSettings,
     t,
     getLocale,
     setLanguage,

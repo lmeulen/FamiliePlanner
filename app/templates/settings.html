@@ -93,6 +93,16 @@
                class="settings-slider" aria-label="Foto interval" data-i18n-aria-label="settings.photoInterval" />
       </div>
 
+      <div class="settings-row settings-row--col" id="idle-timeout-row">
+        <span class="settings-label">
+          <span class="settings-label-main" data-i18n="settings.idleTimeout">Terug naar overzicht bij inactiviteit</span>
+          <span class="settings-label-hint" id="idle-timeout-hint">Na <span id="idle-timeout-val">5</span> seconden zonder interactie (niet tijdens bewerken)</span>
+        </span>
+        <input type="range" id="idle-timeout" name="idle_redirect_seconds"
+               min="5" max="300" step="1" value="5"
+               class="settings-slider" aria-label="Inactiviteit timeout" data-i18n-aria-label="settings.idleTimeout" />
+      </div>
+
       <label class="settings-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.weatherWidget">Weer widget op overzichtspagina</span>
