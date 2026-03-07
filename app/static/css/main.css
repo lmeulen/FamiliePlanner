@@ -1667,3 +1667,145 @@ img { max-width: 100%; }
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
+/* ── STATISTICS PAGE ─────────────────────────────────────────────── */
+.stats-page .stat-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-member-row:last-child {
+  border-bottom: none;
+}
+
+.stat-member-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stat-member-avatar {
+  font-size: 1.5rem;
+}
+
+.stat-member-name {
+  font-weight: 500;
+}
+
+.stat-member-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  background: var(--accent);
+  color: white;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.stat-count-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stat-meal-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-meal-row:last-child {
+  border-bottom: none;
+}
+
+.stat-meal-rank {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 2rem;
+  text-align: center;
+}
+
+.stat-meal-info {
+  flex: 1;
+}
+
+.stat-meal-name {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.stat-meal-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-meal-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.stat-meal-count {
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block body_class %}page-stats{% endblock %}
+{% block title %}Statistieken – FamiliePlanner{% endblock %}
+{% block nav_stats %}active{% endblock %}
+
+{% block content %}
+<div class="page-container stats-page">
+  <h1 class="page-title">📊 Statistieken & Inzichten</h1>
+
+  <!-- Period filter -->
+  <div class="stats-filter" style="margin-bottom: 1.5rem;">
+    <div class="view-buttons" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button class="view-btn active" data-period="all">Altijd</button>
+      <button class="view-btn" data-period="year">Afgelopen jaar</button>
+      <button class="view-btn" data-period="month">Afgelopen maand</button>
+      <button class="view-btn" data-period="week">Afgelopen week</button>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="stats-loading" class="stats-loading">
+    <div style="text-align: center; padding: 3rem; color: var(--color-text-muted);">
+      ⏳ Statistieken laden...
+    </div>
+  </div>
+
+  <!-- Stats content -->
+  <div id="stats-content" class="stats-content hidden">
+
+    <!-- Database overview -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">💾 Database Overzicht</h2>
+      <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+        <div class="stat-card">
+          <div class="stat-value" id="db-family-count">-</div>
+          <div class="stat-label">Gezinsleden</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="db-tasks-count">-</div>
+          <div class="stat-label">Taken</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="db-events-count">-</div>
+          <div class="stat-label">Agenda Items</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="db-meals-count">-</div>
+          <div class="stat-label">Maaltijden</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="db-photos-count">-</div>
+          <div class="stat-label">Foto's</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="db-series-count">-</div>
+          <div class="stat-label">Herhalingen</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task completion -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">✅ Taken Voltooid</h2>
+      <div class="stat-summary" style="margin-bottom: 1rem;">
+        <div class="stat-card">
+          <div class="stat-value" id="task-completion-rate">-%</div>
+          <div class="stat-label">Voltooiingspercentage</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="task-completed-count">-</div>
+          <div class="stat-label">Taken voltooid</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="task-total-count">-</div>
+          <div class="stat-label">Totaal taken</div>
+        </div>
+      </div>
+      <div id="task-completion-list"></div>
+      <div id="task-completion-empty" class="empty-state hidden">
+        Geen voltooide taken in deze periode
+      </div>
+    </section>
+
+    <!-- Cooking frequency -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">👨‍🍳 Kook Frequentie</h2>
+      <div id="cooking-frequency-list"></div>
+      <div id="cooking-frequency-empty" class="empty-state hidden">
+        Geen kookgegevens in deze periode
+      </div>
+    </section>
+
+    <!-- Top meals -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">🍽️ Top 10 Maaltijden</h2>
+      <div id="top-meals-list"></div>
+      <div id="top-meals-empty" class="empty-state hidden">
+        Geen maaltijden in deze periode
+      </div>
+    </section>
+
+    <!-- Agenda activity -->
+    <section class="card" style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">📅 Agenda Bezetting</h2>
+      <div class="stat-summary">
+        <div class="stat-card">
+          <div class="stat-value" id="agenda-events-per-week">-</div>
+          <div class="stat-label">Afspraken per week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="agenda-total-events">-</div>
+          <div class="stat-label">Totaal afspraken</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/stats.js?v={{ static_v }}"></script>
+{% endblock %}
