@@ -42,7 +42,7 @@ def _generate_thumbnail(image_data: bytes, filename: str) -> None:
     THUMBNAILS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Open image and create thumbnail
-    img = Image.open(BytesIO(image_data))
+    img: Image.Image = Image.open(BytesIO(image_data))
 
     # Convert RGBA to RGB if needed (for PNG with transparency)
     if img.mode == "RGBA":

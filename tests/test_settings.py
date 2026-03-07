@@ -113,7 +113,7 @@ async def test_restore_invalid_json(client: AsyncClient):
     r = await client.post("/api/settings/restore", files=files)
 
     assert r.status_code == 400
-    assert "JSON" in r.json()["detail"]
+    assert "JSON" in r.json()["details"]
 
 
 async def test_restore_missing_data_key(client: AsyncClient):

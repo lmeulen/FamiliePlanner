@@ -6,6 +6,7 @@ Mounts static files, registers routers, serves Jinja2 templates.
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import cast
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -73,6 +74,10 @@ class CachedStaticFiles(StaticFiles):
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
+def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
+    return _rate_limit_exceeded_handler(request, cast(RateLimitExceeded, exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting {} v{}", APP_TITLE, APP_VERSION)
@@ -99,7 +104,7 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
 # Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → PrometheusMiddleware → SlowAPI → routes
