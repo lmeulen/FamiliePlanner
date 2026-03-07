@@ -17,7 +17,6 @@
       <label class="settings-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.authRequired">Inloggen vereist</span>
-          <span class="settings-label-hint" data-i18n="settings.authRequiredHint">Als uitgeschakeld is de app direct toegankelijk zonder wachtwoord</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="auth-required" name="auth_required" role="switch" />
@@ -33,7 +32,6 @@
       <div class="settings-row settings-row--col">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.language">Taal</span>
-          <span class="settings-label-hint" data-i18n="settings.languageHint">Kies de taal van de interface</span>
         </span>
         <div class="settings-control">
           <select id="language" name="language" style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
@@ -68,8 +66,7 @@
 
       <label class="settings-row">
         <span class="settings-label">
-          <span class="settings-label-main" data-i18n="settings.dashboardPhoto">Foto tonen op overzichtspagina</span>
-          <span class="settings-label-hint" data-i18n="settings.dashboardPhotoHint">Schakel de foto-diashow op de overzichtspagina in of uit</span>
+          <span class="settings-label-main" data-i18n="settings.dashboardPhoto">Foto's tonen op overzichtspagina</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="dashboard-photo-enabled" name="dashboard_photo_enabled" role="switch" />
@@ -103,8 +100,8 @@
 
       <div class="settings-row settings-row--col" id="screensaver-timeout-row">
         <span class="settings-label">
-          <span class="settings-label-main" data-i18n="settings.screensaverTimeout">Screensaver op overzicht (minuten)</span>
-          <span class="settings-label-hint" data-i18n="settings.screensaverTimeoutHint">Start screensaver zonder interactie op overzicht (0-60 min, 0 = uit)</span>
+          <span class="settings-label-main" data-i18n="settings.screensaverTimeout">Screensavertimeout (minuten)</span>
+          <span class="settings-label-hint" data-i18n="settings.screensaverTimeoutHint">(0-60 min, 0 = uit)</span>
         </span>
         <div class="settings-control">
           <input type="number" id="screensaver-timeout" name="dashboard_screensaver_seconds"
@@ -115,8 +112,8 @@
 
       <div class="settings-row settings-row--col" id="overview-redirect-timeout-row">
         <span class="settings-label">
-          <span class="settings-label-main" data-i18n="settings.overviewRedirectTimeout">Terug naar overzicht op andere pagina’s (seconden)</span>
-          <span class="settings-label-hint" data-i18n="settings.overviewRedirectTimeoutHint">Ga na inactiviteit automatisch terug naar overzicht (5-300 s)</span>
+          <span class="settings-label-main" data-i18n="settings.overviewRedirectTimeout">Terug naar overzicht op  (seconden)</span>
+          <span class="settings-label-hint" data-i18n="settings.overviewRedirectTimeoutHint">(5-300 s)</span>
         </span>
         <div class="settings-control">
           <input type="number" id="overview-redirect-timeout" name="overview_redirect_seconds"
@@ -128,7 +125,6 @@
       <label class="settings-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.weatherWidget">Weer widget op overzichtspagina</span>
-          <span class="settings-label-hint" data-i18n="settings.weatherWidgetHint">Toont datum, tijd en het huidige weer boven de taken</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="weather-enabled" name="weather_enabled" role="switch" />
@@ -139,7 +135,6 @@
       <div class="settings-row settings-row--col" id="weather-location-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.weatherLocation">Locatie voor weer</span>
-          <span class="settings-label-hint" data-i18n="settings.weatherLocationHint">Plaats, Land (bijv. Amsterdam,NL)</span>
         </span>
         <div class="settings-control">
           <input type="text" id="weather-location" name="weather_location"
