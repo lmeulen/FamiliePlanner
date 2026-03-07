@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="nl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#6C5CE7" />
+  <title>{{ error_code }} – {{ title }} – FamiliePlanner</title>
+
+  <!-- Favicon (emoji) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>"/>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/static/css/themes.css?v={{ static_v }}" />
+  <link rel="stylesheet" href="/static/css/main.css?v={{ static_v }}" />
+
+  <style>
+    .error-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--bg-app);
+      padding: 2rem;
+    }
+
+    .error-container {
+      max-width: 600px;
+      text-align: center;
+      background: var(--bg-surface);
+      padding: 3rem 2rem;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .error-code {
+      font-size: 6rem;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+
+    .error-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .error-suggestion {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: var(--bg-surface-2);
+      border-radius: 8px;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn--primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn--primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn--secondary {
+      background: var(--bg-surface-2);
+      color: var(--text-primary);
+    }
+
+    .btn--secondary:hover {
+      filter: brightness(0.95);
+    }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <div class="error-container">
+      <div class="error-code">{{ error_code }}</div>
+      <h1 class="error-title">{{ title }}</h1>
+      <p class="error-message">{{ message }}</p>
+      {% if suggestion %}
+      <div class="error-suggestion">
+        💡 {{ suggestion }}
+      </div>
+      {% endif %}
+
+      <div class="error-actions">
+        <a href="javascript:history.back()" class="btn btn--secondary">
+          ← Ga terug
+        </a>
+        <a href="/" class="btn btn--primary">
+          🏠 Naar overzicht
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/theme.js?v={{ static_v }}"></script>
+</body>
+</html>

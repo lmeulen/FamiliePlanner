@@ -1,5 +1,5 @@
 /* ================================================================
-   api.js – Centralised API client
+   api.js – Centralised API client with enhanced error handling
    Usage: const events = await API.get('/api/agenda/today');
    ================================================================ */
 window.API = (() => {
@@ -8,6 +8,44 @@ window.API = (() => {
 
   function _csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+  }
+
+  /**
+   * Format error response into user-friendly message
+   */
+  function _formatError(json, status) {
+    // New error format with code/message/details
+    if (json.code && json.message) {
+      let msg = json.message;
+      if (json.details) {
+        msg += ` (${json.details})`;
+      }
+      if (json.field) {
+        msg += ` Veld: ${json.field}`;
+      }
+      return msg;
+    }
+
+    // Legacy format (detail string)
+    if (json.detail) {
+      return json.detail;
+    }
+
+    // Fallback to status code messages
+    const statusMessages = {
+      400: 'Ongeldige aanvraag. Controleer je invoer.',
+      401: 'Je bent niet ingelogd.',
+      403: 'Je hebt geen toegang tot deze actie.',
+      404: 'Het item kon niet worden gevonden.',
+      409: 'Deze actie kan niet worden uitgevoerd vanwege een conflict.',
+      422: 'De ingevoerde gegevens zijn niet geldig.',
+      429: 'Te veel verzoeken. Wacht even en probeer opnieuw.',
+      500: 'Er is een serverfout opgetreden. Probeer het later opnieuw.',
+      502: 'Server tijdelijk niet bereikbaar.',
+      503: 'Dienst tijdelijk niet beschikbaar.',
+    };
+
+    return statusMessages[status] || `Er is een fout opgetreden (${status})`;
   }
 
   async function request(method, path, data) {
@@ -21,7 +59,13 @@ window.API = (() => {
     if (!_SAFE.has(method)) opts.headers['X-CSRF-Token'] = _csrfToken();
     if (data !== undefined) opts.body = isFormData ? data : JSON.stringify(data);
 
-    const res = await fetch(BASE + path, opts);
+    let res;
+    try {
+      res = await fetch(BASE + path, opts);
+    } catch (err) {
+      // Network error (no internet, CORS, etc.)
+      throw new Error('Geen internetverbinding. Controleer je verbinding en probeer opnieuw.');
+    }
 
     // Session expired or not logged in → redirect to login
     if (res.status === 401) {
@@ -29,10 +73,23 @@ window.API = (() => {
       return;
     }
 
+    // No content response
     if (res.status === 204) return null;
 
+    // Parse JSON response
     const json = await res.json().catch(() => ({ detail: res.statusText }));
-    if (!res.ok) throw new Error(json.detail || `HTTP ${res.status}`);
+
+    // Error response
+    if (!res.ok) {
+      const errorMessage = _formatError(json, res.status);
+      const error = new Error(errorMessage);
+      error.status = res.status;
+      error.code = json.code;
+      error.details = json.details;
+      error.field = json.field;
+      throw error;
+    }
+
     return json;
   }
 

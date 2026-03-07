@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,12 +20,14 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
+from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
 from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
 from app.routers import agenda, family, meals, photos, search, stats, tasks
@@ -107,29 +110,149 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 
-# ── Database exception handlers ───────────────────────────────────
+# ── Exception Handlers ───────────────────────────────────────────
 
 
-def _integrity_message(exc: IntegrityError) -> str:
-    msg = str(exc.orig).lower()
-    if "foreign key" in msg:
-        return "Referenced resource does not exist (invalid id)."
-    if "unique" in msg or "not unique" in msg:
-        return "A record with this value already exists."
-    return "Database integrity error."
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with user-friendly Dutch messages."""
+    errors = exc.errors()
+    logger.warning("Validation error on {} {}: {}", request.method, request.url.path, errors)
+
+    # Get first error for primary message
+    first_error = errors[0] if errors else {}
+    error_type = first_error.get("type", "value_error")
+    ctx = first_error.get("ctx")
+    field = ".".join(str(loc) for loc in first_error.get("loc", [])) if first_error.get("loc") else None
+
+    # Translate to Dutch
+    details = translate_validation_error(error_type, ctx)
+
+    error_response = ErrorResponse(
+        code=ErrorCode.VALIDATION_ERROR,
+        message=get_error_message(ErrorCode.VALIDATION_ERROR),
+        details=details,
+        field=field,
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(exclude_none=True),
+    )
 
 
 @app.exception_handler(IntegrityError)
 async def integrity_error_handler(request: Request, exc: IntegrityError):
-    detail = _integrity_message(exc)
+    """Handle database integrity errors (foreign key, unique constraints)."""
+    msg = str(exc.orig).lower()
+
+    if "foreign key" in msg:
+        code = ErrorCode.FOREIGN_KEY_ERROR
+    elif "unique" in msg or "not unique" in msg:
+        code = ErrorCode.UNIQUE_CONSTRAINT
+    else:
+        code = ErrorCode.DATABASE_ERROR
+
     logger.warning("IntegrityError on {} {}: {}", request.method, request.url.path, exc.orig)
-    return JSONResponse(status_code=422, content={"detail": detail})
+
+    error_response = ErrorResponse(
+        code=code,
+        message=get_error_message(code),
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content=error_response.model_dump(exclude_none=True),
+    )
 
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+    """Handle generic database errors."""
     logger.error("SQLAlchemyError on {} {}: {}", request.method, request.url.path, exc)
-    return JSONResponse(status_code=400, content={"detail": "Database error. Please try again."})
+
+    error_response = ErrorResponse(
+        code=ErrorCode.DATABASE_ERROR,
+        message=get_error_message(ErrorCode.DATABASE_ERROR),
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content=error_response.model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handle HTTP exceptions (404, 403, etc.) with user-friendly messages."""
+    # Map status codes to error codes
+    code_map = {
+        404: ErrorCode.NOT_FOUND,
+        401: ErrorCode.UNAUTHORIZED,
+        403: ErrorCode.FORBIDDEN,
+        409: ErrorCode.CONFLICT,
+        429: ErrorCode.RATE_LIMIT,
+    }
+
+    code = code_map.get(exc.status_code, ErrorCode.INTERNAL_ERROR)
+    message = get_error_message(code)
+
+    # For 404 on HTML pages, return HTML error page
+    if exc.status_code == 404 and "text/html" in request.headers.get("accept", ""):
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error_code": 404,
+                "title": "Pagina niet gevonden",
+                "message": "De pagina die je zoekt bestaat niet of is verplaatst.",
+                "suggestion": "Ga terug naar het overzicht of gebruik het menu.",
+            },
+            status_code=404,
+        )
+
+    logger.warning("{} error on {} {}: {}", exc.status_code, request.method, request.url.path, exc.detail)
+
+    error_response = ErrorResponse(
+        code=code,
+        message=message,
+        details=str(exc.detail) if exc.detail else None,
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response.model_dump(exclude_none=True),
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler for unexpected exceptions."""
+    logger.exception("Unhandled exception on {} {}: {}", request.method, request.url.path, exc)
+
+    # Return 500 HTML page for browser requests
+    if "text/html" in request.headers.get("accept", ""):
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error_code": 500,
+                "title": "Er is iets misgegaan",
+                "message": "Er is een onverwachte fout opgetreden.",
+                "suggestion": "Probeer de pagina te vernieuwen. Als het probleem blijft, neem contact op.",
+            },
+            status_code=500,
+        )
+
+    error_response = ErrorResponse(
+        code=ErrorCode.INTERNAL_ERROR,
+        message=get_error_message(ErrorCode.INTERNAL_ERROR),
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content=error_response.model_dump(exclude_none=True),
+    )
 
 
 # ── Request logging middleware ────────────────────────────────────
