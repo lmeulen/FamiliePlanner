@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.metrics import tasks_completed_total, tasks_created_total
 from app.models.settings import AppSetting
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.tasks import (
@@ -309,6 +310,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task.id))
     task = result.scalar_one()
     logger.info("tasks.task.created id={} title='{}'", task.id, task.title)
+    tasks_created_total.inc()
     return task
 
 
@@ -355,6 +357,8 @@ async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one()
     logger.info("tasks.task.toggled id={} done={}", task.id, task.done)
+    if task.done:
+        tasks_completed_total.inc()
     return task
 
 

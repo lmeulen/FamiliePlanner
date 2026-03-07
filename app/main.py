@@ -8,14 +8,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from loguru import logger
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -24,6 +26,7 @@ from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
 from app.logging_config import setup_logging
+from app.metrics import PrometheusMiddleware, db_connections
 from app.routers import agenda, family, meals, photos, search, stats, tasks
 from app.routers import settings as settings_router
 
@@ -65,8 +68,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
-# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → SlowAPI → routes
+# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → PrometheusMiddleware → SlowAPI → routes
 app.add_middleware(AuthMiddleware)
+app.add_middleware(PrometheusMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
@@ -136,6 +140,26 @@ async def health():
         "database": "ok" if db_ok else "error",
     }
     return JSONResponse(payload, status_code=200 if db_ok else 503)
+
+
+@app.get("/metrics", tags=["monitoring"], include_in_schema=False)
+async def metrics():
+    """
+    Prometheus metrics endpoint.
+
+    Returns metrics in Prometheus text format. Not protected by authentication
+    to allow monitoring systems to scrape metrics.
+    """
+    # Update database connection gauge
+    try:
+        async with AsyncSessionLocal() as db:
+            # SQLite uses single connection, just verify it's reachable
+            await db.execute(text("SELECT 1"))
+            db_connections.set(1)
+    except Exception:  # noqa: BLE001
+        db_connections.set(0)
+
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 # Static files

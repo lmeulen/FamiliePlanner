@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.metrics import photos_uploaded_total
 from app.models.photos import Photo
 
 router = APIRouter(prefix="/api/photos", tags=["photos"])
@@ -119,6 +120,7 @@ async def upload_photo(
     await db.commit()
     await db.refresh(photo)
     logger.info("photos.uploaded id={} filename='{}' (with thumbnail)", photo.id, filename)
+    photos_uploaded_total.inc()
     return {
         "id": photo.id,
         "filename": photo.filename,

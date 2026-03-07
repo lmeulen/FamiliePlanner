@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.enums import RecurrenceType
+from app.metrics import events_created_total
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.schemas.agenda import (
     AgendaEventCreate,
@@ -242,6 +243,7 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
     )
     event = result.scalar_one()
     logger.info("agenda.event.created id={} title='{}'", event.id, event.title)
+    events_created_total.inc()
     return event
 
 

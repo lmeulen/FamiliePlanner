@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.enums import MealType
+from app.metrics import meals_created_total
 from app.models.meals import Meal
 from app.schemas.meals import MealCreate, MealOut, MealUpdate
 
@@ -61,6 +62,7 @@ async def create_meal(payload: MealCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(meal)
     logger.info("meals.meal.created id={} name='{}' date={}", meal.id, meal.name, meal.date)
+    meals_created_total.inc()
     return meal
 
 
