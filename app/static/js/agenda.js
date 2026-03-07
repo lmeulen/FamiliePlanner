@@ -5,7 +5,7 @@
 (function () {
   let events        = [];
   let members       = [];
-  let curView       = 'week';
+  let curView       = 'day';
   let curDate       = new Date();    // anchor date for current view
   let editId        = null;          // id of the event being edited
   let seriesId      = null;          // series_id of the event being edited
@@ -55,7 +55,8 @@
 
   function render() {
     updateTitle();
-    if (curView === 'week')       renderWeekView();
+    if (curView === 'day')        renderDayView();
+    else if (curView === 'week')  renderWeekView();
     else if (curView === 'month') renderMonthView();
     else                          renderListView();
   }
@@ -63,7 +64,10 @@
   function updateTitle() {
     const el = document.getElementById('cal-title');
     if (!el) return;
-    if (curView === 'week') {
+    if (curView === 'day') {
+      const rangeEnd = FP.addDays(curDate, 3);
+      el.textContent = `${FP.formatDateShort(curDate)} – ${FP.formatDateShort(rangeEnd)}`;
+    } else if (curView === 'week') {
       const mon = FP.startOfWeek(curDate);
       const sun = FP.addDays(mon, 6);
       el.textContent = `${FP.formatDateShort(mon)} – ${FP.formatDateShort(sun)} ${sun.getFullYear()}`;
@@ -103,6 +107,67 @@
   }
 
   function recurIcon(ev) { return ev.series_id ? '<span class="recur-icon" title="Herhalend">↻</span> ' : ''; }
+
+  function renderAgendaEventCard(ev, opts = {}) {
+    const { includeDate = false } = opts;
+    const start = new Date(ev.start_time), end = new Date(ev.end_time);
+    const members = (ev.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
+    const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}">${m.avatar}</div>`).join('');
+    const timeLabel = ev.all_day ? 'Hele dag' : `${FP.formatTime(start)} – ${FP.formatTime(end)}`;
+    const datePrefix = includeDate ? `${FP.formatDate(start)} · ` : '';
+    return `<div class="card event-card" data-id="${ev.id}" style="cursor:pointer">
+      <div class="event-color-bar" style="background:${ev.color}"></div>
+      <div class="event-body">
+        <div class="event-title">${recurIcon(ev)}${FP.esc(ev.title)}</div>
+        <div class="event-meta">
+          ${datePrefix}${timeLabel}
+          ${ev.location ? ` · 📍 ${FP.esc(ev.location)}` : ''}
+        </div>
+      </div>
+      ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}
+    </div>`;
+  }
+
+  function renderDayView() {
+    const calView = document.getElementById('cal-view');
+    const listView = document.getElementById('events-list-view');
+    calView.classList.add('hidden');
+    listView.classList.remove('hidden');
+
+    const fe = filteredEvents();
+    const days = Array.from({ length: 4 }, (_, idx) => {
+      const day = new Date(curDate);
+      day.setHours(0, 0, 0, 0);
+      day.setDate(day.getDate() + idx);
+      return day;
+    });
+
+    const sectionsHtml = days.map(day => {
+      const dayEvents = fe
+        .filter(e => FP.isSameDay(new Date(e.start_time), day))
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+      const dayLabel = FP.formatDate(day);
+      const daySub = FP.isToday(day) ? 'Vandaag' : '';
+
+      return `<section class="agenda-day-section">
+        <div class="agenda-day-section-header">
+          <div class="agenda-day-section-title">${FP.esc(dayLabel)}</div>
+          ${daySub ? `<div class="agenda-day-section-badge">${daySub}</div>` : ''}
+        </div>
+        <div class="agenda-day-section-list card-list">
+          ${dayEvents.length
+            ? dayEvents.map(renderAgendaEventCard).join('')
+            : '<div class="agenda-day-section-empty">Geen afspraken</div>'}
+        </div>
+      </section>`;
+    }).join('');
+
+    listView.innerHTML = `<div class="agenda-day-list">${sectionsHtml}</div>`;
+    listView.querySelectorAll('.event-card').forEach(card => {
+      card.addEventListener('click', () => openEventForm(parseInt(card.dataset.id)));
+    });
+  }
 
   function renderWeekView() {
     const calView  = document.getElementById('cal-view');
@@ -267,22 +332,7 @@
 
     if (!fe.length) { listView.innerHTML = '<p class="empty-state">Geen aankomende afspraken</p>'; return; }
 
-    listView.innerHTML = fe.map(ev => {
-      const start = new Date(ev.start_time), end = new Date(ev.end_time);
-      const members = (ev.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
-      const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}">${m.avatar}</div>`).join('');
-      return `<div class="card event-card" data-id="${ev.id}" style="cursor:pointer">
-        <div class="event-color-bar" style="background:${ev.color}"></div>
-        <div class="event-body">
-          <div class="event-title">${recurIcon(ev)}${FP.esc(ev.title)}</div>
-          <div class="event-meta">
-            ${FP.formatDate(start)} · ${ev.all_day ? 'Hele dag' : FP.formatTime(start)+' – '+FP.formatTime(end)}
-            ${ev.location ? ` · 📍 ${FP.esc(ev.location)}` : ''}
-          </div>
-        </div>
-        ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}
-      </div>`;
-    }).join('');
+    listView.innerHTML = fe.map(ev => renderAgendaEventCard(ev, { includeDate: true })).join('');
 
     listView.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', () => openEventForm(parseInt(card.dataset.id)));
@@ -291,7 +341,8 @@
 
   // ── Navigation ────────────────────────────────────────────────
   function navigate(dir) {
-    if (curView === 'week') curDate = FP.addDays(curDate, dir * 7);
+    if (curView === 'day') curDate = FP.addDays(curDate, dir);
+    else if (curView === 'week') curDate = FP.addDays(curDate, dir * 7);
     else if (curView === 'month') curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
     loadEvents();
   }

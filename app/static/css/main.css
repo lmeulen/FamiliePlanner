@@ -620,6 +620,110 @@ img { max-width: 100%; }
 }
 .cal-event-chip:hover { opacity: .85; }
 
+/* ── Day view ────────────────────────────────────────────── */
+.cal-day-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.cal-day-allday {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-surface);
+  min-height: 32px;
+}
+
+.cal-day-allday .cal-allday-label {
+  flex: 0 0 52px;
+  font-size: .6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: .35rem .3rem;
+  text-align: right;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  line-height: 1.2;
+}
+
+.cal-allday-events {
+  flex: 1;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-day-scroll {
+  overflow-y: auto;
+  max-height: calc(100vh - 320px);
+  min-height: 400px;
+}
+
+.cal-day-timegrid {
+  display: flex;
+  position: relative;
+}
+
+.cal-day-timegrid .cal-day-col {
+  flex: 1;
+  position: relative;
+  cursor: crosshair;
+}
+
+/* ── Agenda day list view ───────────────────────────────────── */
+.agenda-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+
+.agenda-day-section {
+  padding-top: .2rem;
+}
+
+.agenda-day-section + .agenda-day-section {
+  border-top: 2px dashed var(--border);
+  padding-top: .85rem;
+}
+
+.agenda-day-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .5rem;
+}
+
+.agenda-day-section-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.agenda-day-section-badge {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 999px;
+  padding: .15rem .5rem;
+}
+
+.agenda-day-section-empty {
+  font-size: .85rem;
+  color: var(--text-muted);
+  padding: .4rem .2rem;
+}
+
 /* Month grid */
 .cal-month-grid {
   display: grid;
