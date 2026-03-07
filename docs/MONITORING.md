@@ -66,7 +66,7 @@ Add FamiliePlanner to your Prometheus scrape configuration:
 scrape_configs:
   - job_name: 'familieplanner'
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['localhost:8002']
     scrape_interval: 15s
     scrape_timeout: 10s
 ```
@@ -111,7 +111,7 @@ services:
   familieplanner:
     build: .
     ports:
-      - "8000:8000"
+      - "8002:8000"
     volumes:
       - ./data:/app/data
 
@@ -143,7 +143,7 @@ volumes:
 Access:
 - Prometheus: http://localhost:9090
 - Grafana: http://localhost:3000 (admin/admin)
-- FamiliePlanner Metrics: http://localhost:8000/metrics
+- FamiliePlanner Metrics: http://localhost:8002/metrics
 
 ## Querying Metrics
 
