@@ -35,6 +35,37 @@ BASE_DIR = Path(__file__).resolve().parent
 # Initialise logging before anything else
 setup_logging()
 
+
+# ── Custom StaticFiles with cache headers ─────────────────────────
+class CachedStaticFiles(StaticFiles):
+    """StaticFiles with Cache-Control headers for browser caching."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+
+        # Add cache headers based on file type
+        if path.startswith("uploads/thumbnails/"):
+            # Thumbnails: cache for 1 year (immutable filenames)
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path.startswith("uploads/"):
+            # Original photos: cache for 1 day
+            response.headers["Cache-Control"] = "public, max-age=86400"
+        elif path.endswith((".css", ".js")):
+            # CSS/JS: cache for 1 hour (we use ?v= query param for busting)
+            response.headers["Cache-Control"] = "public, max-age=3600"
+        elif path.endswith((".png", ".jpg", ".jpeg", ".svg", ".ico", ".woff", ".woff2")):
+            # Images and fonts: cache for 1 week
+            response.headers["Cache-Control"] = "public, max-age=604800"
+        else:
+            # Other static files: cache for 1 hour
+            response.headers["Cache-Control"] = "public, max-age=3600"
+
+        return response
+
+
 # ── Rate limiter ──────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
@@ -162,8 +193,8 @@ async def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-# Static files
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+# Static files (with cache headers)
+app.mount("/static", CachedStaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")

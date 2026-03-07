@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 from io import BytesIO
 
 import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import ValidationError
@@ -53,7 +53,9 @@ async def _set(db: AsyncSession, key: str, value: str) -> None:
 
 
 @router.get("/", response_model=dict)
-async def get_settings(db: AsyncSession = Depends(get_db)):
+async def get_settings(response: Response, db: AsyncSession = Depends(get_db)):
+    # Cache for 10 minutes - settings rarely change
+    response.headers["Cache-Control"] = "private, max-age=600"
     return {
         "auth_required": (await _get(db, "auth_required", str(get_auth_required()))).lower() in ("1", "true"),
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),

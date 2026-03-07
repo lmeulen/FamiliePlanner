@@ -14,14 +14,32 @@
   let activeMember  = null;
 
   // ── Load & render ─────────────────────────────────────────────
-  async function loadEvents() {
+  async function loadEvents(useCache = true) {
     try {
       const start = new Date(curDate);
       start.setMonth(start.getMonth() - 1);
       const end = new Date(curDate);
       end.setMonth(end.getMonth() + 2);
       const fmt = d => `${d.getFullYear()}-${FP.pad(d.getMonth()+1)}-${FP.pad(d.getDate())}`;
+
+      // Build cache key based on date range
+      const cacheKey = `agenda_events_${fmt(start)}_${fmt(end)}`;
+
+      // Try cache first
+      if (useCache) {
+        const cached = Cache.get(cacheKey);
+        if (cached) {
+          events = cached;
+          render();
+          return;
+        }
+      }
+
+      // Fetch from API
       events = await API.get(`/api/agenda/?start=${fmt(start)}&end=${fmt(end)}`);
+
+      // Cache for 1 minute (events change frequently)
+      Cache.set(cacheKey, events, 60000);
     } catch {
       events = [];
       Toast.show('Kon agenda niet laden', 'error');
@@ -554,7 +572,9 @@
           }
         }
         Modal.close();
-        loadEvents();
+        // Invalidate agenda cache on mutation
+        Cache.invalidate('agenda_events_');
+        loadEvents(false); // Skip cache, fetch fresh data
       } catch (err) {
         Toast.show(err.message || 'Fout bij opslaan', 'error');
       }
@@ -573,7 +593,9 @@
           Toast.show('Afspraak verwijderd', 'warning');
         }
         Modal.close();
-        loadEvents();
+        // Invalidate agenda cache on delete
+        Cache.invalidate('agenda_events_');
+        loadEvents(false); // Skip cache, fetch fresh data
       } catch { Toast.show('Fout bij verwijderen', 'error'); }
     }, { once: true });
 

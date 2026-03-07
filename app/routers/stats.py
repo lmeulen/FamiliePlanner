@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 @router.get("/")
 async def get_statistics(
+    response: Response,
     period: str = Query("all", pattern="^(week|month|year|all)$"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -32,6 +33,9 @@ async def get_statistics(
     - all: all time
     """
     logger.info("stats.fetch period={}", period)
+
+    # Cache for 5 minutes - statistics are expensive queries
+    response.headers["Cache-Control"] = "private, max-age=300"
 
     # Calculate date range
     today = date.today()

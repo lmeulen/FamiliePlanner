@@ -285,5 +285,38 @@
     }
   });
 
+  // ── Cache Management ─────────────────────────────────────────
+  const cacheHitRateEl = document.getElementById('cache-hit-rate');
+  const cacheEntriesEl = document.getElementById('cache-entries');
+  const cacheHitsEl = document.getElementById('cache-hits');
+  const cacheMissesEl = document.getElementById('cache-misses');
+  const cacheSizeEl = document.getElementById('cache-size');
+  const clearCacheBtn = document.getElementById('clear-cache-btn');
+
+  function updateCacheStats() {
+    if (!window.Cache) return;
+
+    const stats = Cache.getStats();
+    cacheHitRateEl.textContent = stats.hitRate + '%';
+    cacheEntriesEl.textContent = stats.entries;
+    cacheHitsEl.textContent = stats.hits;
+    cacheMissesEl.textContent = stats.misses;
+    cacheSizeEl.textContent = stats.size;
+  }
+
+  clearCacheBtn?.addEventListener('click', () => {
+    if (!confirm('Cache wissen? Dit heeft geen invloed op opgeslagen gegevens, alleen op geladen pagina\'s.')) {
+      return;
+    }
+
+    Cache.clear();
+    Toast.show('Cache gewist', 'success');
+    updateCacheStats();
+  });
+
+  // Update cache stats every 2 seconds
+  updateCacheStats();
+  setInterval(updateCacheStats, 2000);
+
   load();
 })();

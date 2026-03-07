@@ -140,6 +140,46 @@
           <div id="validation-result" class="hidden" style="margin-top: 0.75rem; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem;"></div>
         </div>
       </section>
+
+      <!-- ── Cache Statistics ────────────────────────────────────── -->
+      <section class="settings-section card">
+        <h2 class="settings-section-title">⚡ Cache</h2>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Browser cache voor snellere laadtijden.
+        </p>
+
+        <div class="settings-row settings-row--col">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+            <div style="text-align: center; padding: 0.75rem; background: var(--bg-surface-2); border-radius: 6px;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);" id="cache-hit-rate">0%</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Hit Rate</div>
+            </div>
+            <div style="text-align: center; padding: 0.75rem; background: var(--bg-surface-2); border-radius: 6px;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);" id="cache-entries">0</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Items</div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; padding: 0.5rem; background: var(--bg-surface-2); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+              <span>Cache hits:</span>
+              <strong id="cache-hits">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+              <span>Cache misses:</span>
+              <strong id="cache-misses">0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Storage gebruikt:</span>
+              <strong id="cache-size">0 B</strong>
+            </div>
+          </div>
+
+          <button type="button" id="clear-cache-btn" class="btn btn--secondary" style="width: 100%;">
+            🗑️ Cache Wissen
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 

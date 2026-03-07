@@ -1,6 +1,6 @@
 """CRUD router for FamilyMember."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,9 @@ router = APIRouter(prefix="/api/family", tags=["family"])
 
 
 @router.get("/", response_model=list[FamilyMemberOut])
-async def list_members(db: AsyncSession = Depends(get_db)):
+async def list_members(response: Response, db: AsyncSession = Depends(get_db)):
+    # Cache for 1 hour - family members rarely change
+    response.headers["Cache-Control"] = "private, max-age=3600"
     result = await db.execute(select(FamilyMember).order_by(FamilyMember.id))
     return result.scalars().all()
 

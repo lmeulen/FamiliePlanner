@@ -12,9 +12,20 @@ window.FP = (() => {
   // ── Shared family member state ────────────────────────────────
   let _members = [];
 
-  async function loadMembers() {
+  async function loadMembers(useCache = true) {
+    // Check cache first (1 hour TTL)
+    if (useCache) {
+      const cached = Cache.get('family_members');
+      if (cached) {
+        _members = cached;
+        return _members;
+      }
+    }
+
     try {
       _members = await API.get('/api/family/');
+      // Cache for 1 hour
+      Cache.set('family_members', _members, 3600000);
     } catch {
       _members = [];
     }
@@ -231,6 +242,15 @@ window.FP = (() => {
     applyPersistedSettings();
   });
 
+  // ── Cache helpers ─────────────────────────────────────────────
+  function invalidateCache(pattern) {
+    Cache.invalidate(pattern);
+  }
+
+  function clearAllCache() {
+    Cache.clear();
+  }
+
   return {
     esc,
     loadMembers, getMembers, getMember, memberColor, memberAvatar,
@@ -241,6 +261,7 @@ window.FP = (() => {
     NL_DAYS, NL_DAYS_FULL, NL_MONTHS, NL_MONTHS_SHORT,
     settingsReady,
     getSettings: () => _settings,
+    invalidateCache, clearAllCache,
   };
 })();
 
