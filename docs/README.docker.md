@@ -309,10 +309,10 @@ docker-compose up -d
 
 ## 📚 Zie Ook
 
-- [Main README](README.md) - Algemene documentatie
-- [MONITORING.md](docs/MONITORING.md) - Prometheus/Grafana setup
-- [CACHING.md](docs/CACHING.md) - Performance optimalisatie
-- [ERROR_HANDLING.md](docs/ERROR_HANDLING.md) - Error messages
+- [Main README](../README.md) - Algemene documentatie
+- [MONITORING.md](MONITORING.md) - Prometheus/Grafana setup
+- [CACHING.md](CACHING.md) - Performance optimalisatie
+- [ERROR_HANDLING.md](ERROR_HANDLING.md) - Error messages
 
 ---
 
