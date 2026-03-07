@@ -15,18 +15,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import re
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, time
-import re
 from typing import Any
 
 import httpx
 from icalendar import Calendar
 
 DEFAULT_COZI_ICS_URL = (
-    "https://rest.cozi.com/api/ext/1103/071ca6fe-dfab-4b87-8240-6cc7fa3d43d3/"
-    "icalendar/feed/feed.ics"
+    "https://rest.cozi.com/api/ext/1103/071ca6fe-dfab-4b87-8240-6cc7fa3d43d3/" "icalendar/feed/feed.ics"
 )
 
 
@@ -294,7 +293,7 @@ def _print_recommendations(
 
     print("RRULE -> FamiliePlanner herhalingspatroon mapping:")
     if rrule_mapping_counter:
-        for pattern, count in raw_rrule_counter.most_common():
+        for pattern, _ in raw_rrule_counter.most_common():
             mappings = rrule_mapping_counter.get(pattern, Counter())
             mapping_parts = [f"{mapping} ({mapping_count}x)" for mapping, mapping_count in mappings.most_common()]
             mapping_text = ", ".join(mapping_parts) if mapping_parts else "onbekend"
@@ -419,11 +418,7 @@ async def run() -> None:
 
         advice = _map_rrule_to_familieplanner(rrule)
         if pattern:
-            mapping_label = (
-                advice.recurrence_type
-                if advice.recurrence_type
-                else f"unsupported ({advice.reason})"
-            )
+            mapping_label = advice.recurrence_type if advice.recurrence_type else f"unsupported ({advice.reason})"
             rrule_mapping_counter.setdefault(pattern, Counter())[mapping_label] += 1
 
         if advice.recurrence_type:
