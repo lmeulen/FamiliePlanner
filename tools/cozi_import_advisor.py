@@ -278,7 +278,9 @@ def _build_event_preview(
     start_dt, end_dt, all_day = _extract_start_end(event)
     summary_raw = str(event.get("SUMMARY", "")).strip() or "(zonder titel)"
     summary_members, summary_title = _extract_members_from_summary(summary_raw)
-    mapped_member_ids = sorted({member_id for name in summary_members for member_id in name_to_member_ids.get(name, [])})
+    mapped_member_ids = sorted(
+        {member_id for name in summary_members for member_id in name_to_member_ids.get(name, [])}
+    )
     description = str(event.get("DESCRIPTION", "") or "")
     location = str(event.get("LOCATION", "") or "")
     original_ics = event.to_ical().decode("utf-8", errors="replace")
@@ -378,7 +380,9 @@ def _print_recommendations(
             members_index = {member.id: member.name for member in family_members}
             for found_name, member_ids in found_name_mapping.items():
                 if member_ids:
-                    mapped_names = ", ".join(f"{member_id} ({members_index.get(member_id, '?')})" for member_id in member_ids)
+                    mapped_names = ", ".join(
+                        f"{member_id} ({members_index.get(member_id, '?')})" for member_id in member_ids
+                    )
                     print(f"- {found_name} -> [{mapped_names}]")
                 else:
                     print(f"- {found_name} -> [geen match]")

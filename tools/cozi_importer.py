@@ -288,11 +288,7 @@ async def run() -> None:
             summary_raw = str(event.get("SUMMARY", "")).strip() or "(zonder titel)"
             summary_members, summary_title = _extract_members_and_title_for_import(summary_raw, family_members)
             mapped_member_ids = sorted(
-                {
-                    member_id
-                    for member_name in summary_members
-                    for member_id in found_name_mapping.get(member_name, [])
-                }
+                {member_id for member_name in summary_members for member_id in found_name_mapping.get(member_name, [])}
             )
 
             try:
@@ -389,7 +385,9 @@ async def run() -> None:
 
                 if mapped_member_ids:
                     for generated_event in generated_events:
-                        await set_junction_members(db, agenda_event_members, "event_id", generated_event.id, mapped_member_ids)
+                        await set_junction_members(
+                            db, agenda_event_members, "event_id", generated_event.id, mapped_member_ids
+                        )
 
                 stats.imported_series += 1
                 continue
