@@ -129,9 +129,15 @@
             <span class="settings-label-hint">⚠️ Waarschuwing: Dit verwijdert alle huidige gegevens!</span>
           </label>
           <input type="file" id="restore-file" accept=".json" style="margin-top: 0.5rem;" />
-          <button type="button" id="restore-btn" class="btn btn--danger" style="margin-top: 0.5rem;">
-            📤 Restore Backup
-          </button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="validate-btn" class="btn btn--secondary" style="flex: 1;">
+              🔍 Valideer Backup
+            </button>
+            <button type="button" id="restore-btn" class="btn btn--danger" style="flex: 1;">
+              📤 Restore Backup
+            </button>
+          </div>
+          <div id="validation-result" class="hidden" style="margin-top: 0.75rem; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem;"></div>
         </div>
       </section>
     </div>

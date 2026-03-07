@@ -109,7 +109,9 @@
   // ── Backup & Restore ─────────────────────────────────────────
   const backupBtn = document.getElementById('backup-btn');
   const restoreBtn = document.getElementById('restore-btn');
+  const validateBtn = document.getElementById('validate-btn');
   const restoreFile = document.getElementById('restore-file');
+  const validationResult = document.getElementById('validation-result');
 
   function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
@@ -150,6 +152,91 @@
         backupBtn.textContent = '📥 Download Backup';
         backupBtn.disabled = false;
       }, 2000);
+    }
+  });
+
+  // Validate backup (dry-run)
+  validateBtn.addEventListener('click', async () => {
+    const file = restoreFile.files[0];
+    if (!file) {
+      alert('Selecteer eerst een backup bestand.');
+      return;
+    }
+
+    try {
+      validateBtn.disabled = true;
+      validateBtn.textContent = '⏳ Valideren...';
+      validationResult.classList.add('hidden');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/settings/restore?dry_run=true', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      // Display validation result
+      validationResult.classList.remove('hidden');
+
+      if (result.valid) {
+        validationResult.style.backgroundColor = 'var(--success-bg, #d4edda)';
+        validationResult.style.border = '1px solid var(--success-border, #c3e6cb)';
+        validationResult.style.color = 'var(--success-text, #155724)';
+
+        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">✅ Backup is geldig</div>`;
+        html += `<div style="margin-bottom: 0.25rem;">• Versie: ${result.version}</div>`;
+        html += `<div style="margin-bottom: 0.25rem;">• Geëxporteerd: ${new Date(result.exported_at).toLocaleString('nl-NL')}</div>`;
+
+        const totalRecords = Object.values(result.record_counts).reduce((sum, count) => sum + count, 0);
+        html += `<div style="margin-bottom: 0.25rem;">• Totaal records: ${totalRecords}</div>`;
+
+        if (result.warnings && result.warnings.length > 0) {
+          html += `<div style="margin-top: 0.5rem; font-weight: 600;">⚠️ Waarschuwingen:</div>`;
+          result.warnings.forEach(w => {
+            html += `<div style="margin-left: 1rem; margin-top: 0.25rem;">• ${w}</div>`;
+          });
+        }
+
+        validationResult.innerHTML = html;
+        validateBtn.textContent = '✅ Geldig!';
+      } else {
+        validationResult.style.backgroundColor = 'var(--error-bg, #f8d7da)';
+        validationResult.style.border = '1px solid var(--error-border, #f5c6cb)';
+        validationResult.style.color = 'var(--error-text, #721c24)';
+
+        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">❌ Backup is ongeldig</div>`;
+        if (result.errors && result.errors.length > 0) {
+          html += `<div style="font-weight: 600; margin-top: 0.5rem;">Fouten:</div>`;
+          result.errors.forEach(e => {
+            html += `<div style="margin-left: 1rem; margin-top: 0.25rem;">• ${e}</div>`;
+          });
+        }
+
+        validationResult.innerHTML = html;
+        validateBtn.textContent = '❌ Ongeldig';
+      }
+
+      setTimeout(() => {
+        validateBtn.textContent = '🔍 Valideer Backup';
+        validateBtn.disabled = false;
+      }, 3000);
+    } catch (err) {
+      console.error('Validation error:', err);
+      validationResult.classList.remove('hidden');
+      validationResult.style.backgroundColor = 'var(--error-bg, #f8d7da)';
+      validationResult.style.border = '1px solid var(--error-border, #f5c6cb)';
+      validationResult.style.color = 'var(--error-text, #721c24)';
+      validationResult.innerHTML = `<div style="font-weight: 600;">❌ Validatie fout</div><div style="margin-top: 0.25rem;">${err.message}</div>`;
+
+      validateBtn.textContent = '❌ Fout';
+      setTimeout(() => {
+        validateBtn.textContent = '🔍 Valideer Backup';
+        validateBtn.disabled = false;
+      }, 3000);
     }
   });
 
