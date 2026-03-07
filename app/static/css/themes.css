@@ -80,8 +80,8 @@
 
   /* Text */
   --text-primary:    #E8EAF6;
-  --text-secondary:  #9EA7C4;
-  --text-muted:      #5A5F7D;
+  --text-secondary:  #AAB1CC;
+  --text-muted:      #8A8FA8;
   --text-inverse:    #FFFFFF;
 
   /* Brand / accent */
@@ -109,7 +109,7 @@
   --meal-snack:      #FD79A8;
 
   /* Borders & shadows */
-  --border:          #2D3150;
+  --border:          #3D4165;
   --border-focus:    #8B7CF6;
   --shadow-sm:       0 1px 4px rgba(0,0,0,.3);
   --shadow-md:       0 4px 16px rgba(0,0,0,.4);
@@ -118,7 +118,7 @@
   /* Navigation */
   --nav-bg:          #1A1D2E;
   --nav-active:      #8B7CF6;
-  --nav-inactive:    #5A5F7D;
+  --nav-inactive:    #9EA7C4;
 
   /* Header */
   --header-bg:       #1A1D2E;
@@ -126,7 +126,7 @@
 
   /* Input */
   --input-bg:        #0F1117;
-  --input-border:    #2D3150;
+  --input-border:    #3D4165;
 
   /* Skeleton */
   --skeleton-base:   #252840;

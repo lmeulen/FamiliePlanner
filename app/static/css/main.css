@@ -239,7 +239,10 @@ img { max-width: 100%; }
   color: var(--text-secondary);
   flex-shrink: 0;
 }
-.task-due-badge.overdue { background: #ffe0e0; color: var(--color-danger); }
+.task-due-badge.overdue {
+  background: rgba(214, 48, 49, 0.15);
+  color: var(--color-danger);
+}
 .task-card.task-overdue { border-left: 3px solid var(--color-danger); }
 .task-due { font-size: .72rem; color: var(--color-danger); margin-top: .1rem; font-weight: 500; }
 .task-list-dot {
@@ -1043,7 +1046,7 @@ img { max-width: 100%; }
 .modal-form textarea:user-invalid,
 .modal-form select:user-invalid {
   border-color: var(--color-danger);
-  background: #fff5f5;
+  background: rgba(214, 48, 49, 0.08);
 }
 .modal-form input:user-invalid:focus,
 .modal-form textarea:user-invalid:focus,
@@ -1087,8 +1090,14 @@ img { max-width: 100%; }
 .btn--primary:hover  { background: var(--accent-hover); transform: translateY(-1px); }
 .btn--secondary { background: var(--bg-surface-2); color: var(--text-primary); }
 .btn--secondary:hover { filter: brightness(.95); }
-.btn--danger   { background: #FFF0F0; color: var(--color-danger); border: 1px solid #FFCDD2; }
-.btn--danger:hover { background: #FFCDD2; }
+.btn--danger   {
+  background: rgba(214, 48, 49, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(214, 48, 49, 0.3);
+}
+.btn--danger:hover {
+  background: rgba(214, 48, 49, 0.2);
+}
 
 /* ── TOAST ───────────────────────────────────────────────────── */
 #toast-container {
@@ -1607,8 +1616,9 @@ img { max-width: 100%; }
 }
 
 .search-result-card mark {
-  background-color: #ffeb3b;
-  color: #000;
+  background-color: rgba(253, 203, 110, 0.4);
+  color: var(--text-primary);
+  font-weight: 600;
   padding: 0.1rem 0.2rem;
   border-radius: 3px;
   font-weight: 600;
