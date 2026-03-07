@@ -794,8 +794,15 @@ img { max-width: 100%; }
 /* ── VIEW CONTROLS (tabs) ────────────────────────────────────── */
 .view-controls {
   display: flex;
-  gap: .3rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: .75rem;
+  flex-wrap: wrap;
+}
+.view-controls-left {
+  display: flex;
+  gap: .3rem;
   flex-wrap: wrap;
 }
 .view-btn {

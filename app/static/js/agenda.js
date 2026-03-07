@@ -692,9 +692,9 @@
   async function init() {
     await FP.loadMembers();
 
-    document.querySelectorAll('.view-btn').forEach(btn => {
+    document.querySelectorAll('.view-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view-btn[data-view]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         curView = btn.dataset.view;
         render();
@@ -703,6 +703,10 @@
 
     document.getElementById('cal-prev')?.addEventListener('click', () => navigate(-1));
     document.getElementById('cal-next')?.addEventListener('click', () => navigate(1));
+    document.getElementById('btn-today')?.addEventListener('click', () => {
+      curDate = new Date();
+      loadEvents();
+    });
     document.getElementById('btn-add-event')?.addEventListener('click', () => openEventForm());
 
     await FP.buildMemberChips('agenda-member-chips', m => { activeMember = m; render(); });
