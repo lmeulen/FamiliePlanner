@@ -243,3 +243,16 @@ window.FP = (() => {
     getSettings: () => _settings,
   };
 })();
+
+// ── Global keyboard shortcuts ─────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  // Ctrl+K or Cmd+K → Focus search (or navigate to search page)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (window.location.pathname === '/zoeken') {
+      document.getElementById('search-input')?.focus();
+    } else {
+      window.location.href = '/zoeken';
+    }
+  }
+});

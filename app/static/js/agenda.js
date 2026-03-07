@@ -632,7 +632,16 @@
 
     await FP.buildMemberChips('agenda-member-chips', m => { activeMember = m; render(); });
 
-    loadEvents();
+    await loadEvents();
+
+    // Check for URL parameter to open specific event modal (from search)
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event');
+    if (eventId) {
+      openEventForm(parseInt(eventId));
+      // Clean URL without reload
+      window.history.replaceState({}, '', '/agenda');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);

@@ -192,7 +192,16 @@
 
     document.getElementById('btn-add-meal')?.addEventListener('click', () => openMealForm());
 
-    loadMeals();
+    await loadMeals();
+
+    // Check for URL parameter to open specific meal modal (from search)
+    const params = new URLSearchParams(window.location.search);
+    const mealId = params.get('meal');
+    if (mealId) {
+      openMealForm(parseInt(mealId));
+      // Clean URL without reload
+      window.history.replaceState({}, '', '/maaltijden');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);

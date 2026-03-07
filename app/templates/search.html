@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Zoeken – FamiliePlanner{% endblock %}
+{% block nav_search %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🔍 Zoeken</h1>
+</div>
+
+<!-- Search input -->
+<div class="search-container">
+  <div class="search-input-wrapper">
+    <input
+      type="text"
+      id="search-input"
+      class="search-input"
+      placeholder="Zoek in afspraken, taken en maaltijden..."
+      autocomplete="off"
+      autofocus
+    />
+    <span class="search-hint">Minimaal 3 karakters · Ctrl+K om te focussen</span>
+  </div>
+</div>
+
+<!-- Empty state -->
+<div id="search-empty" class="search-empty">
+  <p class="empty-state">💡 Typ minimaal 3 karakters om te zoeken...</p>
+</div>
+
+<!-- Loading state -->
+<div id="search-loading" class="search-loading hidden">
+  <div class="skeleton-list">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+</div>
+
+<!-- No results -->
+<div id="search-no-results" class="search-no-results hidden">
+  <p class="empty-state">Geen resultaten gevonden voor "<span id="search-query-text"></span>"</p>
+</div>
+
+<!-- Results container -->
+<div id="search-results" class="search-results hidden">
+
+  <!-- Events section -->
+  <section id="events-section" class="search-section hidden">
+    <div class="search-section-header">
+      <h3>📅 Afspraken</h3>
+      <span class="search-section-count" id="events-count">0</span>
+    </div>
+    <div class="card-list" id="events-list"></div>
+  </section>
+
+  <!-- Tasks section -->
+  <section id="tasks-section" class="search-section hidden">
+    <div class="search-section-header">
+      <h3>✅ Taken</h3>
+      <span class="search-section-count" id="tasks-count">0</span>
+    </div>
+    <div class="card-list" id="tasks-list"></div>
+  </section>
+
+  <!-- Meals section -->
+  <section id="meals-section" class="search-section hidden">
+    <div class="search-section-header">
+      <h3>🍽️ Maaltijden</h3>
+      <span class="search-section-count" id="meals-count">0</span>
+    </div>
+    <div class="card-list" id="meals-list"></div>
+  </section>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/search.js?v={{ static_v }}"></script>
+{% endblock %}

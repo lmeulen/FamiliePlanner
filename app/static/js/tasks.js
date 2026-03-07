@@ -530,6 +530,15 @@
       activeMember = m;
       loadTasks();
     });
+
+    // Check for URL parameter to open specific task modal (from search)
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get('task');
+    if (taskId) {
+      openTaskForm(parseInt(taskId));
+      // Clean URL without reload
+      window.history.replaceState({}, '', '/taken');
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);

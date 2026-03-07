@@ -1519,3 +1519,151 @@ img { max-width: 100%; }
   color: var(--text-primary);
   font-weight: 500;
 }
+
+/* ── SEARCH PAGE ────────────────────────────────────────────────── */
+.search-container {
+  max-width: 800px;
+  margin: 0 auto 2rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  font-size: 1.1rem;
+  border: 2px solid var(--input-border);
+  border-radius: 12px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 4px var(--accent-light);
+}
+
+.search-hint {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.search-empty,
+.search-loading,
+.search-no-results {
+  max-width: 800px;
+  margin: 3rem auto;
+  text-align: center;
+}
+
+.search-results {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.search-section {
+  margin-bottom: 2.5rem;
+}
+
+.search-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.search-section-header h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.search-section-count {
+  background: var(--accent);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.search-result-card {
+  margin-bottom: 0.75rem;
+  transition: transform .15s, box-shadow .15s;
+}
+
+.search-result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.search-result-card mark {
+  background-color: #ffeb3b;
+  color: #000;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* Task card specific */
+.task-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.task-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.task-details {
+  flex: 1;
+}
+
+.task-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.task-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Meal card specific */
+.meal-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.meal-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.meal-details {
+  flex: 1;
+}
+
+.meal-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.meal-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
