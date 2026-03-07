@@ -1494,8 +1494,28 @@ img { max-width: 100%; }
 }
 
 .end-condition-toggle .radio-label {
-  display: flex;
+  flex-direction: row !important;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.5rem !important;
   cursor: pointer;
+  font-size: .9rem !important;
+}
+
+.interval-inline {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.interval-inline input[type="number"] {
+  width: 80px !important;
+  flex-shrink: 0;
+}
+
+.interval-inline .interval-unit {
+  margin: 0 !important;
+  font-size: .9rem;
+  color: var(--text-primary);
+  font-weight: 500;
 }

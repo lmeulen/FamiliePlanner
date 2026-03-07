@@ -344,11 +344,56 @@
     const titleEl = document.getElementById('dash-event-form-title');
     const delBtn  = document.getElementById('dash-btn-delete-event');
 
+    const toggleRow   = document.getElementById('recurrence-toggle-row');
+    const recurToggle = document.getElementById('recurrence-toggle');
+    const recurSection = document.getElementById('recurrence-section');
+
     FP.buildMemberPicker('event-member-picker');
+
+    // ── Progressive disclosure for recurrence UI ─────
+    const recurrenceTypeSelect = document.getElementById('recurrence-type-select');
+    const intervalSection      = document.getElementById('interval-section');
+    const intervalUnit         = document.getElementById('interval-unit');
+    const monthlyPatternSection = document.getElementById('monthly-pattern-section');
+    const endDateSection       = document.getElementById('end-date-section');
+    const endCountSection      = document.getElementById('end-count-section');
+    const endConditionRadios   = form.querySelectorAll('input[name="end_condition"]');
+
+    function updateRecurrenceUI() {
+      const recurrenceType = recurrenceTypeSelect.value;
+      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      intervalSection?.classList.toggle('hidden', !showInterval);
+
+      if (recurrenceType === 'daily') {
+        intervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'monthly') {
+        intervalUnit.textContent = 'maanden';
+      } else {
+        intervalUnit.textContent = 'weken';
+      }
+
+      monthlyPatternSection?.classList.toggle('hidden', recurrenceType !== 'monthly');
+    }
+
+    function updateEndConditionUI() {
+      const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+      endDateSection?.classList.toggle('hidden', endCondition !== 'date');
+      endCountSection?.classList.toggle('hidden', endCondition !== 'count');
+    }
+
+    recurrenceTypeSelect?.addEventListener('change', updateRecurrenceUI);
+    endConditionRadios?.forEach(radio => {
+      radio.addEventListener('change', updateEndConditionUI);
+    });
+
+    updateRecurrenceUI();
+    updateEndConditionUI();
 
     if (id) {
       titleEl.textContent = 'Afspraak bewerken';
       delBtn.classList.remove('hidden');
+      toggleRow.classList.add('hidden');
+      recurSection.classList.add('hidden');
       const ev = _events.find(e => e.id === id);
       if (ev) {
         form.title.value       = ev.title;
@@ -363,11 +408,23 @@
     } else {
       titleEl.textContent = 'Afspraak toevoegen';
       delBtn.classList.add('hidden');
+      toggleRow.classList.remove('hidden');
+      recurSection.classList.add('hidden');
       const now = new Date();
       const s = new Date(now); s.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
       const e = new Date(s);   e.setHours(e.getHours() + 1);
       form.start_time.value = FP.toLocalDatetimeInput(s);
       form.end_time.value   = FP.toLocalDatetimeInput(e);
+
+      // Set default series_end (4 weeks ahead)
+      const defaultEnd = new Date(); defaultEnd.setDate(defaultEnd.getDate() + 28);
+      const pad = n => String(n).padStart(2, '0');
+      form.querySelector('input[name="series_end"]').value =
+        `${defaultEnd.getFullYear()}-${pad(defaultEnd.getMonth()+1)}-${pad(defaultEnd.getDate())}`;
+
+      recurToggle.addEventListener('change', () => {
+        recurSection.classList.toggle('hidden', !recurToggle.checked);
+      });
     }
 
     form.addEventListener('submit', async ev => {
@@ -377,7 +434,11 @@
       const endErr  = document.getElementById('end-time-error');
       if (endDt <= startDt) { endErr?.classList.remove('hidden'); return; }
       endErr?.classList.add('hidden');
-      const data = {
+
+      const pad = n => String(n).padStart(2, '0');
+      const toTimeStr = dt => `${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
+
+      const eventData = {
         title:       form.title.value.trim(),
         description: form.description.value.trim(),
         location:    form.location.value.trim(),
@@ -387,13 +448,45 @@
         color:       form.color.value,
         member_ids:  FP.getSelectedMemberIds('event-member-picker'),
       };
+
       try {
-        if (id) {
-          await API.put(`/api/agenda/${id}`, data);
-          Toast.show('Afspraak bijgewerkt!');
+        if (!id) {
+          if (recurToggle && recurToggle.checked) {
+            // Create recurring series
+            const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+            const seriesPayload = {
+              ...eventData,
+              recurrence_type:    form.querySelector('select[name="recurrence_type"]').value,
+              series_start:       form.start_time.value.split('T')[0],
+              start_time_of_day:  toTimeStr(startDt),
+              end_time_of_day:    toTimeStr(endDt),
+              interval:           parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
+            };
+
+            const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
+            if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
+              seriesPayload.monthly_pattern = monthlyPattern.value;
+            }
+
+            if (endCondition === 'date') {
+              const seriesEndVal = form.querySelector('input[name="series_end"]').value;
+              if (!seriesEndVal) { Toast.show('Vul een einddatum voor de reeks in', 'error'); return; }
+              seriesPayload.series_end = seriesEndVal;
+            } else {
+              const countVal = form.querySelector('input[name="count"]')?.value;
+              if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
+              seriesPayload.count = parseInt(countVal);
+            }
+
+            await API.post('/api/agenda/series', seriesPayload);
+            Toast.show('Herhalende reeks aangemaakt!');
+          } else {
+            await API.post('/api/agenda/', eventData);
+            Toast.show('Afspraak toegevoegd!');
+          }
         } else {
-          await API.post('/api/agenda/', data);
-          Toast.show('Afspraak toegevoegd!');
+          await API.put(`/api/agenda/${id}`, eventData);
+          Toast.show('Afspraak bijgewerkt!');
         }
         Modal.close(); loadEvents();
       } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
@@ -416,6 +509,11 @@
     const titleEl = document.getElementById('dash-task-form-title');
     const delBtn  = document.getElementById('dash-btn-delete-task');
 
+    const recurToggle = document.getElementById('recurrence-toggle');
+    const recurFields = document.getElementById('recurrence-fields');
+    const recurRow    = document.getElementById('recurrence-toggle-row');
+    const scopeSel    = document.getElementById('scope-selector');
+
     FP.buildMemberPicker('task-member-picker');
 
     // Populate list select (required – no empty option)
@@ -431,9 +529,58 @@
       });
     } catch {}
 
+    // Recurrence toggle behaviour
+    recurToggle.addEventListener('change', () => {
+      recurFields.classList.toggle('hidden', !recurToggle.checked);
+      if (recurToggle.checked) {
+        form.querySelector('[name="series_end"]').value = '';
+      }
+    });
+
+    // ── Progressive disclosure for recurrence UI ─────
+    const taskRecurrenceTypeSelect = document.getElementById('task-recurrence-type-select');
+    const taskIntervalSection      = document.getElementById('task-interval-section');
+    const taskIntervalUnit         = document.getElementById('task-interval-unit');
+    const taskMonthlyPatternSection = document.getElementById('task-monthly-pattern-section');
+    const taskEndDateSection       = document.getElementById('task-end-date-section');
+    const taskEndCountSection      = document.getElementById('task-end-count-section');
+    const taskEndConditionRadios   = form.querySelectorAll('input[name="end_condition"]');
+
+    function updateTaskRecurrenceUI() {
+      const recurrenceType = taskRecurrenceTypeSelect.value;
+      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      taskIntervalSection?.classList.toggle('hidden', !showInterval);
+
+      if (recurrenceType === 'daily') {
+        taskIntervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'monthly') {
+        taskIntervalUnit.textContent = 'maanden';
+      } else {
+        taskIntervalUnit.textContent = 'weken';
+      }
+
+      taskMonthlyPatternSection?.classList.toggle('hidden', recurrenceType !== 'monthly');
+    }
+
+    function updateTaskEndConditionUI() {
+      const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+      taskEndDateSection?.classList.toggle('hidden', endCondition !== 'date');
+      taskEndCountSection?.classList.toggle('hidden', endCondition !== 'count');
+    }
+
+    taskRecurrenceTypeSelect?.addEventListener('change', updateTaskRecurrenceUI);
+    taskEndConditionRadios?.forEach(radio => {
+      radio.addEventListener('change', updateTaskEndConditionUI);
+    });
+
+    updateTaskRecurrenceUI();
+    updateTaskEndConditionUI();
+
     if (id) {
       titleEl.textContent = 'Taak bewerken';
       delBtn.classList.remove('hidden');
+      recurRow.classList.add('hidden');
+      scopeSel.classList.add('hidden');
       const task = _tasks.find(t => t.id === id);
       if (task) {
         form.title.value       = task.title;
@@ -445,17 +592,76 @@
     } else {
       titleEl.textContent = 'Taak toevoegen';
       delBtn.classList.add('hidden');
+      recurRow.classList.remove('hidden');
+      scopeSel.classList.add('hidden');
+      recurFields.classList.add('hidden');
       form.due_date.value = FP.todayStr();
       if (dashLists.length) listSel.value = dashLists[0].id;
     }
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      const memberIds = FP.getSelectedMemberIds('task-member-picker');
+
+      form.title.value       = form.title.value.trim();
+      form.description.value = form.description.value.trim();
+
+      if (!form.title.value) {
+        form.title.focus();
+        return;
+      }
+
+      // Creating a new recurring series
+      if (!id && recurToggle.checked) {
+        const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+        const payload = {
+          title:           form.title.value,
+          description:     form.description.value,
+          list_id:         listSel.value ? parseInt(listSel.value) : dashLists[0]?.id || null,
+          member_ids:      memberIds,
+          recurrence_type: form.querySelector('[name="recurrence_type"]').value,
+          series_start:    form.due_date.value,
+          interval:        parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
+        };
+
+        const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
+        if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
+          payload.monthly_pattern = monthlyPattern.value;
+        }
+
+        if (endCondition === 'date') {
+          const seriesEndInput = form.querySelector('[name="series_end"]');
+          const seriesEndErr   = document.getElementById('task-series-end-error');
+          const seriesEnd      = seriesEndInput.value;
+          const dueDate        = form.due_date.value;
+          if (!seriesEnd || seriesEnd <= dueDate) {
+            seriesEndErr?.classList.remove('hidden');
+            seriesEndInput.focus();
+            return;
+          }
+          seriesEndErr?.classList.add('hidden');
+          payload.series_end = seriesEnd;
+        } else {
+          const countVal = form.querySelector('input[name="count"]')?.value;
+          if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
+          payload.count = parseInt(countVal);
+        }
+
+        try {
+          await API.post('/api/tasks/series', payload);
+          Toast.show('Reeks aangemaakt!');
+          Modal.close();
+          loadTasks();
+        } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
+        return;
+      }
+
+      // Regular task create/update
       const data = {
-        title:       form.title.value.trim(),
-        description: form.description.value.trim(),
+        title:       form.title.value,
+        description: form.description.value,
         list_id:     listSel.value ? parseInt(listSel.value) : null,
-        member_ids:  FP.getSelectedMemberIds('task-member-picker'),
+        member_ids:  memberIds,
         due_date:    form.due_date.value || null,
       };
       try {
