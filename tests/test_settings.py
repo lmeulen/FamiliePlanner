@@ -410,6 +410,7 @@ async def test_get_settings(client: AsyncClient):
     settings = r.json()
     assert "auth_required" in settings
     assert "theme" in settings
+    assert "language" in settings
     assert "weather_enabled" in settings
     assert "dashboard_photo_enabled" in settings
 
@@ -422,3 +423,17 @@ async def test_update_settings(client: AsyncClient):
     settings = r.json()
     assert settings["theme"] == "dark"
     assert settings["weather_enabled"] is False
+
+
+async def test_update_settings_language(client: AsyncClient):
+    """Test updating language setting."""
+    r = await client.put("/api/settings/", json={"language": "en"})
+
+    assert r.status_code == 200
+    settings = r.json()
+    assert settings["language"] == "en"
+
+    # Invalid language should fall back to Dutch
+    r_invalid = await client.put("/api/settings/", json={"language": "fr"})
+    assert r_invalid.status_code == 200
+    assert r_invalid.json()["language"] == "nl"

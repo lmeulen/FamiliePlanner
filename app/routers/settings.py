@@ -32,6 +32,7 @@ _KEYS = {
     "dashboard_photo_height",
     "dashboard_photo_enabled",
     "dashboard_photo_interval",
+    "language",
     "theme",
     "weather_enabled",
     "weather_location",
@@ -54,11 +55,16 @@ async def _set(db: AsyncSession, key: str, value: str) -> None:
 
 async def _build_settings_dict(db: AsyncSession) -> dict:
     """Build settings dictionary from database."""
+    language = (await _get(db, "language", "nl")).lower()
+    if language not in ("nl", "en", "de"):
+        language = "nl"
+
     return {
         "auth_required": (await _get(db, "auth_required", str(get_auth_required()))).lower() in ("1", "true"),
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
         "dashboard_photo_enabled": (await _get(db, "dashboard_photo_enabled", "true")).lower() in ("1", "true"),
         "dashboard_photo_interval": int(await _get(db, "dashboard_photo_interval", "8")),
+        "language": language,
         "theme": await _get(db, "theme", "system"),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
@@ -89,6 +95,12 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "dashboard_photo_interval" in payload:
         i = max(3, min(60, int(payload["dashboard_photo_interval"])))
         await _set(db, "dashboard_photo_interval", str(i))
+
+    if "language" in payload:
+        lang = str(payload["language"]).strip().lower()
+        if lang not in ("nl", "en", "de"):
+            lang = "nl"
+        await _set(db, "language", lang)
 
     if "theme" in payload:
         t = payload["theme"] if payload["theme"] in ("light", "dark", "system") else "system"

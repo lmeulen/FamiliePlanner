@@ -18,46 +18,46 @@
 <body class="{% block body_class %}{% endblock %}">
 
   <!-- ──────────── SIDE NAVIGATION ──────────── -->
-  <nav class="side-nav" role="navigation" aria-label="Hoofdnavigatie">
-    <a href="/"          class="nav-item {% block nav_dashboard %}{% endblock %}" aria-label="Dashboard">
+  <nav class="side-nav" role="navigation" aria-label="Hoofdnavigatie" data-i18n-aria-label="nav.mainAria">
+    <a href="/"          class="nav-item {% block nav_dashboard %}{% endblock %}" aria-label="Dashboard" data-i18n-aria-label="nav.dashboard">
       <span class="nav-icon">🏠</span>
-      <span class="nav-label">Overzicht</span>
+      <span class="nav-label" data-i18n="nav.dashboard">Overzicht</span>
     </a>
-    <a href="/agenda"    class="nav-item {% block nav_agenda %}{% endblock %}" aria-label="Agenda">
+    <a href="/agenda"    class="nav-item {% block nav_agenda %}{% endblock %}" aria-label="Agenda" data-i18n-aria-label="nav.agenda">
       <span class="nav-icon">📅</span>
-      <span class="nav-label">Agenda</span>
+      <span class="nav-label" data-i18n="nav.agenda">Agenda</span>
     </a>
-    <a href="/taken"     class="nav-item {% block nav_tasks %}{% endblock %}" aria-label="Taken">
+    <a href="/taken"     class="nav-item {% block nav_tasks %}{% endblock %}" aria-label="Taken" data-i18n-aria-label="nav.tasks">
       <span class="nav-icon">✅</span>
-      <span class="nav-label">Taken</span>
+      <span class="nav-label" data-i18n="nav.tasks">Taken</span>
     </a>
-    <a href="/maaltijden" class="nav-item {% block nav_meals %}{% endblock %}" aria-label="Maaltijden">
+    <a href="/maaltijden" class="nav-item {% block nav_meals %}{% endblock %}" aria-label="Maaltijden" data-i18n-aria-label="nav.meals">
       <span class="nav-icon">🍽️</span>
-      <span class="nav-label">Eten</span>
+      <span class="nav-label" data-i18n="nav.meals">Eten</span>
     </a>
-    <a href="/gezin"     class="nav-item {% block nav_family %}{% endblock %}" aria-label="Gezin">
+    <a href="/gezin"     class="nav-item {% block nav_family %}{% endblock %}" aria-label="Gezin" data-i18n-aria-label="nav.family">
       <span class="nav-icon">👨‍👩‍👧‍👦</span>
-      <span class="nav-label">Gezin</span>
+      <span class="nav-label" data-i18n="nav.family">Gezin</span>
     </a>
-    <a href="/fotos"     class="nav-item {% block nav_photos %}{% endblock %}" aria-label="Foto's">
+    <a href="/fotos"     class="nav-item {% block nav_photos %}{% endblock %}" aria-label="Foto's" data-i18n-aria-label="nav.photos">
       <span class="nav-icon">🖼️</span>
-      <span class="nav-label">Foto's</span>
+      <span class="nav-label" data-i18n="nav.photos">Foto's</span>
     </a>
-    <a href="/zoeken"    class="nav-item {% block nav_search %}{% endblock %}" aria-label="Zoeken">
+    <a href="/zoeken"    class="nav-item {% block nav_search %}{% endblock %}" aria-label="Zoeken" data-i18n-aria-label="nav.search">
       <span class="nav-icon">🔍</span>
-      <span class="nav-label">Zoeken</span>
+      <span class="nav-label" data-i18n="nav.search">Zoeken</span>
     </a>
-    <a href="/statistieken" class="nav-item {% block nav_stats %}{% endblock %}" aria-label="Statistieken">
+    <a href="/statistieken" class="nav-item {% block nav_stats %}{% endblock %}" aria-label="Statistieken" data-i18n-aria-label="nav.stats">
       <span class="nav-icon">📊</span>
-      <span class="nav-label">Statistieken</span>
+      <span class="nav-label" data-i18n="nav.stats">Statistieken</span>
     </a>
-    <a href="/instellingen" class="nav-item {% block nav_settings %}{% endblock %}" aria-label="Instellingen">
+    <a href="/instellingen" class="nav-item {% block nav_settings %}{% endblock %}" aria-label="Instellingen" data-i18n-aria-label="nav.settings">
       <span class="nav-icon">⚙️</span>
-      <span class="nav-label">Instellingen</span>
+      <span class="nav-label" data-i18n="nav.settings">Instellingen</span>
     </a>
-    <a href="/logout" class="nav-item nav-item--logout" aria-label="Uitloggen" title="Uitloggen">
+    <a href="/logout" class="nav-item nav-item--logout" aria-label="Uitloggen" title="Uitloggen" data-i18n-aria-label="nav.logout" data-i18n-title="nav.logout">
       <span class="nav-icon">🚪</span>
-      <span class="nav-label">Uitloggen</span>
+      <span class="nav-label" data-i18n="nav.logout">Uitloggen</span>
     </a>
   </nav>
 
@@ -76,7 +76,7 @@
   <!-- ──────────── MODAL CONTAINER ──────────── -->
   <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
     <div class="modal-box" id="modal-box">
-      <button class="modal-close" id="modal-close" aria-label="Sluiten">&times;</button>
+      <button class="modal-close" id="modal-close" aria-label="Sluiten" data-i18n-aria-label="common.close">&times;</button>
       <div id="modal-content"></div>
     </div>
   </div>

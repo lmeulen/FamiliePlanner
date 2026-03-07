@@ -9,10 +9,26 @@
   const photoIntervalRow  = document.getElementById('photo-interval-row');
   const photoIntervalSlider = document.getElementById('photo-interval');
   const photoIntervalValEl = document.getElementById('photo-interval-val');
+  const photoHeightHint   = document.getElementById('photo-height-hint');
+  const photoIntervalHint = document.getElementById('photo-interval-hint');
+  const languageSelect    = document.getElementById('language');
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
   const weatherLocationInput = document.getElementById('weather-location');
   const saveStatus        = document.getElementById('save-status');
+
+  function t(key, vars = {}) {
+    return window.FP?.t ? window.FP.t(key, vars) : key;
+  }
+
+  function renderSliderHints() {
+    if (photoHeightHint) {
+      photoHeightHint.innerHTML = t('settings.photoSizeHint', { value: photoSlider.value });
+    }
+    if (photoIntervalHint) {
+      photoIntervalHint.innerHTML = t('settings.photoIntervalHint', { value: photoIntervalSlider.value });
+    }
+  }
 
   function updatePhotoHeightRow() {
     const enabled = photoToggle.checked;
@@ -44,6 +60,10 @@
     photoIntervalSlider.value = interval;
     photoIntervalValEl.textContent = interval;
 
+    if (languageSelect) {
+      languageSelect.value = s.language || 'nl';
+    }
+
     const theme = s.theme || 'system';
     const radio = form.querySelector(`input[name="theme"][value="${theme}"]`);
     if (radio) radio.checked = true;
@@ -51,6 +71,7 @@
     weatherToggle.checked = !!s.weather_enabled;
     weatherLocationInput.value = s.weather_location || 'Amsterdam,NL';
 
+    renderSliderHints();
     updatePhotoHeightRow();
     updateWeatherLocationRow();
   }
@@ -58,10 +79,12 @@
   // ── Live slider label ────────────────────────────────────────
   photoSlider.addEventListener('input', () => {
     photoValEl.textContent = photoSlider.value;
+    renderSliderHints();
   });
 
   photoIntervalSlider.addEventListener('input', () => {
     photoIntervalValEl.textContent = photoIntervalSlider.value;
+    renderSliderHints();
   });
 
   photoToggle.addEventListener('change', updatePhotoHeightRow);
@@ -76,12 +99,18 @@
       dashboard_photo_enabled: photoToggle.checked,
       dashboard_photo_height: parseInt(photoSlider.value, 10),
       dashboard_photo_interval: parseInt(photoIntervalSlider.value, 10),
+      language: languageSelect?.value || 'nl',
       theme,
       weather_enabled: weatherToggle.checked,
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',
     };
 
     await API.put('/api/settings/', payload);
+
+    // Apply language immediately
+    window.FP?.setLanguage(payload.language);
+    window.FP?.translateDocument();
+    renderSliderHints();
 
     // Apply theme immediately
     applyTheme(theme);
@@ -121,7 +150,7 @@
   backupBtn.addEventListener('click', async () => {
     try {
       backupBtn.disabled = true;
-      backupBtn.textContent = '⏳ Bezig...';
+      backupBtn.textContent = t('settings.busy');
 
       const response = await fetch('/api/settings/backup', {
         method: 'GET',
@@ -140,16 +169,16 @@
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      backupBtn.textContent = '✅ Gedownload!';
+      backupBtn.textContent = t('settings.downloaded');
       setTimeout(() => {
-        backupBtn.textContent = '📥 Download Backup';
+        backupBtn.textContent = t('settings.downloadBackup');
         backupBtn.disabled = false;
       }, 2000);
     } catch (err) {
       console.error('Backup error:', err);
-      backupBtn.textContent = '❌ Fout!';
+      backupBtn.textContent = t('settings.error');
       setTimeout(() => {
-        backupBtn.textContent = '📥 Download Backup';
+        backupBtn.textContent = t('settings.downloadBackup');
         backupBtn.disabled = false;
       }, 2000);
     }
@@ -159,13 +188,13 @@
   validateBtn.addEventListener('click', async () => {
     const file = restoreFile.files[0];
     if (!file) {
-      alert('Selecteer eerst een backup bestand.');
+      alert(t('settings.selectBackupFirst'));
       return;
     }
 
     try {
       validateBtn.disabled = true;
-      validateBtn.textContent = '⏳ Valideren...';
+      validateBtn.textContent = t('settings.validating');
       validationResult.classList.add('hidden');
 
       const formData = new FormData();
@@ -187,41 +216,41 @@
         validationResult.style.border = '1px solid var(--success-border, #c3e6cb)';
         validationResult.style.color = 'var(--success-text, #155724)';
 
-        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">✅ Backup is geldig</div>`;
-        html += `<div style="margin-bottom: 0.25rem;">• Versie: ${result.version}</div>`;
-        html += `<div style="margin-bottom: 0.25rem;">• Geëxporteerd: ${new Date(result.exported_at).toLocaleString('nl-NL')}</div>`;
+        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">${t('settings.backupValid')}</div>`;
+        html += `<div style="margin-bottom: 0.25rem;">• ${t('settings.version')}: ${result.version}</div>`;
+        html += `<div style="margin-bottom: 0.25rem;">• ${t('settings.exportedAt')}: ${new Date(result.exported_at).toLocaleString(window.FP?.getLocale?.() || 'nl-NL')}</div>`;
 
         const totalRecords = Object.values(result.record_counts).reduce((sum, count) => sum + count, 0);
-        html += `<div style="margin-bottom: 0.25rem;">• Totaal records: ${totalRecords}</div>`;
+        html += `<div style="margin-bottom: 0.25rem;">• ${t('settings.totalRecords')}: ${totalRecords}</div>`;
 
         if (result.warnings && result.warnings.length > 0) {
-          html += `<div style="margin-top: 0.5rem; font-weight: 600;">⚠️ Waarschuwingen:</div>`;
+          html += `<div style="margin-top: 0.5rem; font-weight: 600;">${t('settings.warnings')}</div>`;
           result.warnings.forEach(w => {
             html += `<div style="margin-left: 1rem; margin-top: 0.25rem;">• ${w}</div>`;
           });
         }
 
         validationResult.innerHTML = html;
-        validateBtn.textContent = '✅ Geldig!';
+        validateBtn.textContent = t('settings.valid');
       } else {
         validationResult.style.backgroundColor = 'var(--error-bg, #f8d7da)';
         validationResult.style.border = '1px solid var(--error-border, #f5c6cb)';
         validationResult.style.color = 'var(--error-text, #721c24)';
 
-        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">❌ Backup is ongeldig</div>`;
+        let html = `<div style="font-weight: 600; margin-bottom: 0.5rem;">${t('settings.backupInvalid')}</div>`;
         if (result.errors && result.errors.length > 0) {
-          html += `<div style="font-weight: 600; margin-top: 0.5rem;">Fouten:</div>`;
+          html += `<div style="font-weight: 600; margin-top: 0.5rem;">${t('settings.validationErrors')}</div>`;
           result.errors.forEach(e => {
             html += `<div style="margin-left: 1rem; margin-top: 0.25rem;">• ${e}</div>`;
           });
         }
 
         validationResult.innerHTML = html;
-        validateBtn.textContent = '❌ Ongeldig';
+        validateBtn.textContent = t('settings.invalid');
       }
 
       setTimeout(() => {
-        validateBtn.textContent = '🔍 Valideer Backup';
+        validateBtn.textContent = t('settings.validateBackup');
         validateBtn.disabled = false;
       }, 3000);
     } catch (err) {
@@ -230,11 +259,11 @@
       validationResult.style.backgroundColor = 'var(--error-bg, #f8d7da)';
       validationResult.style.border = '1px solid var(--error-border, #f5c6cb)';
       validationResult.style.color = 'var(--error-text, #721c24)';
-      validationResult.innerHTML = `<div style="font-weight: 600;">❌ Validatie fout</div><div style="margin-top: 0.25rem;">${err.message}</div>`;
+      validationResult.innerHTML = `<div style="font-weight: 600;">${t('settings.validationError')}</div><div style="margin-top: 0.25rem;">${err.message}</div>`;
 
-      validateBtn.textContent = '❌ Fout';
+      validateBtn.textContent = t('settings.error');
       setTimeout(() => {
-        validateBtn.textContent = '🔍 Valideer Backup';
+        validateBtn.textContent = t('settings.validateBackup');
         validateBtn.disabled = false;
       }, 3000);
     }
@@ -244,20 +273,17 @@
   restoreBtn.addEventListener('click', async () => {
     const file = restoreFile.files[0];
     if (!file) {
-      alert('Selecteer eerst een backup bestand.');
+      alert(t('settings.selectBackupFirst'));
       return;
     }
 
-    const confirmed = confirm(
-      '⚠️ WAARSCHUWING: Dit verwijdert ALLE huidige gegevens en vervangt ze met de backup.\n\n' +
-      'Weet je zeker dat je wilt doorgaan?'
-    );
+    const confirmed = confirm(t('settings.confirmRestore'));
 
     if (!confirmed) return;
 
     try {
       restoreBtn.disabled = true;
-      restoreBtn.textContent = '⏳ Bezig met restoren...';
+      restoreBtn.textContent = t('settings.restoring');
 
       const formData = new FormData();
       formData.append('file', file);
@@ -270,17 +296,17 @@
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || 'Restore failed');
+        throw new Error(error.details || error.detail || 'Restore failed');
       }
 
-      restoreBtn.textContent = '✅ Hersteld!';
+      restoreBtn.textContent = t('settings.restored');
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (err) {
       console.error('Restore error:', err);
-      alert('Restore mislukt: ' + err.message);
-      restoreBtn.textContent = '📤 Restore Backup';
+      alert(t('settings.restoreFailed', { message: err.message }));
+      restoreBtn.textContent = t('settings.restoreBackup');
       restoreBtn.disabled = false;
     }
   });
@@ -305,12 +331,12 @@
   }
 
   clearCacheBtn?.addEventListener('click', () => {
-    if (!confirm('Cache wissen? Dit heeft geen invloed op opgeslagen gegevens, alleen op geladen pagina\'s.')) {
+    if (!confirm(t('settings.clearCacheConfirm'))) {
       return;
     }
 
     Cache.clear();
-    Toast.show('Cache gewist', 'success');
+    Toast.show(t('settings.cacheCleared'), 'success');
     updateCacheStats();
   });
 

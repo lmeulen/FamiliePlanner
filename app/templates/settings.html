@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="page-container settings-page">
-  <h1 class="page-title">⚙️ Instellingen</h1>
+  <h1 class="page-title" data-i18n="settings.pageTitle">⚙️ Instellingen</h1>
 
   <div class="settings-layout">
     <div class="settings-main">
@@ -13,11 +13,11 @@
 
         <!-- ── Beveiliging ─────────────────────────────────────────── -->
         <section class="settings-section card">
-      <h2 class="settings-section-title">🔒 Beveiliging</h2>
+      <h2 class="settings-section-title" data-i18n="settings.securityTitle">🔒 Beveiliging</h2>
       <label class="settings-row">
         <span class="settings-label">
-          <span class="settings-label-main">Inloggen vereist</span>
-          <span class="settings-label-hint">Als uitgeschakeld is de app direct toegankelijk zonder wachtwoord</span>
+          <span class="settings-label-main" data-i18n="settings.authRequired">Inloggen vereist</span>
+          <span class="settings-label-hint" data-i18n="settings.authRequiredHint">Als uitgeschakeld is de app direct toegankelijk zonder wachtwoord</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="auth-required" name="auth_required" role="switch" />
@@ -28,32 +28,44 @@
 
     <!-- ── Weergave ────────────────────────────────────────────── -->
     <section class="settings-section card">
-      <h2 class="settings-section-title">🎨 Weergave</h2>
+      <h2 class="settings-section-title" data-i18n="settings.displayTitle">🎨 Weergave</h2>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main" data-i18n="settings.language">Taal</span>
+          <span class="settings-label-hint" data-i18n="settings.languageHint">Kies de taal van de interface</span>
+        </span>
+        <select id="language" name="language" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+          <option value="nl" data-i18n="settings.langNl">Nederlands</option>
+          <option value="en" data-i18n="settings.langEn">English</option>
+          <option value="de" data-i18n="settings.langDe">Deutsch</option>
+        </select>
+      </div>
 
       <div class="settings-row">
         <span class="settings-label">
-          <span class="settings-label-main">Thema</span>
+          <span class="settings-label-main" data-i18n="settings.theme">Thema</span>
         </span>
-        <div class="theme-options" role="radiogroup" aria-label="Thema kiezen">
+        <div class="theme-options" role="radiogroup" aria-label="Thema kiezen" data-i18n-aria-label="settings.themeChoose">
           <label class="theme-option">
             <input type="radio" name="theme" value="light" />
-            <span>☀️ Licht</span>
+            <span data-i18n="settings.themeLight">☀️ Licht</span>
           </label>
           <label class="theme-option">
             <input type="radio" name="theme" value="dark" />
-            <span>🌙 Donker</span>
+            <span data-i18n="settings.themeDark">🌙 Donker</span>
           </label>
           <label class="theme-option">
             <input type="radio" name="theme" value="system" />
-            <span>🖥️ Systeem</span>
+            <span data-i18n="settings.themeSystem">🖥️ Systeem</span>
           </label>
         </div>
       </div>
 
       <label class="settings-row">
         <span class="settings-label">
-          <span class="settings-label-main">Foto tonen op overzichtspagina</span>
-          <span class="settings-label-hint">Schakel de foto-diashow op de overzichtspagina in of uit</span>
+          <span class="settings-label-main" data-i18n="settings.dashboardPhoto">Foto tonen op overzichtspagina</span>
+          <span class="settings-label-hint" data-i18n="settings.dashboardPhotoHint">Schakel de foto-diashow op de overzichtspagina in of uit</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="dashboard-photo-enabled" name="dashboard_photo_enabled" role="switch" />
@@ -63,28 +75,28 @@
 
       <div class="settings-row settings-row--col" id="photo-height-row">
         <span class="settings-label">
-          <span class="settings-label-main">Fotogrootte op overzichtspagina</span>
-          <span class="settings-label-hint">Hoogte als percentage van het scherm (<span id="photo-height-val">35</span>%)</span>
+          <span class="settings-label-main" data-i18n="settings.photoSize">Fotogrootte op overzichtspagina</span>
+          <span class="settings-label-hint" id="photo-height-hint">Hoogte als percentage van het scherm (<span id="photo-height-val">35</span>%)</span>
         </span>
         <input type="range" id="photo-height" name="dashboard_photo_height"
                min="10" max="70" step="5" value="35"
-               class="settings-slider" aria-label="Fotogrootte" />
+               class="settings-slider" aria-label="Fotogrootte" data-i18n-aria-label="settings.photoSize" />
       </div>
 
       <div class="settings-row settings-row--col" id="photo-interval-row">
         <span class="settings-label">
-          <span class="settings-label-main">Foto wissel interval</span>
-          <span class="settings-label-hint">Tijd tussen foto's in seconden (<span id="photo-interval-val">8</span>s)</span>
+          <span class="settings-label-main" data-i18n="settings.photoInterval">Foto wissel interval</span>
+          <span class="settings-label-hint" id="photo-interval-hint">Tijd tussen foto's in seconden (<span id="photo-interval-val">8</span>s)</span>
         </span>
         <input type="range" id="photo-interval" name="dashboard_photo_interval"
                min="3" max="60" step="1" value="8"
-               class="settings-slider" aria-label="Foto interval" />
+               class="settings-slider" aria-label="Foto interval" data-i18n-aria-label="settings.photoInterval" />
       </div>
 
       <label class="settings-row">
         <span class="settings-label">
-          <span class="settings-label-main">Weer widget op overzichtspagina</span>
-          <span class="settings-label-hint">Toont datum, tijd en het huidige weer boven de taken</span>
+          <span class="settings-label-main" data-i18n="settings.weatherWidget">Weer widget op overzichtspagina</span>
+          <span class="settings-label-hint" data-i18n="settings.weatherWidgetHint">Toont datum, tijd en het huidige weer boven de taken</span>
         </span>
         <span class="toggle-wrap">
           <input type="checkbox" id="weather-enabled" name="weather_enabled" role="switch" />
@@ -94,18 +106,18 @@
 
       <div class="settings-row settings-row--col" id="weather-location-row">
         <span class="settings-label">
-          <span class="settings-label-main">Locatie voor weer</span>
-          <span class="settings-label-hint">Plaats, Land (bijv. Amsterdam,NL)</span>
+          <span class="settings-label-main" data-i18n="settings.weatherLocation">Locatie voor weer</span>
+          <span class="settings-label-hint" data-i18n="settings.weatherLocationHint">Plaats, Land (bijv. Amsterdam,NL)</span>
         </span>
         <input type="text" id="weather-location" name="weather_location"
-               placeholder="Amsterdam,NL" maxlength="100"
+               placeholder="Amsterdam,NL" data-i18n-placeholder="settings.weatherLocationPlaceholder" maxlength="100"
                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
       </div>
     </section>
 
         <div class="settings-actions">
-          <button type="submit" class="btn btn--primary">Opslaan</button>
-          <span class="settings-save-status hidden" id="save-status">✅ Opgeslagen</span>
+          <button type="submit" class="btn btn--primary" data-i18n="settings.save">Opslaan</button>
+          <span class="settings-save-status hidden" id="save-status" data-i18n="settings.saved">✅ Opgeslagen</span>
         </div>
 
       </form>
@@ -114,26 +126,26 @@
     <!-- ── Backup & Restore (Right Column) ────────────────────────── -->
     <div class="settings-sidebar">
       <section class="settings-section card">
-        <h2 class="settings-section-title">💾 Backup & Restore</h2>
-        <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem;">Backup bevat alle gegevens van de database in JSON-formaat.</p>
+        <h2 class="settings-section-title" data-i18n="settings.backupTitle">💾 Backup & Restore</h2>
+        <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem;" data-i18n="settings.backupIntro">Backup bevat alle gegevens van de database in JSON-formaat.</p>
 
         <div class="settings-row settings-row--col">
-          <button type="button" id="backup-btn" class="btn btn--secondary">
+          <button type="button" id="backup-btn" class="btn btn--secondary" data-i18n="settings.downloadBackup">
             📥 Download Backup
           </button>
         </div>
 
         <div class="settings-row settings-row--col">
           <label class="settings-label">
-            <span class="settings-label-main">Restore vanuit backup</span>
-            <span class="settings-label-hint">⚠️ Waarschuwing: Dit verwijdert alle huidige gegevens!</span>
+            <span class="settings-label-main" data-i18n="settings.restoreFromBackup">Restore vanuit backup</span>
+            <span class="settings-label-hint" data-i18n="settings.restoreWarning">⚠️ Waarschuwing: Dit verwijdert alle huidige gegevens!</span>
           </label>
           <input type="file" id="restore-file" accept=".json" style="margin-top: 0.5rem;" />
           <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-            <button type="button" id="validate-btn" class="btn btn--secondary" style="flex: 1;">
+            <button type="button" id="validate-btn" class="btn btn--secondary" style="flex: 1;" data-i18n="settings.validateBackup">
               🔍 Valideer Backup
             </button>
-            <button type="button" id="restore-btn" class="btn btn--danger" style="flex: 1;">
+            <button type="button" id="restore-btn" class="btn btn--danger" style="flex: 1;" data-i18n="settings.restoreBackup">
               📤 Restore Backup
             </button>
           </div>
@@ -143,8 +155,8 @@
 
       <!-- ── Cache Statistics ────────────────────────────────────── -->
       <section class="settings-section card">
-        <h2 class="settings-section-title">⚡ Cache</h2>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+        <h2 class="settings-section-title" data-i18n="settings.cacheTitle">⚡ Cache</h2>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;" data-i18n="settings.cacheIntro">
           Browser cache voor snellere laadtijden.
         </p>
 
@@ -152,30 +164,30 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
             <div style="text-align: center; padding: 0.75rem; background: var(--bg-surface-2); border-radius: 6px;">
               <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);" id="cache-hit-rate">0%</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Hit Rate</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;" data-i18n="settings.cacheHitRate">Hit Rate</div>
             </div>
             <div style="text-align: center; padding: 0.75rem; background: var(--bg-surface-2); border-radius: 6px;">
               <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent);" id="cache-entries">0</div>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Items</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;" data-i18n="settings.cacheItems">Items</div>
             </div>
           </div>
 
           <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem; padding: 0.5rem; background: var(--bg-surface-2); border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-              <span>Cache hits:</span>
+              <span data-i18n="settings.cacheHits">Cache hits:</span>
               <strong id="cache-hits">0</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-              <span>Cache misses:</span>
+              <span data-i18n="settings.cacheMisses">Cache misses:</span>
               <strong id="cache-misses">0</strong>
             </div>
             <div style="display: flex; justify-content: space-between;">
-              <span>Storage gebruikt:</span>
+              <span data-i18n="settings.cacheStorage">Storage gebruikt:</span>
               <strong id="cache-size">0 B</strong>
             </div>
           </div>
 
-          <button type="button" id="clear-cache-btn" class="btn btn--secondary" style="width: 100%;">
+          <button type="button" id="clear-cache-btn" class="btn btn--secondary" style="width: 100%;" data-i18n="settings.clearCache">
             🗑️ Cache Wissen
           </button>
         </div>
