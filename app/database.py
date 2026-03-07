@@ -39,9 +39,8 @@ async def init_db():
     """Run Alembic migrations to bring the database schema up to date."""
     import asyncio
 
-    from alembic.config import Config
-
     from alembic import command
+    from alembic.config import Config
 
     alembic_cfg = Config("alembic.ini")
     # Run synchronous Alembic command in a thread so we don't block the event loop
