@@ -8,6 +8,115 @@
   let _meals  = [];
   let _tasks  = [];   // combined today + overdue
 
+  // ── Screensaver ─────────────────────────────────────────────
+  const DashboardScreensaver = (() => {
+    const overlay = document.getElementById('dashboard-screensaver');
+    const card = document.getElementById('screensaver-card');
+    const eventsContainer = document.getElementById('screensaver-events');
+
+    let active = false;
+    let rafId = null;
+    let x = 40;
+    let y = 40;
+    let vx = 1.2;
+    let vy = 0.95;
+
+    function upcomingEvents() {
+      const now = new Date();
+      return (_events || [])
+        .filter(ev => {
+          const end = new Date(ev.end_time);
+          return end >= now;
+        })
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    }
+
+    function eventTimeLabel(ev) {
+      if (ev.all_day) return FP.t('screensaver.allDay');
+      return FP.formatTime(new Date(ev.start_time));
+    }
+
+    function render() {
+      if (!eventsContainer) return;
+      const items = upcomingEvents();
+      if (!items.length) {
+        eventsContainer.innerHTML = `<div class="screensaver-empty">${FP.t('screensaver.noUpcoming')}</div>`;
+        return;
+      }
+
+      eventsContainer.innerHTML = items
+        .slice(0, 8)
+        .map(ev => `
+          <div class="screensaver-event">
+            <div class="screensaver-event-time">${FP.esc(eventTimeLabel(ev))}</div>
+            <div class="screensaver-event-title">${FP.esc(ev.title)}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    function animate() {
+      if (!active || !overlay || !card) return;
+
+      const maxX = Math.max(0, window.innerWidth - card.offsetWidth - 8);
+      const maxY = Math.max(0, window.innerHeight - card.offsetHeight - 8);
+
+      x += vx;
+      y += vy;
+
+      if (x <= 0 || x >= maxX) {
+        vx *= -1;
+        x = Math.max(0, Math.min(maxX, x));
+      }
+      if (y <= 0 || y >= maxY) {
+        vy *= -1;
+        y = Math.max(0, Math.min(maxY, y));
+      }
+
+      card.style.transform = `translate(${x}px, ${y}px)`;
+      rafId = window.requestAnimationFrame(animate);
+    }
+
+    function activate() {
+      if (!overlay || !card || active) return;
+      render();
+      active = true;
+      overlay.classList.remove('hidden');
+      document.body.style.cursor = 'none';
+
+      const maxX = Math.max(0, window.innerWidth - card.offsetWidth - 8);
+      const maxY = Math.max(0, window.innerHeight - card.offsetHeight - 8);
+      x = Math.random() * (maxX || 1);
+      y = Math.random() * (maxY || 1);
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(animate);
+    }
+
+    function deactivate() {
+      if (!overlay || !active) return;
+      active = false;
+      overlay.classList.add('hidden');
+      document.body.style.cursor = '';
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function isActive() {
+      return active;
+    }
+
+    function refresh() {
+      if (active) render();
+    }
+
+    return { activate, deactivate, isActive, refresh };
+  })();
+
+  window.DashboardScreensaver = DashboardScreensaver;
+
   // ── Weather Widget ────────────────────────────────────────────
   async function initWeatherWidget() {
     const weatherWidget = document.getElementById('weather-widget');
@@ -183,8 +292,10 @@
           card.addEventListener('click', () => openDashEventForm(parseInt(card.dataset.id)));
         });
       }
+      DashboardScreensaver.refresh();
     } catch {
       container.innerHTML = `<p class="text-muted">Kon agenda niet laden.</p>`;
+      DashboardScreensaver.refresh();
     }
   }
 

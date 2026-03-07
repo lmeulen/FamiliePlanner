@@ -411,7 +411,10 @@ async def test_get_settings(client: AsyncClient):
     assert "auth_required" in settings
     assert "theme" in settings
     assert "language" in settings
+    assert "overview_redirect_seconds" in settings
+    assert "dashboard_screensaver_seconds" in settings
     assert "idle_redirect_seconds" in settings
+    assert settings["idle_redirect_seconds"] == 60
     assert "weather_enabled" in settings
     assert "dashboard_photo_enabled" in settings
 
@@ -441,12 +444,39 @@ async def test_update_settings_language(client: AsyncClient):
 
 
 async def test_update_settings_idle_redirect_seconds(client: AsyncClient):
-    """Test updating idle redirect timeout setting with bounds."""
-    r = await client.put("/api/settings/", json={"idle_redirect_seconds": 30})
+    """Test updating separate inactivity timeout settings with bounds."""
+    r = await client.put(
+        "/api/settings/",
+        json={"overview_redirect_seconds": 30, "dashboard_screensaver_seconds": 45},
+    )
     assert r.status_code == 200
-    assert r.json()["idle_redirect_seconds"] == 30
+    settings = r.json()
+    assert settings["overview_redirect_seconds"] == 30
+    assert settings["dashboard_screensaver_seconds"] == 45
+    assert settings["idle_redirect_seconds"] == 30
 
     # Lower bound clamps to 5 seconds
-    r_low = await client.put("/api/settings/", json={"idle_redirect_seconds": 1})
+    r_low = await client.put(
+        "/api/settings/",
+        json={"overview_redirect_seconds": 1, "dashboard_screensaver_seconds": 2},
+    )
     assert r_low.status_code == 200
-    assert r_low.json()["idle_redirect_seconds"] == 5
+    low_settings = r_low.json()
+    assert low_settings["overview_redirect_seconds"] == 5
+    assert low_settings["dashboard_screensaver_seconds"] == 2
+    assert low_settings["idle_redirect_seconds"] == 5
+
+    # Screensaver can be disabled (0) and has max 3600 sec (60 min)
+    r_bounds = await client.put(
+        "/api/settings/",
+        json={"dashboard_screensaver_seconds": 0},
+    )
+    assert r_bounds.status_code == 200
+    assert r_bounds.json()["dashboard_screensaver_seconds"] == 0
+
+    r_max = await client.put(
+        "/api/settings/",
+        json={"dashboard_screensaver_seconds": 5000},
+    )
+    assert r_max.status_code == 200
+    assert r_max.json()["dashboard_screensaver_seconds"] == 3600

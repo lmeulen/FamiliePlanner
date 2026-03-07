@@ -32,6 +32,8 @@ _KEYS = {
     "dashboard_photo_height",
     "dashboard_photo_enabled",
     "dashboard_photo_interval",
+    "overview_redirect_seconds",
+    "dashboard_screensaver_seconds",
     "idle_redirect_seconds",
     "language",
     "theme",
@@ -65,7 +67,9 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
         "dashboard_photo_enabled": (await _get(db, "dashboard_photo_enabled", "true")).lower() in ("1", "true"),
         "dashboard_photo_interval": int(await _get(db, "dashboard_photo_interval", "8")),
-        "idle_redirect_seconds": int(await _get(db, "idle_redirect_seconds", "5")),
+        "overview_redirect_seconds": int(await _get(db, "overview_redirect_seconds", "60")),
+        "dashboard_screensaver_seconds": int(await _get(db, "dashboard_screensaver_seconds", "60")),
+        "idle_redirect_seconds": int(await _get(db, "overview_redirect_seconds", "60")),
         "language": language,
         "theme": await _get(db, "theme", "system"),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
@@ -98,9 +102,17 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
         i = max(3, min(60, int(payload["dashboard_photo_interval"])))
         await _set(db, "dashboard_photo_interval", str(i))
 
+    if "overview_redirect_seconds" in payload:
+        timeout = max(5, min(3600, int(payload["overview_redirect_seconds"])))
+        await _set(db, "overview_redirect_seconds", str(timeout))
+
+    if "dashboard_screensaver_seconds" in payload:
+        timeout = max(0, min(3600, int(payload["dashboard_screensaver_seconds"])))
+        await _set(db, "dashboard_screensaver_seconds", str(timeout))
+
     if "idle_redirect_seconds" in payload:
         timeout = max(5, min(3600, int(payload["idle_redirect_seconds"])))
-        await _set(db, "idle_redirect_seconds", str(timeout))
+        await _set(db, "overview_redirect_seconds", str(timeout))
 
     if "language" in payload:
         lang = str(payload["language"]).strip().lower()
