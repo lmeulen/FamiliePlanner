@@ -472,11 +472,13 @@
 
     function updateRecurrenceUI() {
       const recurrenceType = recurrenceTypeSelect.value;
-      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      const showInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(recurrenceType);
       intervalSection?.classList.toggle('hidden', !showInterval);
 
       if (recurrenceType === 'daily') {
         intervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'yearly') {
+        intervalUnit.textContent = 'jaren';
       } else if (recurrenceType === 'monthly') {
         intervalUnit.textContent = 'maanden';
       } else {
@@ -659,11 +661,13 @@
 
     function updateTaskRecurrenceUI() {
       const recurrenceType = taskRecurrenceTypeSelect.value;
-      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      const showInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(recurrenceType);
       taskIntervalSection?.classList.toggle('hidden', !showInterval);
 
       if (recurrenceType === 'daily') {
         taskIntervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'yearly') {
+        taskIntervalUnit.textContent = 'jaren';
       } else if (recurrenceType === 'monthly') {
         taskIntervalUnit.textContent = 'maanden';
       } else {

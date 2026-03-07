@@ -17,3 +17,4 @@ class RecurrenceType(enum.StrEnum):
     biweekly = "biweekly"
     weekdays = "weekdays"
     monthly = "monthly"
+    yearly = "yearly"

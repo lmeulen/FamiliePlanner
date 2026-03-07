@@ -235,6 +235,24 @@ async def test_end_after_count(client: AsyncClient):
     assert len(events) == 5
 
 
+async def test_yearly_recurrence_with_count(client: AsyncClient):
+    """Test yearly recurrence pattern for agenda series."""
+    payload = {
+        **SERIES_BASE,
+        "recurrence_type": "yearly",
+        "series_start": "2026-06-01",
+        "count": 3,
+    }
+    payload.pop("series_end")
+
+    r = await client.post("/api/agenda/series", json=payload)
+    assert r.status_code == 201
+
+    events = (await client.get("/api/agenda/", params={"start": "2026-01-01", "end": "2028-12-31"})).json()
+    dates = [e["start_time"][:10] for e in events]
+    assert dates == ["2026-06-01", "2027-06-01", "2028-06-01"]
+
+
 async def test_validation_count_and_series_end_exclusive(client: AsyncClient):
     """Test that both count and series_end cannot be specified together."""
     r = await client.post(

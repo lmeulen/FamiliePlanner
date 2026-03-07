@@ -413,13 +413,15 @@
     function updateRecurrenceUI() {
       const recurrenceType = recurrenceTypeSelect.value;
 
-      // Show interval input for daily, weekly, monthly
-      const showInterval = ['daily', 'weekly', 'monthly'].includes(recurrenceType);
+      // Show interval input for daily, weekly, monthly, yearly
+      const showInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(recurrenceType);
       intervalSection?.classList.toggle('hidden', !showInterval);
 
       // Update interval unit text
       if (recurrenceType === 'daily') {
         intervalUnit.textContent = 'dagen';
+      } else if (recurrenceType === 'yearly') {
+        intervalUnit.textContent = 'jaren';
       } else if (recurrenceType === 'monthly') {
         intervalUnit.textContent = 'maanden';
       } else {

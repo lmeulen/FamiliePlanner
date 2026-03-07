@@ -6,7 +6,7 @@
   let editId  = null;
 
   async function loadMembers() {
-    members = await FP.loadMembers();
+    members = await FP.loadMembers(false);
     render();
   }
 
@@ -65,6 +65,7 @@
           await API.post('/api/family/', data);
           Toast.show('Gezinslid toegevoegd!');
         }
+        FP.invalidateCache('family_members');
         Modal.close();
         loadMembers();
       } catch (err) { Toast.show(err.message || 'Fout', 'error'); }
@@ -75,6 +76,7 @@
       try {
         await API.delete(`/api/family/${editId}`);
         Toast.show('Verwijderd', 'warning');
+        FP.invalidateCache('family_members');
         Modal.close();
         loadMembers();
       } catch { Toast.show('Fout', 'error'); }

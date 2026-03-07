@@ -247,3 +247,25 @@ async def test_edit_single_task_in_series_marks_exception(client: AsyncClient):
     updated = r.json()
     assert updated["is_exception"] is True
     assert updated["series_id"] == series_id
+
+
+async def test_task_yearly_recurrence_with_count(client: AsyncClient):
+    """Test yearly recurrence pattern for task series."""
+    payload = {
+        **SERIES_BASE,
+        "recurrence_type": "yearly",
+        "series_start": "2026-06-01",
+        "count": 3,
+    }
+    payload.pop("series_end")
+
+    r = await client.post("/api/tasks/series", json=payload)
+    assert r.status_code == 201
+
+    tasks_2026 = (await client.get("/api/tasks/", params={"due_date": "2026-06-01"})).json()
+    tasks_2027 = (await client.get("/api/tasks/", params={"due_date": "2027-06-01"})).json()
+    tasks_2028 = (await client.get("/api/tasks/", params={"due_date": "2028-06-01"})).json()
+
+    assert any(t["series_id"] == r.json()["id"] for t in tasks_2026)
+    assert any(t["series_id"] == r.json()["id"] for t in tasks_2027)
+    assert any(t["series_id"] == r.json()["id"] for t in tasks_2028)

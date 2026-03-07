@@ -350,6 +350,7 @@ def _build_rrule(series: RecurrenceSeries) -> dict:
         RecurrenceType.biweekly: {"FREQ": "WEEKLY", "INTERVAL": 2},
         RecurrenceType.weekdays: {"FREQ": "WEEKLY", "BYDAY": ["MO", "TU", "WE", "TH", "FR"]},
         RecurrenceType.monthly: {"FREQ": "MONTHLY"},
+        RecurrenceType.yearly: {"FREQ": "YEARLY"},
     }
 
     if series.recurrence_type in recurrence_map:

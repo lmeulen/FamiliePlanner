@@ -8,6 +8,7 @@ from dateutil.rrule import (  # type: ignore[import-untyped]
     FR,
     MO,
     MONTHLY,
+    YEARLY,
     SA,
     SU,
     TH,
@@ -127,6 +128,9 @@ def _build_rrule_from_params(
 
         # Default: same day of month
         return rrule(MONTHLY, dtstart=dtstart, interval=interval, count=occurrence_count, until=until)
+
+    elif recurrence_type == RecurrenceType.yearly:
+        return rrule(YEARLY, dtstart=dtstart, interval=interval, count=occurrence_count, until=until)
 
     # Fallback: daily
     return rrule(DAILY, dtstart=dtstart, interval=interval, count=occurrence_count, until=until)
