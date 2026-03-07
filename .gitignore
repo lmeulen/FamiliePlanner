@@ -78,14 +78,21 @@ Thumbs.db
 *.zip
 id_*.txt
 
-# Generated payload store snapshot
-data/status.json
-data/status.json.tmp
+# Data directory (but keep .gitkeep)
+data/*
+!data/.gitkeep
 
 # SQL database
 *.db
-# Uploaded photos
-app/static/uploads/
+*.db-shm
+*.db-wal
+
+# Uploaded photos (but keep directory structure)
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+!app/static/uploads/thumbnails/
+app/static/uploads/thumbnails/*
+!app/static/uploads/thumbnails/.gitkeep
 # Claude
 .claude/
 
