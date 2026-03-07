@@ -3,6 +3,7 @@ FamiliePlanner – FastAPI application entry point.
 Mounts static files, registers routers, serves Jinja2 templates.
 """
 
+import asyncio
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -25,6 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AuthMiddleware, login_get, login_post, logout
+from app.backup_scheduler import run_nightly_backup_scheduler
 from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
@@ -83,6 +85,8 @@ async def lifespan(app: FastAPI):
     logger.info("Starting {} v{}", APP_TITLE, APP_VERSION)
     await init_db()
     logger.info("Database ready")
+    backup_stop_event = asyncio.Event()
+    backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
     # Load persisted auth_required setting from DB
     from app.auth import set_auth_required
     from app.database import AsyncSessionLocal
@@ -92,8 +96,12 @@ async def lifespan(app: FastAPI):
         row = await db.get(AppSetting, "auth_required")
         if row is not None:
             set_auth_required(row.value.lower() in ("1", "true"))
-    yield
-    logger.info("Shutting down {}", APP_TITLE)
+    try:
+        yield
+    finally:
+        backup_stop_event.set()
+        await backup_task
+        logger.info("Shutting down {}", APP_TITLE)
 
 
 app = FastAPI(

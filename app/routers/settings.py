@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_auth_required, set_auth_required
-from app.config import OPENWEATHER_API_KEY
+from app.config import APP_VERSION, OPENWEATHER_API_KEY
 from app.database import get_db
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.models.family import FamilyMember
@@ -163,12 +163,8 @@ async def _export_junction_table(db: AsyncSession, table) -> list[dict]:
     return [dict(row._mapping) for row in rows]
 
 
-@router.get("/backup")
-async def backup_database(db: AsyncSession = Depends(get_db)):
-    """Export entire database as JSON file with metadata."""
-    logger.info("backup.started")
-
-    # Export all tables
+async def export_backup_data(db: AsyncSession) -> dict:
+    """Export entire database as backup payload."""
     table_data = {
         "app_settings": await _export_table_data(db, AppSetting, "app_settings"),
         "family_members": await _export_table_data(db, FamilyMember, "family_members"),
@@ -185,16 +181,24 @@ async def backup_database(db: AsyncSession = Depends(get_db)):
         "photos": await _export_table_data(db, Photo, "photos"),
     }
 
-    # Calculate record counts
     record_counts = {table_name: len(records) for table_name, records in table_data.items()}
 
-    backup_data = {
+    return {
         "exported_at": datetime.now().isoformat(),
         "version": "2.0",
-        "app_version": "1.0.0",  # Could read from VERSION file or config
+        "app_version": APP_VERSION,
         "record_counts": record_counts,
         "data": table_data,
     }
+
+
+@router.get("/backup")
+async def backup_database(db: AsyncSession = Depends(get_db)):
+    """Export entire database as JSON file with metadata."""
+    logger.info("backup.started")
+
+    backup_data = await export_backup_data(db)
+    record_counts = backup_data["record_counts"]
 
     # Convert to formatted JSON
     json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
@@ -351,24 +355,8 @@ async def _validate_backup_file(backup_data: dict) -> RestoreValidationResult:
 
 async def _create_pre_restore_backup(db: AsyncSession) -> str:
     """Create a backup before restore for rollback capability."""
-    # Export current state (similar to backup endpoint but return filename)
-    table_data = {
-        "app_settings": await _export_table_data(db, AppSetting, "app_settings"),
-        "family_members": await _export_table_data(db, FamilyMember, "family_members"),
-        "task_lists": await _export_table_data(db, TaskList, "task_lists"),
-        "task_recurrence_series": await _export_table_data(db, TaskRecurrenceSeries, "task_recurrence_series"),
-        "task_recurrence_series_members": await _export_junction_table(db, task_recurrence_series_members),
-        "tasks": await _export_table_data(db, Task, "tasks"),
-        "task_members": await _export_junction_table(db, task_members),
-        "recurrence_series": await _export_table_data(db, RecurrenceSeries, "recurrence_series"),
-        "recurrence_series_members": await _export_junction_table(db, recurrence_series_members),
-        "agenda_events": await _export_table_data(db, AgendaEvent, "agenda_events"),
-        "agenda_event_members": await _export_junction_table(db, agenda_event_members),
-        "meals": await _export_table_data(db, Meal, "meals"),
-        "photos": await _export_table_data(db, Photo, "photos"),
-    }
-
-    record_counts = {table_name: len(records) for table_name, records in table_data.items()}
+    backup_data = await export_backup_data(db)
+    record_counts = backup_data["record_counts"]
     total_records = sum(record_counts.values())
 
     filename = f"familieplanner-pre-restore-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
