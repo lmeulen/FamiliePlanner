@@ -52,10 +52,8 @@ async def _set(db: AsyncSession, key: str, value: str) -> None:
     await db.commit()
 
 
-@router.get("/", response_model=dict)
-async def get_settings(response: Response, db: AsyncSession = Depends(get_db)):
-    # Cache for 10 minutes - settings rarely change
-    response.headers["Cache-Control"] = "private, max-age=600"
+async def _build_settings_dict(db: AsyncSession) -> dict:
+    """Build settings dictionary from database."""
     return {
         "auth_required": (await _get(db, "auth_required", str(get_auth_required()))).lower() in ("1", "true"),
         "dashboard_photo_height": int(await _get(db, "dashboard_photo_height", "35")),
@@ -65,6 +63,13 @@ async def get_settings(response: Response, db: AsyncSession = Depends(get_db)):
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
     }
+
+
+@router.get("/", response_model=dict)
+async def get_settings(response: Response, db: AsyncSession = Depends(get_db)):
+    # Cache for 10 minutes - settings rarely change
+    response.headers["Cache-Control"] = "private, max-age=600"
+    return await _build_settings_dict(db)
 
 
 @router.put("/", response_model=dict)
@@ -97,7 +102,7 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
         await _set(db, "weather_location", loc)
 
     logger.info("settings.updated payload={}", {k: v for k, v in payload.items() if k in _KEYS})
-    return await get_settings(db)
+    return await _build_settings_dict(db)
 
 
 def _serialize_value(value):
