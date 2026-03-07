@@ -26,7 +26,7 @@ cp .env.example .env       # Edit SECRET_KEY, APP_USERNAME, APP_PASSWORD
 ### Running
 ```bash
 python run.py --host 0.0.0.0 --port 8000 --reload  # Development
-python seed.py                                      # Populate test data
+python -m tools.seed                                # Populate test data
 ```
 
 ### Testing & Linting
@@ -54,6 +54,34 @@ alembic revision --autogenerate -m "Description"
 alembic upgrade head
 ```
 
+### Utility Tools
+
+The `tools/` directory contains standalone scripts for maintenance and data operations:
+
+```bash
+# Database operations
+python -m tools.clean_database          # Remove all events, tasks, and meals
+python -m tools.clean_database --dry-run  # Preview what would be deleted
+python -m tools.seed                    # Populate with test data
+
+# Backup and restore
+python -m tools.run_nightly_backup_once  # Manually trigger backup (creates backups/DDMMYYYY.json)
+
+# Photo management
+python -m tools.generate_missing_thumbnails  # Regenerate missing thumbnails in uploads/
+
+# Cozi integration (import from Cozi ICS feed)
+python -m tools.cozi_import_advisor     # Analyze Cozi feed and suggest mappings
+python -m tools.cozi_importer --dry-run  # Preview import without changes
+python -m tools.cozi_importer           # Import events from Cozi
+python -m tools.cozi_importer --today   # Import only today's events
+
+# Security
+python -m tools.hash_password           # Generate bcrypt hash for passwords
+```
+
+**Nightly backup system:** The app automatically creates JSON backups at midnight via `app/backup_scheduler.py`. Backups are stored in `backups/DDMMYYYY.json` with full database export (events, tasks, meals, family members, photos metadata).
+
 ## Architecture
 
 ### Backend Structure
@@ -73,6 +101,10 @@ SQLAlchemy ORM → SQLite
 - `app/utils/*.py` - Shared utilities (recurrence logic, DB helpers)
 - `app/auth.py` - Session-based auth middleware + login/logout handlers
 - `app/database.py` - Async engine, session factory, `get_db()` dependency
+- `app/backup_scheduler.py` - Nightly backup job (runs at 00:00)
+- `app/metrics.py` - Prometheus metrics configuration
+- `tools/*.py` - Standalone maintenance scripts (see Utility Tools section)
+- `backups/` - JSON backup files (DDMMYYYY.json format)
 
 ### Frontend Architecture
 
@@ -104,7 +136,7 @@ SQLAlchemy ORM → SQLite
 - Deleting series → cascades to all instances
 
 **Recurrence types** (`app/enums.py`):
-- `daily`, `every_other_day`, `weekly`, `biweekly`, `weekdays`, `monthly`
+- `daily`, `every_other_day`, `weekly`, `biweekly`, `weekdays`, `monthly`, `yearly`
 
 ### Database Patterns
 
@@ -192,6 +224,10 @@ test: Add tests for series deletion cascade
 
 7. **Alembic in async context** - `init_db()` runs Alembic upgrade in thread executor to avoid blocking event loop.
 
+8. **Cozi importer meal detection** - The Cozi importer only imports events as meals if they occur between 18:00-20:00 (dinner time). This prevents false positives from all-day events or morning appointments being classified as meals.
+
+9. **Tools run as modules** - All scripts in `tools/` must be run as modules (`python -m tools.script_name`) not as direct scripts, to ensure proper import paths and database access.
+
 ## API Documentation
 
 Interactive docs available at: `http://localhost:8000/api/docs` (Swagger UI)
@@ -203,6 +239,19 @@ All API routes return JSON. Common responses:
 - `404` - Not found
 - `422` - Validation error (Pydantic)
 - `400` - SQLAlchemy error
+
+### Monitoring
+
+**Prometheus metrics** available at: `http://localhost:8000/metrics`
+
+Tracked metrics include:
+- `http_requests_total` - Total HTTP requests by method/endpoint/status
+- `http_request_duration_seconds` - Request latency histogram
+- `db_query_duration_seconds` - Database query duration
+- `db_connections_active` - Active database connections
+- Business metrics: `events_created_total`, `tasks_created_total`, `tasks_completed_total`, `meals_created_total`, `photos_uploaded_total`
+
+Metrics configured in `app/metrics.py`, middleware in `PrometheusMiddleware`
 
 ## Useful Queries
 
