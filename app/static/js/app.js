@@ -47,11 +47,13 @@ window.FP = (() => {
       'settings.dashboardPhoto': 'Foto tonen op overzichtspagina',
       'settings.dashboardPhotoHint': 'Schakel de foto-diashow op de overzichtspagina in of uit',
       'settings.photoSize': 'Fotogrootte op overzichtspagina',
-      'settings.photoSizeHint': 'Hoogte als percentage van het scherm ({value}%)',
+      'settings.photoSizeHint': 'Hoogte als percentage van het scherm (10-70%)',
       'settings.photoInterval': 'Foto wissel interval',
-      'settings.photoIntervalHint': "Tijd tussen foto's in seconden ({value}s)",
-      'settings.idleTimeout': 'Terug naar overzicht bij inactiviteit',
-      'settings.idleTimeoutHint': 'Na {value} seconden zonder interactie (niet tijdens bewerken)',
+      'settings.photoIntervalHint': "Tijd tussen foto's in seconden (3-60 s)",
+      'settings.screensaverTimeout': 'Screensaver op overzicht (minuten)',
+      'settings.screensaverTimeoutHint': 'Start screensaver zonder interactie op overzicht (0-60 min, 0 = uit)',
+      'settings.overviewRedirectTimeout': 'Terug naar overzicht op andere pagina’s (seconden)',
+      'settings.overviewRedirectTimeoutHint': 'Ga na inactiviteit automatisch terug naar overzicht (5-300 s)',
       'settings.weatherWidget': 'Weer widget op overzichtspagina',
       'settings.weatherWidgetHint': 'Toont datum, tijd en het huidige weer boven de taken',
       'settings.weatherLocation': 'Locatie voor weer',
@@ -95,6 +97,9 @@ window.FP = (() => {
       'settings.restoreFailed': 'Restore mislukt: {message}',
       'settings.clearCacheConfirm': "Cache wissen? Dit heeft geen invloed op opgeslagen gegevens, alleen op geladen pagina's.",
       'settings.cacheCleared': 'Cache gewist',
+      'screensaver.today': 'Vandaag',
+      'screensaver.noUpcoming': 'Geen afspraken meer vandaag',
+      'screensaver.allDay': 'Hele dag',
       'meal.breakfast': '🌅 Ontbijt',
       'meal.lunch': '☀️ Lunch',
       'meal.dinner': '🌙 Diner',
@@ -132,11 +137,13 @@ window.FP = (() => {
       'settings.dashboardPhoto': 'Show photo on dashboard',
       'settings.dashboardPhotoHint': 'Enable or disable the photo slideshow on the dashboard',
       'settings.photoSize': 'Photo size on dashboard',
-      'settings.photoSizeHint': 'Height as percentage of the screen ({value}%)',
+      'settings.photoSizeHint': 'Height as percentage of the screen (10-70%)',
       'settings.photoInterval': 'Photo switch interval',
-      'settings.photoIntervalHint': 'Time between photos in seconds ({value}s)',
-      'settings.idleTimeout': 'Return to overview on inactivity',
-      'settings.idleTimeoutHint': 'After {value} seconds without interaction (not while editing)',
+      'settings.photoIntervalHint': 'Time between photos in seconds (3-60 s)',
+      'settings.screensaverTimeout': 'Screensaver on overview (minutes)',
+      'settings.screensaverTimeoutHint': 'Start screensaver on overview after inactivity (0-60 min, 0 = off)',
+      'settings.overviewRedirectTimeout': 'Return to overview on other pages (seconds)',
+      'settings.overviewRedirectTimeoutHint': 'Automatically return to overview after inactivity (5-300 s)',
       'settings.weatherWidget': 'Weather widget on dashboard',
       'settings.weatherWidgetHint': 'Shows date, time and current weather above tasks',
       'settings.weatherLocation': 'Weather location',
@@ -180,6 +187,9 @@ window.FP = (() => {
       'settings.restoreFailed': 'Restore failed: {message}',
       'settings.clearCacheConfirm': 'Clear cache? This does not affect saved data, only loaded pages.',
       'settings.cacheCleared': 'Cache cleared',
+      'screensaver.today': 'Today',
+      'screensaver.noUpcoming': 'No more appointments today',
+      'screensaver.allDay': 'All day',
       'meal.breakfast': '🌅 Breakfast',
       'meal.lunch': '☀️ Lunch',
       'meal.dinner': '🌙 Dinner',
@@ -217,11 +227,13 @@ window.FP = (() => {
       'settings.dashboardPhoto': 'Foto auf der Übersichtsseite anzeigen',
       'settings.dashboardPhotoHint': 'Foto-Diashow auf der Übersichtsseite ein- oder ausschalten',
       'settings.photoSize': 'Fotogröße auf der Übersichtsseite',
-      'settings.photoSizeHint': 'Höhe als Prozentsatz des Bildschirms ({value}%)',
+      'settings.photoSizeHint': 'Höhe als Prozentsatz des Bildschirms (10-70%)',
       'settings.photoInterval': 'Foto-Wechselintervall',
-      'settings.photoIntervalHint': 'Zeit zwischen Fotos in Sekunden ({value}s)',
-      'settings.idleTimeout': 'Zur Übersicht bei Inaktivität zurückkehren',
-      'settings.idleTimeoutHint': 'Nach {value} Sekunden ohne Interaktion (nicht während der Bearbeitung)',
+      'settings.photoIntervalHint': 'Zeit zwischen Fotos in Sekunden (3-60 s)',
+      'settings.screensaverTimeout': 'Bildschirmschoner auf Übersicht (Minuten)',
+      'settings.screensaverTimeoutHint': 'Bildschirmschoner auf Übersicht nach Inaktivität starten (0-60 min, 0 = aus)',
+      'settings.overviewRedirectTimeout': 'Zur Übersicht auf anderen Seiten zurückkehren (Sekunden)',
+      'settings.overviewRedirectTimeoutHint': 'Nach Inaktivität automatisch zur Übersicht zurückkehren (5-300 s)',
       'settings.weatherWidget': 'Wetter-Widget auf der Übersichtsseite',
       'settings.weatherWidgetHint': 'Zeigt Datum, Uhrzeit und aktuelles Wetter über den Aufgaben',
       'settings.weatherLocation': 'Wetterstandort',
@@ -265,6 +277,9 @@ window.FP = (() => {
       'settings.restoreFailed': 'Wiederherstellung fehlgeschlagen: {message}',
       'settings.clearCacheConfirm': 'Cache leeren? Gespeicherte Daten bleiben erhalten, nur geladene Seiten werden beeinflusst.',
       'settings.cacheCleared': 'Cache geleert',
+      'screensaver.today': 'Heute',
+      'screensaver.noUpcoming': 'Keine weiteren Termine heute',
+      'screensaver.allDay': 'Ganztägig',
       'meal.breakfast': '🌅 Frühstück',
       'meal.lunch': '☀️ Mittagessen',
       'meal.dinner': '🌙 Abendessen',
@@ -532,10 +547,16 @@ window.FP = (() => {
   const settingsReady = new Promise(res => { _settingsResolve = res; });
   let _idleTimer = null;
 
-  function getIdleRedirectSeconds() {
-    const configured = Number(_settings?.idle_redirect_seconds ?? 5);
-    if (!Number.isFinite(configured)) return 5;
+  function getOverviewRedirectSeconds() {
+    const configured = Number(_settings?.overview_redirect_seconds ?? _settings?.idle_redirect_seconds ?? 60);
+    if (!Number.isFinite(configured)) return 60;
     return Math.max(5, Math.min(3600, Math.floor(configured)));
+  }
+
+  function getDashboardScreensaverSeconds() {
+    const configured = Number(_settings?.dashboard_screensaver_seconds ?? _settings?.idle_redirect_seconds ?? 60);
+    if (!Number.isFinite(configured)) return 60;
+    return Math.max(0, Math.min(3600, Math.floor(configured)));
   }
 
   function isEditorOpen() {
@@ -552,23 +573,44 @@ window.FP = (() => {
 
   function scheduleIdleRedirect() {
     if (_idleTimer) clearTimeout(_idleTimer);
+    const currentPath = window.location.pathname;
+    const timeoutSeconds = currentPath === '/' ? getDashboardScreensaverSeconds() : getOverviewRedirectSeconds();
+
+    if (currentPath === '/' && timeoutSeconds <= 0) {
+      return;
+    }
+
     _idleTimer = setTimeout(() => {
       const currentPath = window.location.pathname;
-      if (currentPath === '/' || currentPath === '/login') return;
+      if (currentPath === '/login') return;
 
       if (isEditorOpen()) {
         scheduleIdleRedirect();
         return;
       }
 
+      if (currentPath === '/') {
+        if (window.DashboardScreensaver?.activate) {
+          window.DashboardScreensaver.activate();
+        }
+        return;
+      }
+
       window.location.href = '/';
-    }, getIdleRedirectSeconds() * 1000);
+    }, timeoutSeconds * 1000);
+  }
+
+  function handleActivity() {
+    if (window.DashboardScreensaver?.isActive?.()) {
+      window.DashboardScreensaver.deactivate();
+    }
+    scheduleIdleRedirect();
   }
 
   function initIdleRedirectWatcher() {
     const resetEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
     resetEvents.forEach(eventName => {
-      document.addEventListener(eventName, scheduleIdleRedirect, { passive: true });
+      document.addEventListener(eventName, handleActivity, { passive: true });
     });
 
     document.addEventListener('visibilitychange', () => {

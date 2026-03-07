@@ -80,36 +80,48 @@
       <div class="settings-row settings-row--col" id="photo-height-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.photoSize">Fotogrootte op overzichtspagina</span>
-          <span class="settings-label-hint" id="photo-height-hint">Hoogte als percentage van het scherm (<span id="photo-height-val">35</span>%)</span>
+          <span class="settings-label-hint" data-i18n="settings.photoSizeHint">Hoogte als percentage van het scherm (10-70%)</span>
         </span>
         <div class="settings-control">
-          <input type="range" id="photo-height" name="dashboard_photo_height"
+          <input type="number" id="photo-height" name="dashboard_photo_height"
                  min="10" max="70" step="5" value="35"
-                 class="settings-slider" aria-label="Fotogrootte" data-i18n-aria-label="settings.photoSize" />
+                 class="settings-number-input" aria-label="Fotogrootte" data-i18n-aria-label="settings.photoSize" />
         </div>
       </div>
 
       <div class="settings-row settings-row--col" id="photo-interval-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.photoInterval">Foto wissel interval</span>
-          <span class="settings-label-hint" id="photo-interval-hint">Tijd tussen foto's in seconden (<span id="photo-interval-val">8</span>s)</span>
+          <span class="settings-label-hint" data-i18n="settings.photoIntervalHint">Tijd tussen foto's in seconden (3-60 s)</span>
         </span>
         <div class="settings-control">
-          <input type="range" id="photo-interval" name="dashboard_photo_interval"
+          <input type="number" id="photo-interval" name="dashboard_photo_interval"
                  min="3" max="60" step="1" value="8"
-                 class="settings-slider" aria-label="Foto interval" data-i18n-aria-label="settings.photoInterval" />
+                 class="settings-number-input" aria-label="Foto interval" data-i18n-aria-label="settings.photoInterval" />
         </div>
       </div>
 
-      <div class="settings-row settings-row--col" id="idle-timeout-row">
+      <div class="settings-row settings-row--col" id="screensaver-timeout-row">
         <span class="settings-label">
-          <span class="settings-label-main" data-i18n="settings.idleTimeout">Terug naar overzicht bij inactiviteit</span>
-          <span class="settings-label-hint" id="idle-timeout-hint">Na <span id="idle-timeout-val">5</span> seconden zonder interactie (niet tijdens bewerken)</span>
+          <span class="settings-label-main" data-i18n="settings.screensaverTimeout">Screensaver op overzicht (minuten)</span>
+          <span class="settings-label-hint" data-i18n="settings.screensaverTimeoutHint">Start screensaver zonder interactie op overzicht (0-60 min, 0 = uit)</span>
         </span>
         <div class="settings-control">
-          <input type="range" id="idle-timeout" name="idle_redirect_seconds"
-                 min="5" max="300" step="1" value="5"
-                 class="settings-slider" aria-label="Inactiviteit timeout" data-i18n-aria-label="settings.idleTimeout" />
+          <input type="number" id="screensaver-timeout" name="dashboard_screensaver_seconds"
+                 min="0" max="60" step="1" value="1"
+                 class="settings-number-input" aria-label="Screensaver timeout" data-i18n-aria-label="settings.screensaverTimeout" />
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col" id="overview-redirect-timeout-row">
+        <span class="settings-label">
+          <span class="settings-label-main" data-i18n="settings.overviewRedirectTimeout">Terug naar overzicht op andere pagina’s (seconden)</span>
+          <span class="settings-label-hint" data-i18n="settings.overviewRedirectTimeoutHint">Ga na inactiviteit automatisch terug naar overzicht (5-300 s)</span>
+        </span>
+        <div class="settings-control">
+          <input type="number" id="overview-redirect-timeout" name="overview_redirect_seconds"
+                 min="5" max="300" step="1" value="60"
+                 class="settings-number-input" aria-label="Overzicht redirect timeout" data-i18n-aria-label="settings.overviewRedirectTimeout" />
         </div>
       </div>
 

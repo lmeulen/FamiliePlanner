@@ -4,16 +4,11 @@
   const authToggle        = document.getElementById('auth-required');
   const photoToggle       = document.getElementById('dashboard-photo-enabled');
   const photoHeightRow    = document.getElementById('photo-height-row');
-  const photoSlider       = document.getElementById('photo-height');
-  const photoValEl        = document.getElementById('photo-height-val');
+  const photoHeightInput  = document.getElementById('photo-height');
   const photoIntervalRow  = document.getElementById('photo-interval-row');
-  const photoIntervalSlider = document.getElementById('photo-interval');
-  const photoIntervalValEl = document.getElementById('photo-interval-val');
-  const idleTimeoutSlider  = document.getElementById('idle-timeout');
-  const idleTimeoutValEl   = document.getElementById('idle-timeout-val');
-  const photoHeightHint   = document.getElementById('photo-height-hint');
-  const photoIntervalHint = document.getElementById('photo-interval-hint');
-  const idleTimeoutHint   = document.getElementById('idle-timeout-hint');
+  const photoIntervalInput = document.getElementById('photo-interval');
+  const screensaverTimeoutInput = document.getElementById('screensaver-timeout');
+  const overviewRedirectTimeoutInput = document.getElementById('overview-redirect-timeout');
   const languageSelect    = document.getElementById('language');
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
@@ -24,24 +19,24 @@
     return window.FP?.t ? window.FP.t(key, vars) : key;
   }
 
-  function renderSliderHints() {
-    if (photoHeightHint) {
-      photoHeightHint.innerHTML = t('settings.photoSizeHint', { value: photoSlider.value });
-    }
-    if (photoIntervalHint) {
-      photoIntervalHint.innerHTML = t('settings.photoIntervalHint', { value: photoIntervalSlider.value });
-    }
-    if (idleTimeoutHint) {
-      idleTimeoutHint.innerHTML = t('settings.idleTimeoutHint', { value: idleTimeoutSlider.value });
-    }
+  function clampNumber(input, fallback) {
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const step = Number(input.step || 1);
+    const raw = Number(input.value);
+    const safe = Number.isFinite(raw) ? raw : fallback;
+    const bounded = Math.max(min, Math.min(max, safe));
+    const normalized = Math.round(bounded / step) * step;
+    input.value = String(normalized);
+    return normalized;
   }
 
   function updatePhotoHeightRow() {
     const enabled = photoToggle.checked;
     photoHeightRow.style.opacity = enabled ? '' : '0.4';
-    photoSlider.disabled = !enabled;
+    photoHeightInput.disabled = !enabled;
     photoIntervalRow.style.opacity = enabled ? '' : '0.4';
-    photoIntervalSlider.disabled = !enabled;
+    photoIntervalInput.disabled = !enabled;
   }
 
   function updateWeatherLocationRow() {
@@ -59,16 +54,25 @@
     photoToggle.checked = s.dashboard_photo_enabled !== false;
 
     const h = s.dashboard_photo_height || 35;
-    photoSlider.value = h;
-    photoValEl.textContent = h;
+    photoHeightInput.value = h;
 
     const interval = s.dashboard_photo_interval || 8;
-    photoIntervalSlider.value = interval;
-    photoIntervalValEl.textContent = interval;
+    photoIntervalInput.value = interval;
 
-    const idleTimeout = s.idle_redirect_seconds || 5;
-    idleTimeoutSlider.value = idleTimeout;
-    idleTimeoutValEl.textContent = idleTimeout;
+    const screensaverSeconds = s.dashboard_screensaver_seconds ?? s.idle_redirect_seconds ?? 60;
+    const screensaverMinutes = Math.max(
+      0,
+      Math.min(60, screensaverSeconds <= 0 ? 0 : Math.max(1, Math.round(screensaverSeconds / 60)))
+    );
+    screensaverTimeoutInput.value = screensaverMinutes;
+
+    const overviewRedirectTimeout = s.overview_redirect_seconds || s.idle_redirect_seconds || 60;
+    overviewRedirectTimeoutInput.value = overviewRedirectTimeout;
+
+    clampNumber(photoHeightInput, 35);
+    clampNumber(photoIntervalInput, 8);
+    clampNumber(screensaverTimeoutInput, 0);
+    clampNumber(overviewRedirectTimeoutInput, 60);
 
     if (languageSelect) {
       languageSelect.value = s.language || 'nl';
@@ -81,26 +85,14 @@
     weatherToggle.checked = !!s.weather_enabled;
     weatherLocationInput.value = s.weather_location || 'Amsterdam,NL';
 
-    renderSliderHints();
     updatePhotoHeightRow();
     updateWeatherLocationRow();
   }
 
-  // ── Live slider label ────────────────────────────────────────
-  photoSlider.addEventListener('input', () => {
-    photoValEl.textContent = photoSlider.value;
-    renderSliderHints();
-  });
-
-  photoIntervalSlider.addEventListener('input', () => {
-    photoIntervalValEl.textContent = photoIntervalSlider.value;
-    renderSliderHints();
-  });
-
-  idleTimeoutSlider.addEventListener('input', () => {
-    idleTimeoutValEl.textContent = idleTimeoutSlider.value;
-    renderSliderHints();
-  });
+  [photoHeightInput, photoIntervalInput, screensaverTimeoutInput, overviewRedirectTimeoutInput]
+    .forEach(input => {
+      input?.addEventListener('change', () => clampNumber(input, Number(input.value || 0)));
+    });
 
   photoToggle.addEventListener('change', updatePhotoHeightRow);
   weatherToggle.addEventListener('change', updateWeatherLocationRow);
@@ -109,12 +101,18 @@
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const theme = form.querySelector('input[name="theme"]:checked')?.value || 'system';
+    const photoHeight = clampNumber(photoHeightInput, 35);
+    const photoInterval = clampNumber(photoIntervalInput, 8);
+    const screensaverMinutes = clampNumber(screensaverTimeoutInput, 0);
+    const overviewRedirectSeconds = clampNumber(overviewRedirectTimeoutInput, 60);
+
     const payload = {
       auth_required: authToggle.checked,
       dashboard_photo_enabled: photoToggle.checked,
-      dashboard_photo_height: parseInt(photoSlider.value, 10),
-      dashboard_photo_interval: parseInt(photoIntervalSlider.value, 10),
-      idle_redirect_seconds: parseInt(idleTimeoutSlider.value, 10),
+      dashboard_photo_height: photoHeight,
+      dashboard_photo_interval: photoInterval,
+      dashboard_screensaver_seconds: screensaverMinutes * 60,
+      overview_redirect_seconds: overviewRedirectSeconds,
       language: languageSelect?.value || 'nl',
       theme,
       weather_enabled: weatherToggle.checked,
@@ -127,13 +125,12 @@
     // Apply language immediately
     window.FP?.setLanguage(payload.language);
     window.FP?.translateDocument();
-    renderSliderHints();
 
     // Apply theme immediately
     applyTheme(theme);
 
     // Apply photo height immediately via CSS variable
-    document.documentElement.style.setProperty('--dashboard-photo-height', photoSlider.value + 'vh');
+    document.documentElement.style.setProperty('--dashboard-photo-height', photoHeightInput.value + 'vh');
 
     saveStatus.classList.remove('hidden');
     setTimeout(() => saveStatus.classList.add('hidden'), 2500);

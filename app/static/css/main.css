@@ -1270,6 +1270,70 @@ img { max-width: 100%; }
 }
 .dashboard-photo-dots .dot.active { background: #fff; }
 
+/* ── DASHBOARD SCREENSAVER ─────────────────────────────────── */
+.dashboard-screensaver {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 3000;
+  overflow: hidden;
+  cursor: none;
+}
+
+.screensaver-card {
+  position: absolute;
+  width: min(440px, 75vw);
+  max-height: 72vh;
+  overflow: hidden;
+  background: rgba(18, 18, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  color: #f3f3f3;
+  padding: .85rem .9rem;
+}
+
+.screensaver-card-title {
+  font-size: .78rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: .5rem;
+}
+
+.screensaver-events {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.screensaver-event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .55rem;
+  align-items: baseline;
+}
+
+.screensaver-event-time {
+  font-size: .73rem;
+  color: rgba(255, 255, 255, 0.65);
+  min-width: 56px;
+}
+
+.screensaver-event-title {
+  font-size: .88rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.screensaver-empty {
+  font-size: .82rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 /* ── PHOTO MANAGEMENT PAGE ───────────────────────────────────── */
 .photos-upload-card { padding: 1.25rem; }
 .card-subtitle { font-size: 1rem; font-weight: 600; margin-bottom: .75rem; color: var(--color-text); }
@@ -1507,8 +1571,22 @@ img { max-width: 100%; }
 }
 .theme-option input { display: none; }
 
-/* Slider */
-.settings-slider { width: 100%; accent-color: var(--color-primary); }
+/* Number inputs */
+.settings-number-input {
+  width: 100%;
+  padding: .35rem .5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.settings-row--col:has(.settings-number-input) .settings-control {
+  flex-basis: 180px;
+  width: 180px;
+  max-width: 180px;
+  align-items: flex-end;
+}
 
 .settings-actions { display: flex; align-items: center; gap: 1rem; }
 .settings-save-status { font-size: .9rem; color: var(--color-success, #27ae60); }
