@@ -48,6 +48,15 @@ class FamilyMemberRecord:
     name: str
 
 
+@dataclass
+class MealCandidate:
+    uid: str
+    title: str
+    start: datetime
+    end: datetime
+    reason: str
+
+
 def _to_int(value: Any, default: int = 1) -> int:
     try:
         if isinstance(value, list):
@@ -270,6 +279,34 @@ def _map_rrule_to_familieplanner(rrule: dict[str, list[Any]]) -> MappingAdvice:
     return MappingAdvice(None, interval, None, False, f"Unsupported FREQ '{freq}'")
 
 
+def _detect_meal_candidate(event: Any, title: str) -> tuple[bool, str, datetime | None, datetime | None]:
+    try:
+        start_dt, end_dt, all_day = _extract_start_end(event)
+    except Exception:
+        return False, "invalid date/time", None, None
+
+    if all_day:
+        return False, "all-day event", None, None
+
+    start_dt = start_dt.replace(tzinfo=None) if start_dt.tzinfo else start_dt
+    end_dt = end_dt.replace(tzinfo=None) if end_dt.tzinfo else end_dt
+    _ = title
+    is_exact_dinner_slot = (
+        start_dt.hour == 18
+        and start_dt.minute == 0
+        and start_dt.second == 0
+        and end_dt.hour == 20
+        and end_dt.minute == 0
+        and end_dt.second == 0
+        and start_dt.date() == end_dt.date()
+    )
+
+    if is_exact_dinner_slot:
+        return True, "exact tijdslot 18:00-20:00", start_dt, end_dt
+
+    return False, "niet exact 18:00-20:00", start_dt, end_dt
+
+
 def _build_event_preview(
     event: Any,
     advice: MappingAdvice,
@@ -337,6 +374,7 @@ def _print_recommendations(
     found_name_mapping: dict[str, list[int]],
     family_members: list[FamilyMemberRecord],
     unmapped_field_counter: Counter[str],
+    meal_candidates: list[MealCandidate],
     previews: list[dict[str, Any]],
 ) -> None:
     print("=" * 72)
@@ -414,6 +452,27 @@ def _print_recommendations(
         print("- Geen niet-gemapte veldnamen gevonden")
     print()
 
+    print("Mogelijke Cozi Meal-items (te importeren als FamiliePlanner diner):")
+    if meal_candidates:
+        print(f"- Totaal herkend: {len(meal_candidates)}")
+        for candidate in meal_candidates[:20]:
+            meal_payload = {
+                "date": candidate.start.date().isoformat(),
+                "meal_type": "dinner",
+                "name": candidate.title,
+                "description": "",
+                "recipe_url": "",
+                "cook_member_id": None,
+            }
+            print(
+                f"- {candidate.start.strftime('%Y-%m-%d %H:%M')} | {candidate.title} | "
+                f"uid={candidate.uid} | {candidate.reason}"
+            )
+            print(f"  POST /api/meals payload: {meal_payload}")
+    else:
+        print("- Geen duidelijke meal-items herkend")
+    print()
+
     if unsupported_recurring:
         print("Let op:")
         print("- Er zijn RRULE-patronen die niet 1-op-1 op RecurrenceType mappen.")
@@ -485,6 +544,7 @@ async def run() -> None:
     unsupported_recurring = 0
     previews: list[dict[str, Any]] = []
     found_names: set[str] = set()
+    meal_candidates: list[MealCandidate] = []
 
     family_members = await _load_family_members()
     mapped_ics_fields = {
@@ -534,6 +594,20 @@ async def run() -> None:
         rrule = _normalize_rrule(event)
         pattern = _rrule_to_string(rrule) if rrule else ""
         advice = _map_rrule_to_familieplanner(rrule)
+        summary_raw = str(event.get("SUMMARY", "") or "")
+        _, summary_title = _extract_members_from_summary(summary_raw)
+
+        is_meal, reason, start_dt, end_dt = _detect_meal_candidate(event, summary_title)
+        if is_meal and start_dt and end_dt:
+            meal_candidates.append(
+                MealCandidate(
+                    uid=str(event.get("UID", "")),
+                    title=summary_title,
+                    start=start_dt,
+                    end=end_dt,
+                    reason=reason,
+                )
+            )
 
         if pattern:
             mapping_label = advice.recurrence_type if advice.recurrence_type else f"unsupported ({advice.reason})"
@@ -561,6 +635,7 @@ async def run() -> None:
         found_name_mapping=found_name_mapping,
         family_members=family_members,
         unmapped_field_counter=unmapped_field_counter,
+        meal_candidates=meal_candidates,
         previews=previews,
     )
 

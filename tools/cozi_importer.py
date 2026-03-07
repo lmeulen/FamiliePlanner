@@ -22,14 +22,16 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
-from app.enums import RecurrenceType
+from app.enums import MealType, RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
+from app.models.meals import Meal
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
 from tools.cozi_import_advisor import (
     DEFAULT_COZI_ICS_URL,
     FamilyMemberRecord,
     _build_found_name_mapping,
+    _detect_meal_candidate,
     _extract_members_from_summary,
     _extract_start_end,
     _load_family_members,
@@ -51,6 +53,9 @@ class ImportStats:
     skipped_existing_single: int = 0
     skipped_unsupported: int = 0
     skipped_invalid: int = 0
+    detected_meal_candidates: int = 0
+    imported_meals: int = 0
+    skipped_existing_meals: int = 0
     cleared_events: int = 0
     cleared_series: int = 0
 
@@ -208,6 +213,24 @@ async def _series_exists(
     return result.scalar_one_or_none() is not None
 
 
+async def _meal_exists(
+    db: AsyncSession,
+    *,
+    meal_date: date,
+    name: str,
+    meal_type: MealType,
+) -> bool:
+    stmt = select(Meal.id).where(
+        and_(
+            Meal.date == meal_date,
+            Meal.name == name,
+            Meal.meal_type == meal_type,
+        )
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none() is not None
+
+
 def _print_summary(stats: ImportStats, dry_run: bool) -> None:
     print("=" * 72)
     print("Cozi → FamiliePlanner importer")
@@ -216,12 +239,15 @@ def _print_summary(stats: ImportStats, dry_run: bool) -> None:
     print(f"Totaal VEVENT items: {stats.total_events}")
     print(f"Recurring events gezien: {stats.recurring_events}")
     print(f"Single events gezien: {stats.single_events}")
+    print(f"Gedetecteerde meal-kandidaten: {stats.detected_meal_candidates}")
     print(f"Verwijderde bestaande events: {stats.cleared_events}")
     print(f"Verwijderde bestaande series: {stats.cleared_series}")
     print(f"Geïmporteerde series: {stats.imported_series}")
     print(f"Geïmporteerde losse events: {stats.imported_single}")
+    print(f"Geïmporteerde diners (meals): {stats.imported_meals}")
     print(f"Overgeslagen bestaande series: {stats.skipped_existing_series}")
     print(f"Overgeslagen bestaande losse events: {stats.skipped_existing_single}")
+    print(f"Overgeslagen bestaande diners: {stats.skipped_existing_meals}")
     print(f"Overgeslagen unsupported RRULE: {stats.skipped_unsupported}")
     print(f"Overgeslagen invalid items: {stats.skipped_invalid}")
 
@@ -297,6 +323,37 @@ async def run() -> None:
                 end_dt = _to_naive(end_dt)
             except Exception:
                 stats.skipped_invalid += 1
+                continue
+
+            is_meal_candidate, _, meal_start, _ = _detect_meal_candidate(event, summary_title)
+            if is_meal_candidate and meal_start is not None:
+                stats.detected_meal_candidates += 1
+                meal_date = meal_start.date()
+                meal_exists = await _meal_exists(
+                    db,
+                    meal_date=meal_date,
+                    name=summary_title,
+                    meal_type=MealType.dinner,
+                )
+                if meal_exists:
+                    stats.skipped_existing_meals += 1
+                    continue
+
+                if args.dry_run:
+                    stats.imported_meals += 1
+                    continue
+
+                cook_member_id = mapped_member_ids[0] if len(mapped_member_ids) == 1 else None
+                meal = Meal(
+                    date=meal_date,
+                    meal_type=MealType.dinner,
+                    name=summary_title,
+                    description="",
+                    recipe_url="",
+                    cook_member_id=cook_member_id,
+                )
+                db.add(meal)
+                stats.imported_meals += 1
                 continue
 
             description = str(event.get("DESCRIPTION", "") or "")
