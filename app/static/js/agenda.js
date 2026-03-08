@@ -551,16 +551,20 @@
 
       try {
         if (!editId) {
-          if (recurToggle && recurToggle.checked) {
-            // Create recurring series
+          // Check if this is a multi-day all-day event that should become a series
+          const isMultiDayAllDay = form.all_day.checked &&
+            Math.floor((endDt - startDt) / (1000 * 60 * 60 * 24)) > 0;
+
+          if (recurToggle && recurToggle.checked || isMultiDayAllDay) {
+            // Create recurring series (either user-requested or auto-converted multi-day)
             const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
             const seriesPayload = {
               ...eventData,
-              recurrence_type:    form.querySelector('select[name="recurrence_type"]').value,
+              recurrence_type:    isMultiDayAllDay && !recurToggle.checked ? 'daily' : form.querySelector('select[name="recurrence_type"]').value,
               series_start:       form.start_time.value.split('T')[0],
               start_time_of_day:  toTimeStr(startDt),
               end_time_of_day:    toTimeStr(endDt),
-              interval:           parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
+              interval:           1,
             };
 
             // Add monthly pattern if monthly type
@@ -570,7 +574,10 @@
             }
 
             // Add end condition (date or count)
-            if (endCondition === 'date') {
+            if (isMultiDayAllDay && !recurToggle.checked) {
+              // Auto-converted multi-day: use end date
+              seriesPayload.series_end = form.end_time.value.split('T')[0];
+            } else if (endCondition === 'date') {
               const seriesEndVal = form.querySelector('input[name="series_end"]').value;
               if (!seriesEndVal) { Toast.show('Vul een einddatum voor de reeks in', 'error'); return; }
               seriesPayload.series_end = seriesEndVal;
@@ -581,7 +588,7 @@
             }
 
             await API.post('/api/agenda/series', seriesPayload);
-            Toast.show('Herhalende reeks aangemaakt!');
+            Toast.show(isMultiDayAllDay && !recurToggle.checked ? 'Meerdaagse afspraak aangemaakt!' : 'Herhalende reeks aangemaakt!');
           } else {
             await API.post('/api/agenda/', eventData);
             Toast.show('Afspraak toegevoegd!');
@@ -617,6 +624,14 @@
             await API.put(`/api/agenda/series/${seriesId}`, seriesPayload);
             Toast.show('Reeks bijgewerkt!');
           } else {
+            // Check if editing a standalone event to multi-day all-day
+            const isMultiDayAllDay = form.all_day.checked &&
+              Math.floor((endDt - startDt) / (1000 * 60 * 60 * 24)) > 0;
+
+            if (isMultiDayAllDay) {
+              Toast.show('Let op: meerdaagse afspraken worden alleen op de eerste dag getoond. Maak een nieuwe herhalende afspraak aan voor alle dagen.', 'warning');
+            }
+
             const updated = await API.put(`/api/agenda/${editId}`, eventData);
             // Update local array immediately so reopening the form shows fresh data
             const idx = events.findIndex(e => e.id === editId);

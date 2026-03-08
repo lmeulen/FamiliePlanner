@@ -63,6 +63,8 @@ The `tools/` directory contains standalone scripts for maintenance and data oper
 python -m tools.clean_database          # Remove all events, tasks, and meals
 python -m tools.clean_database --dry-run  # Preview what would be deleted
 python -m tools.seed                    # Populate with test data
+python -m tools.breakup_multiday_appointments  # Convert multi-day events to daily series
+python -m tools.breakup_multiday_appointments --dry-run  # Preview conversion
 
 # Backup and restore
 python -m tools.run_nightly_backup_once  # Manually trigger backup (creates backups/DDMMYYYY.json)
@@ -227,6 +229,8 @@ test: Add tests for series deletion cascade
 8. **Cozi importer meal detection** - The Cozi importer only imports events as meals if they occur between 18:00-20:00 (dinner time). This prevents false positives from all-day events or morning appointments being classified as meals.
 
 9. **Tools run as modules** - All scripts in `tools/` must be run as modules (`python -m tools.script_name`) not as direct scripts, to ensure proper import paths and database access.
+
+10. **Multi-day all-day events** - When creating an all-day event that spans multiple days, the frontend automatically converts it to a daily recurring series so the event appears on all days. Use `tools/breakup_multiday_appointments.py` to convert existing multi-day events.
 
 ## API Documentation
 
