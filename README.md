@@ -130,6 +130,70 @@ Interactieve documentatie: **http://\<server\>:8000/api/docs**
 pytest tests/ -v
 ```
 
+## Hulpprogramma's (tools/)
+
+De `tools/` directory bevat standalone scripts voor onderhoud en data-operaties. Alle scripts moeten worden uitgevoerd als module met `python -m tools.script_name`.
+
+### Database
+
+**clean_database.py** - Verwijder alle agenda-items, taken en maaltijden
+```bash
+python -m tools.clean_database          # Voer cleanup uit
+python -m tools.clean_database --dry-run  # Preview zonder wijzigingen
+```
+
+**seed.py** - Vul database met voorbeelddata
+```bash
+python -m tools.seed                    # Maakt testdata aan (wist eerst alles!)
+```
+
+**breakup_multiday_appointments.py** - Converteer meerdaagse afspraken naar dagelijkse reeksen
+```bash
+python -m tools.breakup_multiday_appointments  # Voer conversie uit
+python -m tools.breakup_multiday_appointments --dry-run  # Preview conversie
+```
+
+### Backup
+
+**run_nightly_backup_once.py** - Maak handmatig een backup
+```bash
+python -m tools.run_nightly_backup_once  # Creëert backups/DDMMYYYY.json
+```
+> De app maakt automatisch elke nacht om 00:00 een backup via `app/backup_scheduler.py`.
+
+### Foto's
+
+**generate_missing_thumbnails.py** - Genereer ontbrekende thumbnails
+```bash
+python -m tools.generate_missing_thumbnails  # Maakt thumbnails (200px) voor bestaande foto's
+```
+
+### Cozi integratie
+
+**cozi_import_advisor.py** - Analyseer Cozi ICS feed zonder te importeren
+```bash
+python -m tools.cozi_import_advisor           # Toon statistieken en mapping-advies
+python -m tools.cozi_import_advisor --url "https://..."  # Gebruik aangepaste ICS URL
+python -m tools.cozi_import_advisor --today   # Filter alleen vandaag
+```
+
+**cozi_importer.py** - Importeer events vanuit Cozi ICS feed
+```bash
+python -m tools.cozi_importer                 # Voer import uit
+python -m tools.cozi_importer --dry-run       # Preview zonder wijzigingen
+python -m tools.cozi_importer --today         # Importeer alleen vandaag
+```
+> Detecteert automatisch maaltijden (18:00-20:00) en gezinsleden in event-titels.
+
+### Beveiliging
+
+**hash_password.py** - Genereer bcrypt hash voor wachtwoord
+```bash
+python -m tools.hash_password                 # Interactief (vraagt wachtwoord)
+python -m tools.hash_password mijnwachtwoord  # Direct als argument
+```
+> Gebruik de output in `APP_PASSWORD` in `.env`.
+
 ## Docker
 
 FamiliePlanner draait ook via Docker en Docker Compose.
