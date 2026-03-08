@@ -75,7 +75,7 @@ python -m tools.generate_missing_thumbnails  # Regenerate missing thumbnails in 
 # Cozi integration (import from Cozi ICS feed)
 python -m tools.cozi_import_advisor     # Analyze Cozi feed and suggest mappings
 python -m tools.cozi_importer --dry-run  # Preview import without changes
-python -m tools.cozi_importer           # Import events from Cozi
+python -m tools.cozi_importer           # Import events from Cozi (auto-converts multi-day to daily series)
 python -m tools.cozi_importer --today   # Import only today's events
 
 # Security
@@ -230,7 +230,7 @@ test: Add tests for series deletion cascade
 
 9. **Tools run as modules** - All scripts in `tools/` must be run as modules (`python -m tools.script_name`) not as direct scripts, to ensure proper import paths and database access.
 
-10. **Multi-day all-day events** - When creating an all-day event that spans multiple days, the frontend automatically converts it to a daily recurring series so the event appears on all days. Use `tools/breakup_multiday_appointments.py` to convert existing multi-day events.
+10. **Multi-day all-day events** - When creating an all-day event that spans multiple days, the frontend and Cozi importer automatically convert it to a daily recurring series so the event appears on all days. Use `tools/breakup_multiday_appointments.py` to convert existing multi-day events that were created before this feature.
 
 ## API Documentation
 

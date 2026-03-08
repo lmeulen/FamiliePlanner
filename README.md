@@ -186,7 +186,7 @@ python -m tools.cozi_importer                 # Gebruik COZI_ICS_URL uit .env
 python -m tools.cozi_importer --dry-run       # Preview zonder wijzigingen
 python -m tools.cozi_importer --today         # Importeer alleen vandaag
 ```
-> Detecteert automatisch maaltijden (18:00-20:00) en gezinsleden in event-titels.
+> Detecteert automatisch maaltijden (18:00-20:00) en gezinsleden in event-titels. Meerdaagse all-day events worden automatisch omgezet naar dagelijkse series.
 
 ### Beveiliging
 

@@ -49,6 +49,7 @@ class ImportStats:
     single_events: int = 0
     imported_series: int = 0
     imported_single: int = 0
+    imported_multiday_as_series: int = 0
     skipped_existing_series: int = 0
     skipped_existing_single: int = 0
     skipped_unsupported: int = 0
@@ -244,6 +245,7 @@ def _print_summary(stats: ImportStats, dry_run: bool) -> None:
     print(f"Verwijderde bestaande series: {stats.cleared_series}")
     print(f"Geïmporteerde series: {stats.imported_series}")
     print(f"Geïmporteerde losse events: {stats.imported_single}")
+    print(f"Geïmporteerde meerdaagse events (als daily series): {stats.imported_multiday_as_series}")
     print(f"Geïmporteerde diners (meals): {stats.imported_meals}")
     print(f"Overgeslagen bestaande series: {stats.skipped_existing_series}")
     print(f"Overgeslagen bestaande losse events: {stats.skipped_existing_single}")
@@ -461,35 +463,120 @@ async def run() -> None:
                 continue
 
             stats.single_events += 1
-            exists = await _single_event_exists(
-                db,
-                title=summary_title,
-                start_time=start_dt,
-                end_time=end_dt,
-                all_day=all_day,
-                location=location,
-            )
-            if exists:
-                stats.skipped_existing_single += 1
-                continue
 
-            if args.dry_run:
+            # Check if this is a multi-day all-day event (should be converted to daily series)
+            is_multiday_allday = all_day and (end_dt.date() - start_dt.date()).days > 0
+
+            if is_multiday_allday:
+                # Convert multi-day all-day event to daily series
+                series_start = start_dt.date()
+                series_end = end_dt.date()
+
+                # Check if series already exists
+                exists = await _series_exists(
+                    db,
+                    title=summary_title,
+                    series_start=series_start,
+                    recurrence_type=RecurrenceType.daily,
+                    interval=1,
+                    monthly_pattern=None,
+                    all_day=True,
+                    location=location,
+                )
+                if exists:
+                    stats.skipped_existing_series += 1
+                    continue
+
+                if args.dry_run:
+                    stats.imported_multiday_as_series += 1
+                    continue
+
+                # Create daily series
+                series = RecurrenceSeries(
+                    title=summary_title,
+                    description=description,
+                    location=location,
+                    all_day=True,
+                    color=color,
+                    recurrence_type=RecurrenceType.daily,
+                    series_start=series_start,
+                    series_end=series_end,
+                    start_time_of_day=start_dt.time(),
+                    end_time_of_day=end_dt.time(),
+                    interval=1,
+                    count=None,
+                    monthly_pattern=None,
+                    rrule=None,
+                )
+                db.add(series)
+                await db.flush()
+                await set_junction_members(db, recurrence_series_members, "series_id", series.id, mapped_member_ids)
+
+                # Generate occurrences
+                occurrence_dates = generate_occurrence_dates(
+                    recurrence_type=RecurrenceType.daily,
+                    series_start=series.series_start,
+                    series_end=series.series_end,
+                    interval=1,
+                    count=None,
+                    monthly_pattern=None,
+                    rrule_string=None,
+                )
+                generated_events = [
+                    AgendaEvent(
+                        title=series.title,
+                        description=series.description,
+                        location=series.location,
+                        start_time=datetime.combine(occurrence_date, series.start_time_of_day),
+                        end_time=datetime.combine(occurrence_date, series.end_time_of_day),
+                        all_day=series.all_day,
+                        color=series.color,
+                        series_id=series.id,
+                        is_exception=False,
+                    )
+                    for occurrence_date in occurrence_dates
+                ]
+                db.add_all(generated_events)
+                await db.flush()
+
+                if mapped_member_ids:
+                    for generated_event in generated_events:
+                        await set_junction_members(
+                            db, agenda_event_members, "event_id", generated_event.id, mapped_member_ids
+                        )
+
+                stats.imported_multiday_as_series += 1
+            else:
+                # Regular single-day event
+                exists = await _single_event_exists(
+                    db,
+                    title=summary_title,
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    all_day=all_day,
+                    location=location,
+                )
+                if exists:
+                    stats.skipped_existing_single += 1
+                    continue
+
+                if args.dry_run:
+                    stats.imported_single += 1
+                    continue
+
+                single_event = AgendaEvent(
+                    title=summary_title,
+                    description=description,
+                    location=location,
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    all_day=all_day,
+                    color=color,
+                )
+                db.add(single_event)
+                await db.flush()
+                await set_junction_members(db, agenda_event_members, "event_id", single_event.id, mapped_member_ids)
                 stats.imported_single += 1
-                continue
-
-            single_event = AgendaEvent(
-                title=summary_title,
-                description=description,
-                location=location,
-                start_time=start_dt,
-                end_time=end_dt,
-                all_day=all_day,
-                color=color,
-            )
-            db.add(single_event)
-            await db.flush()
-            await set_junction_members(db, agenda_event_members, "event_id", single_event.id, mapped_member_ids)
-            stats.imported_single += 1
 
         if args.dry_run:
             await db.rollback()
