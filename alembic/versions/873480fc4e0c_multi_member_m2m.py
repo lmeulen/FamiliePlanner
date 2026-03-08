@@ -20,9 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    from sqlalchemy.engine import reflection
+    from sqlalchemy import inspect
     bind = op.get_bind()
-    inspector = reflection.Inspector.from_engine(bind)
+    inspector = inspect(bind)
     existing = inspector.get_table_names()
 
     if 'recurrence_series_members' not in existing:

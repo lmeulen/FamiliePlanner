@@ -576,7 +576,15 @@
             // Add end condition (date or count)
             if (isMultiDayAllDay && !recurToggle.checked) {
               // Auto-converted multi-day: use end date
-              seriesPayload.series_end = form.end_time.value.split('T')[0];
+              // If end time is at midnight (00:00), subtract one day from series_end
+              const endTime = form.end_time.value.split('T')[1];
+              let seriesEndDate = form.end_time.value.split('T')[0];
+              if (endTime === '00:00' || endTime.startsWith('00:00:')) {
+                const endDateObj = new Date(seriesEndDate);
+                endDateObj.setDate(endDateObj.getDate() - 1);
+                seriesEndDate = endDateObj.toISOString().split('T')[0];
+              }
+              seriesPayload.series_end = seriesEndDate;
             } else if (endCondition === 'date') {
               const seriesEndVal = form.querySelector('input[name="series_end"]').value;
               if (!seriesEndVal) { Toast.show('Vul een einddatum voor de reeks in', 'error'); return; }

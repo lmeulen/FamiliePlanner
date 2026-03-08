@@ -274,3 +274,32 @@ async def test_validation_neither_count_nor_series_end(client: AsyncClient):
     payload.pop("series_end")  # Remove series_end
     r = await client.post("/api/agenda/series", json=payload)
     assert r.status_code == 422  # Validation error
+
+
+async def test_daily_allday_series_correct_end_date(client: AsyncClient):
+    """Test that a daily all-day series generates events on the correct days.
+
+    This test verifies that series_end is inclusive. A series from June 1-3
+    should create events on June 1, 2, and 3 (3 events total).
+
+    This is important for multi-day all-day events: if an event ends at midnight
+    on a day, that day should NOT be included in the series (e.g., an event
+    from June 1 00:00 to June 3 00:00 should only appear on June 1 and 2).
+    """
+    payload = {
+        **SERIES_BASE,
+        "recurrence_type": "daily",
+        "all_day": True,
+        "series_start": "2026-06-01",
+        "series_end": "2026-06-03",
+        "start_time_of_day": "00:00:00",
+        "end_time_of_day": "23:59:59",
+    }
+
+    r = await client.post("/api/agenda/series", json=payload)
+    assert r.status_code == 201
+
+    events = (await client.get("/api/agenda/", params={"start": "2026-06-01", "end": "2026-06-10"})).json()
+    assert len(events) == 3
+    dates = [e["start_time"][:10] for e in events]
+    assert dates == ["2026-06-01", "2026-06-02", "2026-06-03"]

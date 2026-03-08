@@ -12,7 +12,7 @@ import argparse
 import asyncio
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -471,6 +471,10 @@ async def run() -> None:
                 # Convert multi-day all-day event to daily series
                 series_start = start_dt.date()
                 series_end = end_dt.date()
+
+                # If end_time is at midnight (00:00), exclude that day from the series
+                if end_dt.time().hour == 0 and end_dt.time().minute == 0 and end_dt.time().second == 0:
+                    series_end = series_end - timedelta(days=1)
 
                 # Check if series already exists
                 exists = await _series_exists(

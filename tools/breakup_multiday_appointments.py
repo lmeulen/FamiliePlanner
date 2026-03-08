@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,6 +105,12 @@ async def breakup_multiday_appointments(dry_run: bool) -> None:
             # Get member IDs before we delete the event
             member_ids = [m.id for m in ev.members]
 
+            # Determine series_end: if end_time is at midnight (00:00), exclude that day
+            series_end = ev.end_time.date()
+            if ev.end_time.time().hour == 0 and ev.end_time.time().minute == 0 and ev.end_time.time().second == 0:
+                # End time is at midnight, so the event ends at the END of the previous day
+                series_end = series_end - timedelta(days=1)
+
             # Create recurring series
             series = RecurrenceSeries(
                 title=ev.title,
@@ -112,7 +118,7 @@ async def breakup_multiday_appointments(dry_run: bool) -> None:
                 location=ev.location,
                 recurrence_type=RecurrenceType.daily,
                 series_start=ev.start_time.date(),
-                series_end=ev.end_time.date(),
+                series_end=series_end,
                 start_time_of_day=ev.start_time.time(),
                 end_time_of_day=ev.end_time.time(),
                 all_day=True,

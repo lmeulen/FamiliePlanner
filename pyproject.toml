@@ -62,6 +62,10 @@ warn_unused_ignores = true
 warn_no_return = true
 follow_imports = "silent"
 ignore_missing_imports = true
+exclude = [
+    "^tools/",
+    "^alembic/",
+]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
