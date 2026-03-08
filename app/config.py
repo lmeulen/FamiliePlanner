@@ -54,6 +54,9 @@ FAMILY_MEMBERS_DEFAULT = [
 # Weather API (OpenWeatherMap)
 OPENWEATHER_API_KEY: str = os.environ.get("OPENWEATHER_API_KEY", "")
 
+# Cozi integration
+COZI_ICS_URL: str = os.environ.get("COZI_ICS_URL", "")
+
 # App metadata
 APP_TITLE = "FamiliePlanner"
 APP_VERSION = "1.0.0"

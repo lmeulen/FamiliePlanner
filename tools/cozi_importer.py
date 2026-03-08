@@ -21,6 +21,7 @@ from sqlalchemy import and_, select
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import COZI_ICS_URL
 from app.database import AsyncSessionLocal
 from app.enums import MealType, RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
@@ -28,7 +29,6 @@ from app.models.meals import Meal
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
 from tools.cozi_import_advisor import (
-    DEFAULT_COZI_ICS_URL,
     FamilyMemberRecord,
     _build_found_name_mapping,
     _detect_meal_candidate,
@@ -254,7 +254,7 @@ def _print_summary(stats: ImportStats, dry_run: bool) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Import Cozi ICS into FamiliePlanner agenda")
-    parser.add_argument("--url", default=DEFAULT_COZI_ICS_URL, help="ICS URL to import")
+    parser.add_argument("--url", default=COZI_ICS_URL, help="ICS URL to import (default: COZI_ICS_URL from .env)")
     parser.add_argument(
         "--today",
         action="store_true",
@@ -276,6 +276,12 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+
+    if not args.url:
+        print("Error: No Cozi ICS URL configured.")
+        print("Set COZI_ICS_URL in .env or use --url argument.")
+        return
+
     default_series_count = max(1, min(365, args.default_series_count))
 
     async with httpx.AsyncClient(timeout=20) as client:

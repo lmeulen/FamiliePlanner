@@ -25,12 +25,9 @@ import httpx
 from icalendar import Calendar
 from sqlalchemy import select
 
+from app.config import COZI_ICS_URL
 from app.database import AsyncSessionLocal
 from app.models.family import FamilyMember
-
-DEFAULT_COZI_ICS_URL = (
-    "https://rest.cozi.com/api/ext/1103/071ca6fe-dfab-4b87-8240-6cc7fa3d43d3/" "icalendar/feed/feed.ics"
-)
 
 
 @dataclass
@@ -496,7 +493,7 @@ def _print_recommendations(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Analyze Cozi ICS and print FamiliePlanner import mapping advice.")
-    parser.add_argument("--url", default=DEFAULT_COZI_ICS_URL, help="ICS URL to analyze")
+    parser.add_argument("--url", default=COZI_ICS_URL, help="ICS URL to analyze (default: COZI_ICS_URL from .env)")
     parser.add_argument(
         "--today",
         action="store_true",
@@ -513,6 +510,11 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+
+    if not args.url:
+        print("Error: No Cozi ICS URL configured.")
+        print("Set COZI_ICS_URL in .env or use --url argument.")
+        return
 
     async with httpx.AsyncClient(timeout=20) as client:
         response = await client.get(args.url)

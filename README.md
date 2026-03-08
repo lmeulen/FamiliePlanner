@@ -80,6 +80,7 @@ Kopieer `.env.example` naar `.env`:
 | `APP_USERNAME` | `admin` | Inlognaam |
 | `APP_PASSWORD` | `familieplanner` | Wachtwoord |
 | `AUTH_REQUIRED` | `true` | `false` om authenticatie uit te schakelen |
+| `COZI_ICS_URL` | _(leeg)_ | Cozi ICS feed URL voor import tools (optioneel) |
 
 > ⚠️ Commit `.env` nooit naar git.
 
@@ -170,16 +171,18 @@ python -m tools.generate_missing_thumbnails  # Maakt thumbnails (200px) voor bes
 
 ### Cozi integratie
 
+> **Configuratie**: Stel `COZI_ICS_URL` in `.env` in met je private Cozi ICS feed URL, of gebruik `--url` argument.
+
 **cozi_import_advisor.py** - Analyseer Cozi ICS feed zonder te importeren
 ```bash
-python -m tools.cozi_import_advisor           # Toon statistieken en mapping-advies
+python -m tools.cozi_import_advisor           # Gebruik COZI_ICS_URL uit .env
 python -m tools.cozi_import_advisor --url "https://..."  # Gebruik aangepaste ICS URL
 python -m tools.cozi_import_advisor --today   # Filter alleen vandaag
 ```
 
 **cozi_importer.py** - Importeer events vanuit Cozi ICS feed
 ```bash
-python -m tools.cozi_importer                 # Voer import uit
+python -m tools.cozi_importer                 # Gebruik COZI_ICS_URL uit .env
 python -m tools.cozi_importer --dry-run       # Preview zonder wijzigingen
 python -m tools.cozi_importer --today         # Importeer alleen vandaag
 ```
