@@ -23,8 +23,16 @@
 
     function upcomingEvents() {
       const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       return (_events || [])
         .filter(ev => {
+          // For all-day events, show if they are today or in the future
+          if (ev.all_day) {
+            const eventDate = new Date(ev.start_time);
+            const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+            return eventDay >= today;
+          }
+          // For timed events, show if not yet ended
           const end = new Date(ev.end_time);
           return end >= now;
         })
