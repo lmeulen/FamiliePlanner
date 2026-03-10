@@ -10,7 +10,6 @@ EVENT_BASE = {
     "end_time": "2026-06-01T11:00:00",
     "all_day": False,
     "member_ids": [],
-    "color": "#FF6B6B",
 }
 
 SERIES_BASE = {
@@ -21,7 +20,6 @@ SERIES_BASE = {
     "end_time_of_day": "09:15:00",
     "all_day": False,
     "member_ids": [],
-    "color": "#4ECDC4",
     "recurrence_type": "daily",
     "series_start": "2026-06-01",
     "series_end": "2026-06-07",

@@ -68,7 +68,6 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
             start_time=datetime.combine(d, series.start_time_of_day),
             end_time=datetime.combine(d, series.end_time_of_day),
             all_day=series.all_day,
-            color=series.color,
             series_id=series.id,
             is_exception=False,
         )
@@ -122,7 +121,6 @@ async def breakup_multiday_appointments(dry_run: bool) -> None:
                 start_time_of_day=ev.start_time.time(),
                 end_time_of_day=ev.end_time.time(),
                 all_day=True,
-                color=ev.color,
                 interval=1,
                 count=None,
                 monthly_pattern=None,

@@ -32,7 +32,6 @@ async def test_search_events(client: AsyncClient):
             "end_time": "2026-03-10T19:00:00",
             "all_day": False,
             "member_ids": [],
-            "color": "#FF6B6B",
         },
     )
 
@@ -124,7 +123,6 @@ async def test_search_across_all_types(client: AsyncClient):
             "end_time": "2026-03-10T15:00:00",
             "all_day": False,
             "member_ids": [],
-            "color": "#4ECDC4",
         },
     )
 
@@ -173,7 +171,6 @@ async def test_search_case_insensitive(client: AsyncClient):
             "end_time": "2026-03-10T11:00:00",
             "all_day": False,
             "member_ids": [],
-            "color": "#4ECDC4",
         },
     )
 
@@ -207,7 +204,6 @@ async def test_search_respects_limit(client: AsyncClient):
                 "end_time": f"2026-03-{10 + i}T11:00:00",
                 "all_day": False,
                 "member_ids": [],
-                "color": "#4ECDC4",
             },
         )
 

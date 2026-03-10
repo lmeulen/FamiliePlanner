@@ -73,19 +73,16 @@ async def seed():
             title="Voetbaltraining",
             start_time=datetime.combine(today, datetime.strptime("16:00", "%H:%M").time()),
             end_time=datetime.combine(today, datetime.strptime("17:30", "%H:%M").time()),
-            color="#FF6B6B",
         )
         ev2 = AgendaEvent(
             title="Gezinsavond",
             start_time=datetime.combine(today, datetime.strptime("19:00", "%H:%M").time()),
             end_time=datetime.combine(today, datetime.strptime("21:00", "%H:%M").time()),
-            color="#4ECDC4",
         )
         ev3 = AgendaEvent(
             title="Tandarts",
             start_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:00", "%H:%M").time()),
             end_time=datetime.combine(today + timedelta(days=2), datetime.strptime("10:30", "%H:%M").time()),
-            color="#FF8E53",
         )
         db.add_all([ev1, ev2, ev3])
         await db.flush()

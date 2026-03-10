@@ -61,7 +61,6 @@ async def search(
                 "start_time": event.start_time.isoformat(),
                 "end_time": event.end_time.isoformat(),
                 "all_day": event.all_day,
-                "color": event.color,
                 "member_ids": event.member_ids,
                 "type": "event",
             }

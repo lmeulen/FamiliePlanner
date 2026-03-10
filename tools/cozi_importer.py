@@ -366,7 +366,6 @@ async def run() -> None:
 
             description = str(event.get("DESCRIPTION", "") or "")
             location = str(event.get("LOCATION", "") or "")
-            color = _extract_ics_color(event)
             rrule = _normalize_rrule(event)
             advice = _map_rrule_to_familieplanner(rrule)
 
@@ -407,7 +406,6 @@ async def run() -> None:
                     description=description,
                     location=location,
                     all_day=all_day,
-                    color=color,
                     recurrence_type=recurrence_type,
                     series_start=series_start,
                     series_end=series_end or series_start,
@@ -439,7 +437,6 @@ async def run() -> None:
                         start_time=datetime.combine(occurrence_date, series.start_time_of_day),
                         end_time=datetime.combine(occurrence_date, series.end_time_of_day),
                         all_day=series.all_day,
-                        color=series.color,
                         series_id=series.id,
                         is_exception=False,
                     )
@@ -501,7 +498,6 @@ async def run() -> None:
                     description=description,
                     location=location,
                     all_day=True,
-                    color=color,
                     recurrence_type=RecurrenceType.daily,
                     series_start=series_start,
                     series_end=series_end,
@@ -534,7 +530,6 @@ async def run() -> None:
                         start_time=datetime.combine(occurrence_date, series.start_time_of_day),
                         end_time=datetime.combine(occurrence_date, series.end_time_of_day),
                         all_day=series.all_day,
-                        color=series.color,
                         series_id=series.id,
                         is_exception=False,
                     )
@@ -575,7 +570,6 @@ async def run() -> None:
                     start_time=start_dt,
                     end_time=end_dt,
                     all_day=all_day,
-                    color=color,
                 )
                 db.add(single_event)
                 await db.flush()

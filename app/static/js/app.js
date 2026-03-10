@@ -364,6 +364,37 @@ window.FP = (() => {
     return m ? m.avatar : '👤';
   }
 
+  function agendaEventColors(memberIds = []) {
+    const ids = Array.isArray(memberIds) ? memberIds : [];
+    const colors = ids
+      .map(id => getMember(id))
+      .filter(Boolean)
+      .map(member => member.color)
+      .filter(Boolean);
+    return [...new Set(colors)];
+  }
+
+  function agendaEventColor(memberIds = []) {
+    const colors = agendaEventColors(memberIds);
+    return colors[0] || '#9EA7C4';
+  }
+
+  function agendaEventBackground(memberIds = []) {
+    const colors = agendaEventColors(memberIds);
+    if (colors.length <= 1) return agendaEventColor(memberIds);
+
+    const step = 100 / colors.length;
+    const stops = colors
+      .map((color, index) => {
+        const start = Number((index * step).toFixed(2));
+        const end = Number(((index + 1) * step).toFixed(2));
+        return `${color} ${start}%, ${color} ${end}%`;
+      })
+      .join(', ');
+
+    return `linear-gradient(135deg, ${stops})`;
+  }
+
   // ── Date helpers ──────────────────────────────────────────────
   const NL_DAYS  = ['zo','ma','di','wo','do','vr','za'];
   const NL_DAYS_FULL = ['Zondag','Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag'];
@@ -675,6 +706,7 @@ window.FP = (() => {
   return {
     esc,
     loadMembers, getMembers, getMember, memberColor, memberAvatar,
+    agendaEventColors, agendaEventColor, agendaEventBackground,
     today, todayStr, pad, formatDate, formatTime, formatDateShort,
     dayName, dayNameFull, isToday, isSameDay, addDays, startOfWeek,
     toLocalDatetimeInput, mealTypeLabel,

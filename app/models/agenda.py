@@ -36,7 +36,6 @@ class RecurrenceSeries(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     location: Mapped[str] = mapped_column(String(200), default="")
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    color: Mapped[str] = mapped_column(String(7), default="#4ECDC4")
     recurrence_type: Mapped[RecurrenceType] = mapped_column(SAEnum(RecurrenceType), nullable=False)
     series_start: Mapped[datetime] = mapped_column(Date, nullable=False)
     series_end: Mapped[datetime] = mapped_column(Date, nullable=False)
@@ -65,7 +64,6 @@ class AgendaEvent(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
-    color: Mapped[str] = mapped_column(String(7), default="#4ECDC4")
     # Recurring series linkage (NULL = standalone event)
     series_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("recurrence_series.id", ondelete="CASCADE"), nullable=True, index=True

@@ -122,13 +122,14 @@
     const dateStr = FP.formatDate(start);
     const timeStr = event.all_day ? 'Hele dag' : FP.formatTime(start);
     const members = (event.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
+    const accentColor = FP.agendaEventColor(event.member_ids || []);
     const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}">${m.avatar}</div>`).join('');
 
     const title = highlightMatch(FP.esc(event.title), query);
     const location = event.location ? `📍 ${highlightMatch(FP.esc(event.location), query)}` : '';
 
     return `
-      <div class="search-result-card card" data-id="${event.id}" style="cursor:pointer; border-left: 4px solid ${event.color}">
+      <div class="search-result-card card" data-id="${event.id}" style="cursor:pointer; border-left: 4px solid ${accentColor}">
         <div class="event-body">
           <div class="event-title">${title}</div>
           <div class="event-meta">

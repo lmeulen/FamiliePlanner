@@ -15,7 +15,6 @@ class RecurrenceSeriesCreate(BaseModel):
     location: str = Field(default="", max_length=200)
     all_day: bool = False
     member_ids: list[int] = Field(default_factory=list)
-    color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
     series_start: date
     series_end: date | None = None
@@ -49,7 +48,6 @@ class RecurrenceSeriesUpdate(BaseModel):
     location: str = Field(default="", max_length=200)
     all_day: bool = False
     member_ids: list[int] = Field(default_factory=list)
-    color: str = "#4ECDC4"
     recurrence_type: RecurrenceType
     series_end: date | None = None
     start_time_of_day: time
@@ -76,7 +74,6 @@ class RecurrenceSeriesOut(BaseModel):
     location: str
     all_day: bool
     member_ids: list[int] = Field(default_factory=list)
-    color: str
     recurrence_type: RecurrenceType
     series_start: date
     series_end: date
@@ -102,7 +99,6 @@ class AgendaEventBase(BaseModel):
     end_time: datetime
     all_day: bool = False
     member_ids: list[int] = Field(default_factory=list)
-    color: str = "#4ECDC4"
 
     @model_validator(mode="after")
     def end_after_start(self) -> "AgendaEventBase":
@@ -128,7 +124,6 @@ class AgendaEventOut(BaseModel):
     end_time: datetime
     all_day: bool
     member_ids: list[int] = Field(default_factory=list)
-    color: str
     series_id: int | None = None
     is_exception: bool = False
     created_at: datetime

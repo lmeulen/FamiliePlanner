@@ -237,10 +237,11 @@
     const start = new Date(ev.start_time);
     const end   = new Date(ev.end_time);
     const members = (ev.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
+    const eventBackground = FP.agendaEventBackground(ev.member_ids || []);
     const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${FP.esc(m.name)}">${m.avatar}</div>`).join('');
     return `
       <div class="card event-card" data-id="${ev.id}" style="cursor:pointer">
-        <div class="event-color-bar" style="background:${ev.color}"></div>
+        <div class="event-color-bar" style="background:${eventBackground}"></div>
         <div class="event-body">
           <div class="event-title">${FP.esc(ev.title)}</div>
           <div class="event-meta">
@@ -523,7 +524,6 @@
         form.start_time.value  = FP.toLocalDatetimeInput(new Date(ev.start_time));
         form.end_time.value    = FP.toLocalDatetimeInput(new Date(ev.end_time));
         form.all_day.checked   = ev.all_day;
-        form.color.value       = ev.color;
         FP.buildMemberPicker('event-member-picker', ev.member_ids || []);
       }
     } else {
@@ -566,7 +566,6 @@
         start_time:  startDt.toISOString(),
         end_time:    endDt.toISOString(),
         all_day:     form.all_day.checked,
-        color:       form.color.value,
         member_ids:  FP.getSelectedMemberIds('event-member-picker'),
       };
 
