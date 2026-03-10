@@ -424,7 +424,7 @@ img { max-width: 100%; }
 /* Sticky day-header row */
 .cal-week-head {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: 52px repeat(7, minmax(0, 1fr));
   background: var(--bg-surface-2);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -466,7 +466,7 @@ img { max-width: 100%; }
 /* All-day row */
 .cal-week-allday {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: 52px repeat(7, minmax(0, 1fr));
   border-bottom: 2px solid var(--border);
   background: var(--bg-surface);
   min-height: 32px;
@@ -502,7 +502,8 @@ img { max-width: 100%; }
 
 /* Time grid flex row */
 .cal-week-timegrid {
-  display: flex;
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(0, 1fr));
   position: relative;
 }
 
@@ -523,8 +524,8 @@ img { max-width: 100%; }
 
 /* Day columns */
 .cal-day-col {
-  flex: 1;
   position: relative;
+  min-width: 0;
   border-left: 1px solid var(--border);
   cursor: crosshair;
 }
