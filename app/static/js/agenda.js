@@ -355,6 +355,40 @@
     return `${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
   }
 
+  function toApiDateTimeStr(dt) {
+    return `${toDateOnlyStr(dt)}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+  }
+
+  function toDateOnlyStr(dt) {
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  }
+
+  function setAllDayInputMode(form, isAllDay, anchorDateStr) {
+    const startInput = form.start_time;
+    const endInput = form.end_time;
+    if (!startInput || !endInput) return;
+
+    if (isAllDay) {
+      const startDate = startInput.value?.split('T')[0] || anchorDateStr || toDateOnlyStr(new Date());
+      const endDate = endInput.value?.split('T')[0] || startDate;
+      startInput.type = 'date';
+      endInput.type = 'date';
+      startInput.value = startDate;
+      endInput.value = endDate;
+      startInput.readOnly = false;
+      endInput.readOnly = false;
+    } else {
+      const startDate = startInput.value?.split('T')[0] || anchorDateStr || toDateOnlyStr(new Date());
+      const endDate = endInput.value?.split('T')[0] || startDate;
+      startInput.type = 'datetime-local';
+      endInput.type = 'datetime-local';
+      startInput.readOnly = false;
+      endInput.readOnly = false;
+      if (!startInput.value.includes('T')) startInput.value = `${startDate}T09:00`;
+      if (!endInput.value.includes('T')) endInput.value = `${endDate}T10:00`;
+    }
+  }
+
   // ── Event CRUD form ───────────────────────────────────────────
   async function openEventForm(id = null, prefillDate = null, prefillDatetime = null) {
     editId        = id;
@@ -373,6 +407,12 @@
     const recurSection     = document.getElementById('recurrence-section');
     const scopeSelector    = document.getElementById('series-scope-selector');
     const recurFields      = document.getElementById('recurrence-fields');
+    const allDayInput      = form.querySelector('input[name="all_day"]');
+
+    const anchorDateObj = prefillDate ? new Date(`${prefillDate}T00:00`) : new Date(curDate);
+    anchorDateObj.setHours(0, 0, 0, 0);
+    const anchorDateStr = toDateOnlyStr(anchorDateObj);
+    form.dataset.anchorDate = anchorDateStr;
 
     FP.buildMemberPicker('event-member-picker');
 
@@ -390,6 +430,7 @@
         form.end_time.value    = FP.toLocalDatetimeInput(new Date(ev.end_time));
         form.all_day.checked   = ev.all_day;
         FP.buildMemberPicker('event-member-picker', ev.member_ids || []);
+        setAllDayInputMode(form, ev.all_day, anchorDateStr);
 
         if (ev.series_id) {
           // Part of a series – show scope selector
@@ -412,6 +453,7 @@
                 form.start_time.value = FP.toLocalDatetimeInput(new Date(ev.start_time));
                 form.end_time.value   = FP.toLocalDatetimeInput(new Date(ev.end_time));
               }
+              setAllDayInputMode(form, form.all_day.checked, anchorDateStr);
             });
           });
         } else {
@@ -449,7 +491,12 @@
       recurToggle.addEventListener('change', () => {
         recurSection.classList.toggle('hidden', !recurToggle.checked);
       });
+      setAllDayInputMode(form, false, anchorDateStr);
     }
+
+    allDayInput?.addEventListener('change', () => {
+      setAllDayInputMode(form, allDayInput.checked, anchorDateStr);
+    });
 
     // ── Progressive disclosure for recurrence UI ─────
     const recurrenceTypeSelect = document.getElementById('recurrence-type-select');
@@ -503,12 +550,24 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const memberIds = FP.getSelectedMemberIds('event-member-picker');
-      const startDt  = new Date(form.start_time.value);
-      const endDt    = new Date(form.end_time.value);
+      const isAllDay = form.all_day.checked;
+      const forcedDate = form.dataset.anchorDate || toDateOnlyStr(new Date());
+      let startDt;
+      let endDt;
+
+      if (isAllDay) {
+        const startDateVal = form.start_time.value || forcedDate;
+        const endDateVal = form.end_time.value || startDateVal;
+        startDt = new Date(`${startDateVal}T00:00:00`);
+        endDt = new Date(`${endDateVal}T23:59:59`);
+      } else {
+        startDt = new Date(form.start_time.value);
+        endDt = new Date(form.end_time.value);
+      }
 
       // Cross-field: end must be after start
       const endTimeErr = document.getElementById('end-time-error');
-      if (endDt <= startDt) {
+      if ((!isAllDay && endDt <= startDt) || (isAllDay && endDt < startDt)) {
         endTimeErr?.classList.remove('hidden');
         form.end_time.focus();
         return;
@@ -542,8 +601,8 @@
         title:       form.title.value,
         description: form.description.value,
         location:    form.location.value,
-        start_time:  startDt.toISOString(),
-        end_time:    endDt.toISOString(),
+        start_time:  toApiDateTimeStr(startDt),
+        end_time:    toApiDateTimeStr(endDt),
         all_day:     form.all_day.checked,
         member_ids:  memberIds,
       };

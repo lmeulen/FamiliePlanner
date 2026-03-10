@@ -467,6 +467,42 @@
     const toggleRow   = document.getElementById('recurrence-toggle-row');
     const recurToggle = document.getElementById('recurrence-toggle');
     const recurSection = document.getElementById('recurrence-section');
+    const allDayInput = form.querySelector('input[name="all_day"]');
+
+    const padNum = n => String(n).padStart(2, '0');
+    const toDateOnlyStr = dt => `${dt.getFullYear()}-${padNum(dt.getMonth() + 1)}-${padNum(dt.getDate())}`;
+    const toApiDateTimeStr = dt =>
+      `${toDateOnlyStr(dt)}T${padNum(dt.getHours())}:${padNum(dt.getMinutes())}:${padNum(dt.getSeconds())}`;
+    const anchorDateObj = new Date();
+    anchorDateObj.setHours(0, 0, 0, 0);
+    const anchorDateStr = toDateOnlyStr(anchorDateObj);
+    form.dataset.anchorDate = anchorDateStr;
+
+    function setAllDayInputMode(isAllDay) {
+      const startInput = form.start_time;
+      const endInput = form.end_time;
+      if (!startInput || !endInput) return;
+
+      if (isAllDay) {
+        const startDate = startInput.value?.split('T')[0] || form.dataset.anchorDate || anchorDateStr;
+        const endDate = endInput.value?.split('T')[0] || startDate;
+        startInput.type = 'date';
+        endInput.type = 'date';
+        startInput.value = startDate;
+        endInput.value = endDate;
+        startInput.readOnly = false;
+        endInput.readOnly = false;
+      } else {
+        const startDate = startInput.value?.split('T')[0] || form.dataset.anchorDate || anchorDateStr;
+        const endDate = endInput.value?.split('T')[0] || startDate;
+        startInput.type = 'datetime-local';
+        endInput.type = 'datetime-local';
+        startInput.readOnly = false;
+        endInput.readOnly = false;
+        if (!startInput.value.includes('T')) startInput.value = `${startDate}T09:00`;
+        if (!endInput.value.includes('T')) endInput.value = `${endDate}T10:00`;
+      }
+    }
 
     FP.buildMemberPicker('event-member-picker');
 
@@ -525,6 +561,7 @@
         form.end_time.value    = FP.toLocalDatetimeInput(new Date(ev.end_time));
         form.all_day.checked   = ev.all_day;
         FP.buildMemberPicker('event-member-picker', ev.member_ids || []);
+        setAllDayInputMode(ev.all_day);
       }
     } else {
       titleEl.textContent = 'Afspraak toevoegen';
@@ -539,21 +576,38 @@
 
       // Set default series_end (4 weeks ahead)
       const defaultEnd = new Date(); defaultEnd.setDate(defaultEnd.getDate() + 28);
-      const pad = n => String(n).padStart(2, '0');
       form.querySelector('input[name="series_end"]').value =
-        `${defaultEnd.getFullYear()}-${pad(defaultEnd.getMonth()+1)}-${pad(defaultEnd.getDate())}`;
+        `${defaultEnd.getFullYear()}-${padNum(defaultEnd.getMonth()+1)}-${padNum(defaultEnd.getDate())}`;
 
       recurToggle.addEventListener('change', () => {
         recurSection.classList.toggle('hidden', !recurToggle.checked);
       });
+      setAllDayInputMode(false);
     }
+
+    allDayInput?.addEventListener('change', () => {
+      setAllDayInputMode(allDayInput.checked);
+    });
 
     form.addEventListener('submit', async ev => {
       ev.preventDefault();
-      const startDt = new Date(form.start_time.value);
-      const endDt   = new Date(form.end_time.value);
+      const isAllDay = form.all_day.checked;
+      const forcedDate = form.dataset.anchorDate || anchorDateStr;
+      let startDt;
+      let endDt;
+
+      if (isAllDay) {
+        const startDateVal = form.start_time.value || forcedDate;
+        const endDateVal = form.end_time.value || startDateVal;
+        startDt = new Date(`${startDateVal}T00:00:00`);
+        endDt = new Date(`${endDateVal}T23:59:59`);
+      } else {
+        startDt = new Date(form.start_time.value);
+        endDt = new Date(form.end_time.value);
+      }
+
       const endErr  = document.getElementById('end-time-error');
-      if (endDt <= startDt) { endErr?.classList.remove('hidden'); return; }
+      if ((!isAllDay && endDt <= startDt) || (isAllDay && endDt < startDt)) { endErr?.classList.remove('hidden'); return; }
       endErr?.classList.add('hidden');
 
       const pad = n => String(n).padStart(2, '0');
@@ -563,8 +617,8 @@
         title:       form.title.value.trim(),
         description: form.description.value.trim(),
         location:    form.location.value.trim(),
-        start_time:  startDt.toISOString(),
-        end_time:    endDt.toISOString(),
+        start_time:  toApiDateTimeStr(startDt),
+        end_time:    toApiDateTimeStr(endDt),
         all_day:     form.all_day.checked,
         member_ids:  FP.getSelectedMemberIds('event-member-picker'),
       };
