@@ -214,3 +214,10 @@ Zie volledige handleiding: [docs/README.docker.md](docs/README.docker.md)
 ## Database
 
 Het databaseschema en relaties staan in: [docs/database.md](docs/database.md)
+
+## Kwaliteit
+
+Voer voor een commit de volgende testen uit: 
+```bash
+ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest
+```
