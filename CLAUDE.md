@@ -82,7 +82,7 @@ python -m tools.cozi_importer --today   # Import only today's events
 python -m tools.hash_password           # Generate bcrypt hash for passwords
 ```
 
-**Nightly backup system:** The app automatically creates JSON backups at midnight via `app/backup_scheduler.py`. Backups are stored in `backups/DDMMYYYY.json` with full database export (events, tasks, meals, family members, photos metadata).
+**Nightly backup system:** The app automatically creates JSON backups at midnight via `app/backup_scheduler.py`. Backups are stored in `backups/DDMMYYYY.json` with full database export (events, tasks, meals, family members, photos metadata). The backup scheduler runs as a background task launched during app startup (lifespan context manager) and is gracefully stopped on shutdown.
 
 ## Architecture
 
@@ -91,30 +91,38 @@ python -m tools.hash_password           # Generate bcrypt hash for passwords
 **Request Flow:**
 ```
 Request → SessionMiddleware → CSRFMiddleware → AuthMiddleware →
-SlowAPI (rate limiting) → FastAPI router → Pydantic validation →
-SQLAlchemy ORM → SQLite
+SlowAPIMiddleware (rate limiting) → PrometheusMiddleware (metrics) →
+FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 ```
 
 **Module Organization:**
 - `app/main.py` - FastAPI app, middleware stack, page routes, exception handlers
-- `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, settings)
+- `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, settings, search, stats)
 - `app/models/*.py` - SQLAlchemy ORM models (Base from database.py)
 - `app/schemas/*.py` - Pydantic request/response schemas with validation
 - `app/utils/*.py` - Shared utilities (recurrence logic, DB helpers)
 - `app/auth.py` - Session-based auth middleware + login/logout handlers
+- `app/csrf.py` - CSRF token validation middleware
+- `app/errors.py` - Error codes, error response models, translation utilities
 - `app/database.py` - Async engine, session factory, `get_db()` dependency
 - `app/backup_scheduler.py` - Nightly backup job (runs at 00:00)
 - `app/metrics.py` - Prometheus metrics configuration
+- `app/config.py` - Environment variable loading and app configuration
+- `app/logging_config.py` - Loguru setup with file rotation
+- `app/enums.py` - MealType and RecurrenceType enums
 - `tools/*.py` - Standalone maintenance scripts (see Utility Tools section)
 - `backups/` - JSON backup files (DDMMYYYY.json format)
 
 ### Frontend Architecture
 
 **No build step.** Vanilla JavaScript with manual module organization:
-- `app/static/js/app.js` - Global utilities (`FP` object), API wrapper, Toast, theme
-- `app/static/js/modal.js` - Reusable modal controller
+- `app/static/js/app.js` - Global utilities (`FP` object) for date/time formatting, member utilities, UI helpers
 - `app/static/js/api.js` - Fetch wrapper with CSRF token handling
-- `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, etc.)
+- `app/static/js/toast.js` - Toast notification system
+- `app/static/js/modal.js` - Reusable modal controller
+- `app/static/js/theme.js` - Theme switcher (light/dark/system)
+- `app/static/js/cache.js` - Client-side caching utilities
+- `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, meals.js, photos.js, dashboard.js, family.js, settings.js, search.js, stats.js)
 - `app/templates/*.html` - Jinja2 templates extending `base.html`
 
 **Global Objects:**
@@ -122,6 +130,7 @@ SQLAlchemy ORM → SQLite
 - `window.API` - GET/POST/PUT/DELETE wrappers with error handling
 - `window.Toast` - Notification system
 - `window.Modal` - Modal dialog controller
+- `window.Theme` - Theme management (light/dark/system)
 
 ### Recurring Series Pattern
 
@@ -156,6 +165,14 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 - Always use `selectin` loading strategy: `.options(selectinload(Model.members))`
 
 **Important:** Foreign keys have `ON DELETE CASCADE` or `SET NULL` - check models before deleting!
+
+## Configuration
+
+**pyproject.toml** centralizes tool configurations:
+- **Ruff**: Line length 120, Python 3.11+, excludes `.venv`, `alembic/versions`
+- **Black**: Line length 120, Python 3.11 target
+- **Mypy**: Ignores `tools/` and `alembic/`, requires imports to be silent, ignores test errors
+- **Pytest**: Auto async mode, testpaths `tests/`, strict markers, supports `slow` and `integration` markers
 
 ## Key Conventions
 
@@ -199,6 +216,16 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 - Token auto-injected in base.html: `<meta name="csrf-token" content="{{ request.session.csrf }}">`
 - `api.js` reads token and adds to all non-GET requests
 
+### Error Handling
+
+- Centralized error handling via `app/errors.py` with `ErrorCode` enum and `ErrorResponse` model
+- Custom exception handlers in `main.py` for:
+  - `SQLAlchemyError` → 400 with translated error message
+  - `IntegrityError` → 400 with user-friendly constraint violation messages
+  - `RequestValidationError` → 422 with translated Pydantic validation errors
+  - `StarletteHTTPException` → Preserved status code with error details
+- All API errors return JSON with `{"detail": "error message"}` format
+
 ### Commit Messages
 
 Follow conventional commits (enforced by commitlint in CI):
@@ -222,7 +249,7 @@ test: Add tests for series deletion cascade
 
 5. **Authentication bypass** - Set `AUTH_REQUIRED=false` in .env OR `os.environ["AUTH_DISABLED"]="1"` for tests. Middleware checks both.
 
-6. **Static file versioning** - `base.html` appends `?v={{ static_v }}` to CSS/JS to bust cache. `static_v` is unix timestamp from app startup.
+6. **Static file versioning & caching** - `base.html` appends `?v={{ static_v }}` to CSS/JS to bust cache. `static_v` is unix timestamp from app startup. The app uses `CachedStaticFiles` with custom Cache-Control headers: thumbnails cached 1 year (immutable), photos 1 day, CSS/JS 1 hour, images/fonts 1 week.
 
 7. **Alembic in async context** - `init_db()` runs Alembic upgrade in thread executor to avoid blocking event loop.
 
@@ -231,6 +258,8 @@ test: Add tests for series deletion cascade
 9. **Tools run as modules** - All scripts in `tools/` must be run as modules (`python -m tools.script_name`) not as direct scripts, to ensure proper import paths and database access.
 
 10. **Multi-day all-day events** - When creating an all-day event that spans multiple days, the frontend and Cozi importer automatically convert it to a daily recurring series so the event appears on all days. Use `tools/breakup_multiday_appointments.py` to convert existing multi-day events that were created before this feature.
+
+11. **SQLite migrations** - Always use `batch_alter_table` context manager in Alembic migrations for SQLite compatibility. SQLite has limited ALTER TABLE support, and batch mode creates a temporary table, copies data, and swaps tables atomically.
 
 ## API Documentation
 
