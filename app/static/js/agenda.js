@@ -499,52 +499,11 @@
     });
 
     // ── Progressive disclosure for recurrence UI ─────
-    const recurrenceTypeSelect = document.getElementById('recurrence-type-select');
-    const intervalSection      = document.getElementById('interval-section');
-    const intervalInput        = form.querySelector('input[name="interval"]');
-    const intervalUnit         = document.getElementById('interval-unit');
-    const monthlyPatternSection = document.getElementById('monthly-pattern-section');
-    const endDateSection       = document.getElementById('end-date-section');
-    const endCountSection      = document.getElementById('end-count-section');
-    const endConditionRadios   = form.querySelectorAll('input[name="end_condition"]');
-
-    function updateRecurrenceUI() {
-      const recurrenceType = recurrenceTypeSelect.value;
-
-      // Show interval input for daily, weekly, monthly, yearly
-      const showInterval = ['daily', 'weekly', 'monthly', 'yearly'].includes(recurrenceType);
-      intervalSection?.classList.toggle('hidden', !showInterval);
-
-      // Update interval unit text
-      if (recurrenceType === 'daily') {
-        intervalUnit.textContent = 'dagen';
-      } else if (recurrenceType === 'yearly') {
-        intervalUnit.textContent = 'jaren';
-      } else if (recurrenceType === 'monthly') {
-        intervalUnit.textContent = 'maanden';
-      } else {
-        intervalUnit.textContent = 'weken';
-      }
-
-      // Show monthly pattern selector only for monthly
-      monthlyPatternSection?.classList.toggle('hidden', recurrenceType !== 'monthly');
-    }
-
-    function updateEndConditionUI() {
-      const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
-      endDateSection?.classList.toggle('hidden', endCondition !== 'date');
-      endCountSection?.classList.toggle('hidden', endCondition !== 'count');
-    }
-
-    // Attach event listeners
-    recurrenceTypeSelect?.addEventListener('change', updateRecurrenceUI);
-    endConditionRadios?.forEach(radio => {
-      radio.addEventListener('change', updateEndConditionUI);
+    const recurrenceUI = new RecurrenceUIController({
+      formId: 'event-form',
+      idPrefix: '',
+      showToggle: !id,
     });
-
-    // Initialize UI state
-    updateRecurrenceUI();
-    updateEndConditionUI();
 
     // ── Submit (registered here, before any async series-data fetch) ─────
     form.addEventListener('submit', async e => {
@@ -580,21 +539,21 @@
       form.location.value    = form.location.value.trim();
 
       // Series end date validation (only when recurrence-fields is visible)
-      const seriesEndInput    = form.querySelector('input[name="series_end"]');
-      const seriesEndErr      = document.getElementById('series-end-error');
       const startDate         = form.start_time.value.split('T')[0];
       const recurSectionEl    = document.getElementById('recurrence-section');
       const recurFieldsEl     = document.getElementById('recurrence-fields');
       const seriesEndVisible  = !recurSectionEl?.classList.contains('hidden') &&
                                 !recurFieldsEl?.classList.contains('hidden');
-      if (seriesEndInput && seriesEndVisible) {
-        const seriesEndVal = seriesEndInput.value;
-        if (!seriesEndVal || seriesEndVal <= startDate) {
-          seriesEndErr?.classList.remove('hidden');
-          seriesEndInput.focus();
+      if (seriesEndVisible) {
+        const validation = recurrenceUI.validate(startDate);
+        if (!validation.valid) {
+          if (validation.errorElementId) {
+            recurrenceUI.showValidationError(validation.errorElementId);
+          }
+          Toast.show(validation.error, 'error');
           return;
         }
-        seriesEndErr?.classList.add('hidden');
+        recurrenceUI.hideAllValidationErrors();
       }
 
       const eventData = {
@@ -615,25 +574,19 @@
 
           if (recurToggle && recurToggle.checked || isMultiDayAllDay) {
             // Create recurring series (either user-requested or auto-converted multi-day)
-            const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+            const recurrencePayload = recurrenceUI.getRecurrencePayload();
             const seriesPayload = {
               ...eventData,
-              recurrence_type:    isMultiDayAllDay && !recurToggle.checked ? 'daily' : form.querySelector('select[name="recurrence_type"]').value,
               series_start:       form.start_time.value.split('T')[0],
               start_time_of_day:  toTimeStr(startDt),
               end_time_of_day:    toTimeStr(endDt),
-              interval:           1,
+              ...recurrencePayload,
             };
 
-            // Add monthly pattern if monthly type
-            const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
-            if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
-              seriesPayload.monthly_pattern = monthlyPattern.value;
-            }
-
-            // Add end condition (date or count)
+            // Override for multi-day all-day auto-conversion
             if (isMultiDayAllDay && !recurToggle.checked) {
-              // Auto-converted multi-day: use end date
+              seriesPayload.recurrence_type = 'daily';
+              seriesPayload.interval = 1;
               // If end time is at midnight (00:00), subtract one day from series_end
               const endTime = form.end_time.value.split('T')[1];
               let seriesEndDate = form.end_time.value.split('T')[0];
@@ -643,14 +596,7 @@
                 seriesEndDate = endDateObj.toISOString().split('T')[0];
               }
               seriesPayload.series_end = seriesEndDate;
-            } else if (endCondition === 'date') {
-              const seriesEndVal = form.querySelector('input[name="series_end"]').value;
-              if (!seriesEndVal) { Toast.show('Vul een einddatum voor de reeks in', 'error'); return; }
-              seriesPayload.series_end = seriesEndVal;
-            } else {
-              const countVal = form.querySelector('input[name="count"]')?.value;
-              if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
-              seriesPayload.count = parseInt(countVal);
+              delete seriesPayload.count; // Ensure we use series_end
             }
 
             await API.post('/api/agenda/series', seriesPayload);
@@ -662,30 +608,13 @@
         } else {
           if (seriesId && editScope === 'series') {
             // Update whole series
-            const endCondition = form.querySelector('input[name="end_condition"]:checked')?.value;
+            const recurrencePayload = recurrenceUI.getRecurrencePayload();
             const seriesPayload = {
               ...eventData,
-              recurrence_type:    form.querySelector('select[name="recurrence_type"]').value,
               start_time_of_day:  toTimeStr(startDt),
               end_time_of_day:    toTimeStr(endDt),
-              interval:           parseInt(form.querySelector('input[name="interval"]')?.value || '1'),
+              ...recurrencePayload,
             };
-
-            // Add monthly pattern if monthly type
-            const monthlyPattern = form.querySelector('select[name="monthly_pattern"]');
-            if (monthlyPattern && !monthlyPattern.closest('.hidden')) {
-              seriesPayload.monthly_pattern = monthlyPattern.value;
-            }
-
-            // Add end condition (date or count)
-            if (endCondition === 'date') {
-              const seriesEndVal = form.querySelector('input[name="series_end"]').value;
-              seriesPayload.series_end = seriesEndVal;
-            } else {
-              const countVal = form.querySelector('input[name="count"]')?.value;
-              if (!countVal || parseInt(countVal) < 1) { Toast.show('Vul een aantal herhalingen in', 'error'); return; }
-              seriesPayload.count = parseInt(countVal);
-            }
 
             await API.put(`/api/agenda/series/${seriesId}`, seriesPayload);
             Toast.show('Reeks bijgewerkt!');
@@ -744,27 +673,7 @@
     if (seriesId) {
       API.get(`/api/agenda/series/${seriesId}`).then(s => {
         currentSeries = s;
-        form.querySelector('select[name="recurrence_type"]').value = s.recurrence_type;
-        form.querySelector('input[name="interval"]').value = s.interval || 1;
-
-        // Populate monthly pattern if set
-        if (s.monthly_pattern) {
-          const monthlyPatternSelect = form.querySelector('select[name="monthly_pattern"]');
-          if (monthlyPatternSelect) monthlyPatternSelect.value = s.monthly_pattern;
-        }
-
-        // Populate end condition (date or count)
-        if (s.count) {
-          form.querySelector('input[name="end_condition"][value="count"]').checked = true;
-          form.querySelector('input[name="count"]').value = s.count;
-        } else {
-          form.querySelector('input[name="end_condition"][value="date"]').checked = true;
-          form.querySelector('input[name="series_end"]').value = s.series_end;
-        }
-
-        // Update UI to reflect loaded values
-        updateRecurrenceUI();
-        updateEndConditionUI();
+        recurrenceUI.populateFromSeries(s);
       }).catch(() => {});
     }
   }
