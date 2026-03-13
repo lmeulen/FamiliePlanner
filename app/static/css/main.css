@@ -1765,9 +1765,9 @@ img { max-width: 100%; }
    ═══════════════════════════════════════════════════════════════════ */
 .fullsize-photo-modal {
   position: relative;
-  width: 85vw;
-  aspect-ratio: 16 / 9;
-  max-height: 85vh;
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1814,8 +1814,8 @@ img { max-width: 100%; }
 @media (max-width: 768px) {
   .fullsize-photo-modal {
     width: 95vw;
-    aspect-ratio: 16 / 9;
-    max-height: 95vh;
+    max-width: none;
+    max-height: 85vh;
   }
 
   .fullsize-photo-modal img {
