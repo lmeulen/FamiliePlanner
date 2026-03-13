@@ -2161,3 +2161,100 @@ img { max-width: 100%; }
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+/* ── PWA STANDALONE MODE STYLES ──────────────────────────────── */
+
+/* Safe area padding for notched devices (iPhone X+) */
+.pwa-standalone body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Adjust navigation for safe areas */
+.pwa-standalone .side-nav {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* Install prompt banner (optional - shown when PWA installable) */
+.pwa-install-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 1000;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s ease-out;
+}
+
+.pwa-install-prompt-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.pwa-install-prompt-text {
+  flex: 1;
+}
+
+.pwa-install-prompt-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+
+.pwa-install-prompt-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pwa-install-prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Offline indicator */
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #f39c12;
+  color: white;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 2000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.offline-indicator.online {
+  background: #27ae60;
+}
+
+/* PWA-specific adjustments for mobile */
+@media (max-width: 768px) {
+  .pwa-standalone .side-nav {
+    bottom: env(safe-area-inset-bottom);
+  }
+
+  .pwa-standalone .fab {
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+}

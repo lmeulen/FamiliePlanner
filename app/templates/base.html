@@ -2,13 +2,23 @@
 <html lang="nl" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="csrf-token" content="{{ request.state.csrf_token }}" />
   <meta name="theme-color" content="#6C5CE7" />
+  <meta name="description" content="Familie organisatie app voor agenda, taken en maaltijden" />
   <title>{% block title %}FamiliePlanner{% endblock %}</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/static/manifest.json" />
 
   <!-- Favicon (emoji) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>"/>
+
+  <!-- iOS PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="FamiliePlanner" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>" />
 
   <!-- CSS -->
   <link rel="stylesheet" href="/static/css/themes.css?v={{ static_v }}" />
@@ -90,6 +100,55 @@
   <script src="/static/js/form-controllers/recurrence-ui.js?v={{ static_v }}"></script>
   <script src="/static/js/form-controllers/event-form.js?v={{ static_v }}"></script>
   <script src="/static/js/form-controllers/task-form.js?v={{ static_v }}"></script>
+  <script src="/static/js/pwa-install.js?v={{ static_v }}"></script>
   {% block extra_js %}{% endblock %}
+
+  <!-- ──────────── PWA SERVICE WORKER ──────────── -->
+  <script>
+    // Register service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('[PWA] Service Worker registered:', registration.scope);
+
+            // Check for updates periodically
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New version available, show update prompt
+                  if (window.Toast) {
+                    Toast.show('Nieuwe versie beschikbaar! Ververs de pagina.', 'info');
+                  }
+                }
+              });
+            });
+          })
+          .catch(error => {
+            console.error('[PWA] Service Worker registration failed:', error);
+          });
+      });
+
+      // Handle offline/online events
+      window.addEventListener('online', () => {
+        if (window.Toast) {
+          Toast.show('Verbinding hersteld', 'success');
+        }
+      });
+
+      window.addEventListener('offline', () => {
+        if (window.Toast) {
+          Toast.show('Offline modus - sommige functies niet beschikbaar', 'warning');
+        }
+      });
+    }
+
+    // Detect if app is running as PWA (standalone mode)
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('[PWA] Running in standalone mode');
+      document.documentElement.classList.add('pwa-standalone');
+    }
+  </script>
 </body>
 </html>
