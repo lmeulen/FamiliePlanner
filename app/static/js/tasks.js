@@ -7,8 +7,6 @@
   let activeList   = 'all';   // list_id or 'all'
   let activeMember = null;
   let showDone     = false;
-  let editTaskId   = null;
-  let editSeriesId = null;
 
   // ── Loaders ───────────────────────────────────────────────────
   async function loadLists() {
@@ -134,211 +132,15 @@
 
   // ── Task form ─────────────────────────────────────────────────
   async function openTaskForm(id = null) {
-    editTaskId   = id;
-    editSeriesId = null;
-    Modal.open('tpl-task-form');
-    const form        = document.getElementById('task-form');
-    const titleEl     = document.getElementById('task-form-title');
-    const delBtn      = document.getElementById('btn-delete-task');
-    const recurToggle = document.getElementById('recurrence-toggle');
-    const recurFields = document.getElementById('recurrence-fields');
-    const recurRow    = document.getElementById('recurrence-toggle-row');
-    const scopeSel    = document.getElementById('scope-selector');
-
-    FP.buildMemberPicker('task-member-picker');
-
-    // Populate list select (required – no empty option)
-    const listSel = form.querySelector('select[name="list_id"]');
-    listSel.innerHTML = '';
-    lists.forEach(l => {
-      const opt = document.createElement('option');
-      opt.value = l.id; opt.textContent = l.name;
-      listSel.appendChild(opt);
-    });
-
-    // Recurrence toggle behaviour
-    recurToggle.addEventListener('change', () => {
-      recurFields.classList.toggle('hidden', !recurToggle.checked);
-      if (recurToggle.checked) {
-        form.querySelector('[name="series_end"]').value = '';
-      }
-    });
-
-    // ── Progressive disclosure for recurrence UI ─────
-    const recurrenceUI = new RecurrenceUIController({
+    const controller = new TaskFormController({
+      templateId: 'tpl-task-form',
       formId: 'task-form',
-      idPrefix: 'task-',
-      showToggle: !id,
+      simplified: false,
+      taskCache: tasks,
+      onSave: loadTasks,
     });
 
-    if (id) {
-      titleEl.textContent = 'Taak bewerken';
-      delBtn.classList.remove('hidden');
-      const task = tasks.find(t => t.id === id);
-      if (task) {
-        form.title.value       = task.title;
-        form.description.value = task.description || '';
-        listSel.value          = task.list_id || '';
-        FP.buildMemberPicker('task-member-picker', task.member_ids || []);
-        form.due_date.value    = task.due_date || '';
-
-        if (task.series_id) {
-          editSeriesId = task.series_id;
-          recurRow.classList.add('hidden');    // hide toggle when editing
-          recurFields.classList.add('hidden');
-          scopeSel.classList.remove('hidden');
-
-          // Scope radio change handler - show recurrence fields when editing series
-          form.querySelectorAll('input[name="edit_scope"]').forEach(radio => {
-            radio.addEventListener('change', () => {
-              const scope = radio.value;
-              recurFields.classList.toggle('hidden', scope !== 'series');
-              if (scope === 'series' && editSeriesId) {
-                // Load series data and populate fields
-                API.get(`/api/tasks/series/${editSeriesId}`).then(s => {
-                  recurrenceUI.populateFromSeries(s);
-                }).catch(() => {});
-              }
-            });
-          });
-        } else {
-          recurRow.classList.remove('hidden');
-          scopeSel.classList.add('hidden');
-        }
-      }
-    } else {
-      titleEl.textContent = 'Taak toevoegen';
-      delBtn.classList.add('hidden');
-      recurRow.classList.remove('hidden');
-      scopeSel.classList.add('hidden');
-      recurFields.classList.add('hidden');
-      // Default to active list or first list
-      if (activeList !== 'all') {
-        listSel.value = activeList;
-      } else if (lists.length) {
-        listSel.value = lists[0].id;
-      }
-      // Default due date to today
-      form.due_date.value = FP.todayStr();
-    }
-
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
-      const memberIds = FP.getSelectedMemberIds('task-member-picker');
-
-      // Trim text inputs
-      form.title.value       = form.title.value.trim();
-      form.description.value = form.description.value.trim();
-
-      if (!form.title.value) {
-        form.title.focus();
-        return;
-      }
-
-      // Creating a new recurring series
-      if (!editTaskId && recurToggle.checked) {
-        // Validate recurrence fields
-        const dueDate = form.due_date.value;
-        const validation = recurrenceUI.validate(dueDate);
-        if (!validation.valid) {
-          if (validation.errorElementId) {
-            recurrenceUI.showValidationError(validation.errorElementId);
-          }
-          Toast.show(validation.error, 'error');
-          return;
-        }
-        recurrenceUI.hideAllValidationErrors();
-
-        const recurrencePayload = recurrenceUI.getRecurrencePayload();
-        const payload = {
-          title:           form.title.value,
-          description:     form.description.value,
-          list_id:         listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
-          member_ids:      memberIds,
-          series_start:    dueDate,
-          ...recurrencePayload,
-        };
-
-        try {
-          await API.post('/api/tasks/series', payload);
-          Toast.show('Reeks aangemaakt!');
-          Modal.close();
-          loadTasks();
-        } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
-        return;
-      }
-
-      // Editing series as a whole
-      if (editSeriesId && scope === 'series') {
-        const recurrencePayload = recurrenceUI.getRecurrencePayload();
-        const payload = {
-          title:           form.title.value,
-          description:     form.description.value,
-          list_id:         listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
-          member_ids:      memberIds,
-          ...recurrencePayload,
-        };
-
-        try {
-          await API.put(`/api/tasks/series/${editSeriesId}`, payload);
-          Toast.show('Reeks bijgewerkt!');
-          Modal.close();
-          loadTasks();
-        } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
-        return;
-      }
-
-      // Single task create / edit
-      const data = {
-        title:       form.title.value,
-        description: form.description.value,
-        list_id:     listSel.value ? parseInt(listSel.value) : lists[0]?.id || null,
-        member_ids:  memberIds,
-        due_date:    form.due_date.value || null,
-        done:        false,
-      };
-      try {
-        if (editTaskId) {
-          const cur = tasks.find(t => t.id === editTaskId);
-          const updated = await API.put(`/api/tasks/${editTaskId}`, { ...data, done: cur?.done ?? false });
-          // Update local array immediately so reopening the form shows fresh data
-          const idx = tasks.findIndex(t => t.id === editTaskId);
-          if (idx !== -1) tasks[idx] = updated;
-          Toast.show('Taak bijgewerkt!');
-        } else {
-          await API.post('/api/tasks/', data);
-          Toast.show('Taak toegevoegd!');
-        }
-        Modal.close();
-        loadTasks();
-      } catch (err) {
-        Toast.show(err.message || 'Fout bij opslaan', 'error');
-      }
-    }, { once: true });
-
-    delBtn.addEventListener('click', async () => {
-      if (editSeriesId) {
-        const scope = form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
-        if (scope === 'series') {
-          if (!confirm('Hele reeks verwijderen?')) return;
-          try {
-            await API.delete(`/api/tasks/series/${editSeriesId}`);
-            Toast.show('Reeks verwijderd', 'warning');
-            Modal.close();
-            loadTasks();
-          } catch { Toast.show('Fout', 'error'); }
-          return;
-        }
-      }
-      if (!confirm('Taak verwijderen?')) return;
-      try {
-        await API.delete(`/api/tasks/${editTaskId}`);
-        Toast.show('Taak verwijderd', 'warning');
-        Modal.close();
-        loadTasks();
-      } catch { Toast.show('Fout', 'error'); }
-    }, { once: true });
+    await controller.open(id);
   }
 
   // ── List form (create new) ────────────────────────────────────
