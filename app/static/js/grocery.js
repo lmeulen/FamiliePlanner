@@ -1,31 +1,129 @@
 /* ================================================================
-   grocery.js – Smart grocery list with category learning
+   grocery.js – Smart grocery list with offline PWA support
    ================================================================ */
 (function () {
   let items = [];
   let categories = [];
+  let isOnline = navigator.onLine;
+  let db = window.GroceryDB;
 
-  // ── Load ──────────────────────────────────────────────────
+  // ── Offline/Online detection ──────────────────────────────────
+  function updateOnlineStatus() {
+    isOnline = navigator.onLine;
+    const indicator = document.getElementById('offline-indicator');
+
+    if (isOnline) {
+      if (indicator) indicator.remove();
+      syncPendingChanges();
+    } else {
+      if (!indicator) {
+        const banner = document.createElement('div');
+        banner.id = 'offline-indicator';
+        banner.className = 'offline-indicator';
+        banner.textContent = '📡 Offline modus - wijzigingen worden gesynchroniseerd wanneer je weer online bent';
+        document.body.prepend(banner);
+      }
+    }
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  // ── Load ──────────────────────────────────────────────────────
   async function loadCategories() {
     try {
-      categories = await API.get('/api/grocery/categories');
-    } catch {
-      categories = [];
-      Toast.show('Kon categorieën niet laden', 'error');
+      if (isOnline) {
+        categories = await API.get('/api/grocery/categories');
+        // Save to IndexedDB for offline use
+        await db.saveCategories(categories);
+      } else {
+        // Load from IndexedDB when offline
+        categories = await db.getCategories();
+      }
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        categories = await db.getCategories();
+      } catch {
+        categories = [];
+      }
+      if (!categories.length) {
+        Toast.show('Kon categorieën niet laden', 'error');
+      }
     }
   }
 
   async function loadItems() {
     try {
-      items = await API.get('/api/grocery/items');
-    } catch {
-      items = [];
-      Toast.show('Kon boodschappenlijst niet laden', 'error');
+      if (isOnline) {
+        items = await API.get('/api/grocery/items');
+        // Save to IndexedDB for offline use
+        await db.saveItems(items);
+      } else {
+        // Load from IndexedDB when offline
+        items = await db.getItems();
+      }
+    } catch (err) {
+      console.error('Failed to load items:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        items = await db.getItems();
+      } catch {
+        items = [];
+      }
+      if (!items.length && isOnline) {
+        Toast.show('Kon boodschappenlijst niet laden', 'error');
+      }
     }
     render();
   }
 
-  // ── Render ────────────────────────────────────────────────
+  // ── Sync pending changes ──────────────────────────────────────
+  async function syncPendingChanges() {
+    if (!isOnline) return;
+
+    try {
+      const pending = await db.getPendingSync();
+      if (!pending || !pending.length) return;
+
+      console.log(`[Grocery] Syncing ${pending.length} pending changes...`);
+
+      for (const action of pending) {
+        try {
+          switch (action.type) {
+            case 'add':
+              await API.post('/api/grocery/items', action.payload);
+              break;
+            case 'update':
+              await API.patch(`/api/grocery/items/${action.itemId}`, action.payload);
+              break;
+            case 'delete':
+              await API.delete(`/api/grocery/items/${action.itemId}`);
+              break;
+            case 'clear_done':
+              await API.delete('/api/grocery/items/done');
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to sync action:', action, err);
+        }
+      }
+
+      // Clear sync queue after successful sync
+      await db.clearSyncQueue();
+
+      // Reload from server
+      await loadCategories();
+      await loadItems();
+
+      Toast.show('Wijzigingen gesynchroniseerd!', 'success');
+    } catch (err) {
+      console.error('Sync failed:', err);
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────
   function render() {
     const container = document.getElementById('grocery-list');
     const emptyState = document.getElementById('empty-state');
@@ -121,10 +219,26 @@
         const item = items.find(i => i.id === id);
         if (!item) return;
 
+        const newChecked = !item.checked;
+
         try {
-          await API.patch(`/api/grocery/items/${id}`, { checked: !item.checked });
+          if (isOnline) {
+            await API.patch(`/api/grocery/items/${id}`, { checked: newChecked });
+          } else {
+            // Update locally and queue sync
+            await db.updateItemOffline(id, {
+              checked: newChecked,
+              checked_at: newChecked ? new Date().toISOString() : null
+            });
+            await db.queueSync({
+              type: 'update',
+              itemId: id,
+              payload: { checked: newChecked }
+            });
+          }
           await loadItems();
-        } catch {
+        } catch (err) {
+          console.error('Failed to update item:', err);
           Toast.show('Fout bij bijwerken', 'error');
         }
       });
@@ -137,31 +251,70 @@
         if (!confirm('Item verwijderen?')) return;
 
         try {
-          await API.delete(`/api/grocery/items/${id}`);
+          if (isOnline) {
+            await API.delete(`/api/grocery/items/${id}`);
+          } else {
+            // Delete locally and queue sync
+            await db.deleteItemOffline(id);
+            await db.queueSync({ type: 'delete', itemId: id });
+          }
           Toast.show('Item verwijderd', 'warning');
           await loadItems();
-        } catch {
+        } catch (err) {
+          console.error('Failed to delete item:', err);
           Toast.show('Fout bij verwijderen', 'error');
         }
       });
     });
   }
 
-  // ── Add item ──────────────────────────────────────────────
+  // ── Add item ──────────────────────────────────────────────────
   async function addItem(rawInput) {
     try {
-      await API.post('/api/grocery/items', { raw_input: rawInput });
+      if (isOnline) {
+        await API.post('/api/grocery/items', { raw_input: rawInput });
+      } else {
+        // Add locally and queue sync (simplified offline parsing)
+        const parts = rawInput.trim().split(' ');
+        const displayName = rawInput.charAt(0).toUpperCase() + rawInput.slice(1).toLowerCase();
+        const productName = rawInput.toLowerCase();
+
+        // Get default category (last one = "Overig")
+        const defaultCat = categories[categories.length - 1];
+
+        const newItem = {
+          product_name: productName,
+          display_name: displayName,
+          quantity: null,
+          unit: null,
+          category_id: defaultCat?.id || 1,
+          checked: false,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+          checked_at: null
+        };
+
+        await db.addItemOffline(newItem);
+        await db.queueSync({ type: 'add', payload: { raw_input: rawInput } });
+      }
+
       Toast.show('Toegevoegd!');
       document.getElementById('item-input').value = '';
       document.getElementById('suggestion-hint').classList.add('hidden');
       await loadItems();
     } catch (err) {
+      console.error('Failed to add item:', err);
       Toast.show(err.message || 'Fout bij toevoegen', 'error');
     }
   }
 
-  // ── Category management ───────────────────────────────────
+  // ── Category management ───────────────────────────────────────
   async function openManageCategories() {
+    if (!isOnline) {
+      Toast.show('Categorieën aanpassen is alleen online mogelijk', 'warning');
+      return;
+    }
+
     Modal.open('tpl-manage-categories');
     renderCategoryOrder();
 
@@ -223,28 +376,52 @@
       Modal.close();
       await loadCategories();
       await loadItems();
-    } catch {
+    } catch (err) {
+      console.error('Failed to save category order:', err);
       Toast.show('Fout bij opslaan', 'error');
     }
   }
 
-  // ── Clear done ────────────────────────────────────────────
+  // ── Clear done ────────────────────────────────────────────────
   async function clearDoneItems() {
     if (!confirm('Alle afgevinkte items verwijderen?')) return;
 
     try {
-      await API.delete('/api/grocery/items/done');
+      if (isOnline) {
+        await API.delete('/api/grocery/items/done');
+      } else {
+        // Delete all checked items locally and queue sync
+        const checkedItems = items.filter(i => i.checked);
+        for (const item of checkedItems) {
+          await db.deleteItemOffline(item.id);
+        }
+        await db.queueSync({ type: 'clear_done' });
+      }
+
       Toast.show('Afgevinkte items verwijderd', 'warning');
       await loadItems();
-    } catch {
+    } catch (err) {
+      console.error('Failed to clear done items:', err);
       Toast.show('Fout bij verwijderen', 'error');
     }
   }
 
-  // ── Init ──────────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────
   async function init() {
+    // Initialize IndexedDB
+    await db.open();
+
+    // Check initial online status
+    updateOnlineStatus();
+
+    // Load data
     await loadCategories();
     await loadItems();
+
+    // Try to sync any pending changes from previous offline session
+    if (isOnline) {
+      syncPendingChanges();
+    }
 
     // Add item form
     const form = document.getElementById('add-item-form');
