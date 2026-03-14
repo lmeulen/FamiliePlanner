@@ -209,6 +209,7 @@
       if (!productMap.has(key)) {
         productMap.set(key, {
           ...item,
+          totalQuantity: parseFloat(item.quantity) || 0,
           count: 1,
           ids: [item.id], // Track all IDs for bulk operations
         });
@@ -216,6 +217,12 @@
         const existing = productMap.get(key);
         existing.count++;
         existing.ids.push(item.id);
+
+        // Sum quantities if they have the same unit
+        const itemQty = parseFloat(item.quantity) || 0;
+        if (itemQty > 0 && item.unit === existing.unit) {
+          existing.totalQuantity += itemQty;
+        }
       }
     });
 
@@ -223,22 +230,27 @@
   }
 
   function renderItem(item) {
-    const quantityText = item.quantity && item.unit
-      ? `${item.quantity} ${item.unit}`
-      : item.quantity || '';
-
-    // Show count if there are duplicates
-    const countText = item.count > 1 ? `, ${item.count}` : '';
-
     // Use comma-separated IDs for bulk operations
     const dataIds = item.ids ? item.ids.join(',') : item.id;
+
+    // Build quantity display
+    let quantityDisplay = '';
+    if (item.totalQuantity && item.totalQuantity > 0 && item.unit) {
+      // Show total quantity if consolidated
+      quantityDisplay = `, ${item.totalQuantity} ${item.unit}`;
+    } else if (item.quantity && item.unit) {
+      // Single item with quantity
+      quantityDisplay = `, ${item.quantity} ${item.unit}`;
+    } else if (item.count > 1) {
+      // Multiple items without quantity - just show count
+      quantityDisplay = `, ${item.count}`;
+    }
 
     return `
       <div class="grocery-item ${item.checked ? 'checked' : ''}" data-id="${item.id}" data-ids="${dataIds}">
         <button class="grocery-check" data-ids="${dataIds}" aria-label="Afvinken"></button>
         <div class="grocery-item-content">
-          <div class="grocery-item-name">${FP.esc(item.display_name)}${countText}</div>
-          ${quantityText ? `<div class="grocery-item-quantity">${FP.esc(quantityText)}</div>` : ''}
+          <div class="grocery-item-name">${FP.esc(item.display_name)}${quantityDisplay}</div>
         </div>
         <div class="grocery-item-actions">
           <button class="btn btn--icon btn--ghost grocery-edit" data-id="${item.id}" title="Categorie wijzigen" aria-label="Categorie wijzigen">✏️</button>
