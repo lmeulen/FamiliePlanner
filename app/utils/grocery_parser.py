@@ -28,8 +28,10 @@ DUTCH_UNITS = {
     "flessen": "fles",
     "blik": "blik",
     "blikje": "blik",
+    "blikken": "blik",
     "zak": "zak",
     "zakje": "zak",
+    "zakken": "zak",
     "x": "stuks",
 }
 
