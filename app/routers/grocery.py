@@ -136,6 +136,15 @@ async def update_item(item_id: int, payload: GroceryItemUpdate, db: AsyncSession
     return item
 
 
+@router.delete("/items/done", status_code=204)
+async def clear_done_items(db: AsyncSession = Depends(get_db)):
+    """Delete all checked items."""
+    result = await db.execute(sql_delete(GroceryItem).where(GroceryItem.checked == True))  # noqa: E712
+    await db.commit()
+    count = result.rowcount
+    logger.info("grocery.items.cleared_done count={}", count)
+
+
 @router.delete("/items/{item_id}", status_code=204)
 async def delete_item(item_id: int, db: AsyncSession = Depends(get_db)):
     """Delete single grocery item."""
@@ -146,15 +155,6 @@ async def delete_item(item_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(item)
     await db.commit()
     logger.info("grocery.item.deleted id={}", item_id)
-
-
-@router.delete("/items/done", status_code=204)
-async def clear_done_items(db: AsyncSession = Depends(get_db)):
-    """Delete all checked items."""
-    result = await db.execute(sql_delete(GroceryItem).where(GroceryItem.checked == True))  # noqa: E712
-    await db.commit()
-    count = result.rowcount
-    logger.info("grocery.items.cleared_done count={}", count)
 
 
 # ── Learning ──────────────────────────────────────────────────
