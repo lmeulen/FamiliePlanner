@@ -206,10 +206,13 @@
 
     itemList.forEach(item => {
       const key = item.product_name;
+      const itemQty = parseFloat(item.quantity);
+      const hasQuantity = !isNaN(itemQty) && itemQty > 0;
+
       if (!productMap.has(key)) {
         productMap.set(key, {
           ...item,
-          totalQuantity: parseFloat(item.quantity) || 0,
+          totalQuantity: hasQuantity ? itemQty : 1,
           count: 1,
           ids: [item.id], // Track all IDs for bulk operations
         });
@@ -218,10 +221,9 @@
         existing.count++;
         existing.ids.push(item.id);
 
-        // Sum quantities if they have the same unit
-        const itemQty = parseFloat(item.quantity) || 0;
-        if (itemQty > 0 && item.unit === existing.unit) {
-          existing.totalQuantity += itemQty;
+        // Sum quantities if they have the same unit (or both have no unit)
+        if (item.unit === existing.unit) {
+          existing.totalQuantity += hasQuantity ? itemQty : 1;
         }
       }
     });
@@ -235,14 +237,15 @@
 
     // Build quantity display
     let quantityDisplay = '';
-    if (item.totalQuantity && item.totalQuantity > 0 && item.unit) {
-      // Show total quantity if consolidated
-      quantityDisplay = `, ${item.totalQuantity} ${item.unit}`;
-    } else if (item.quantity && item.unit) {
-      // Single item with quantity
-      quantityDisplay = `, ${item.quantity} ${item.unit}`;
+    if (item.totalQuantity && item.totalQuantity > 0) {
+      // Show total quantity (with or without unit)
+      if (item.unit) {
+        quantityDisplay = `, ${item.totalQuantity} ${item.unit}`;
+      } else {
+        quantityDisplay = `, ${item.totalQuantity}`;
+      }
     } else if (item.count > 1) {
-      // Multiple items without quantity - just show count
+      // Multiple items without any quantity - show entry count
       quantityDisplay = `, ${item.count}`;
     }
 
