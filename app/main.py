@@ -379,6 +379,11 @@ async def page_meals(request: Request):
     return templates.TemplateResponse(request, "meals.html", {"request": request})
 
 
+@app.get("/boodschappen", response_class=HTMLResponse)
+async def page_grocery(request: Request):
+    return templates.TemplateResponse(request, "grocery.html", {"request": request})
+
+
 @app.get("/instellingen", response_class=HTMLResponse)
 async def page_settings(request: Request):
     return templates.TemplateResponse(request, "settings.html", {"request": request})
