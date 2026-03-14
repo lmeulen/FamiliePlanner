@@ -2452,6 +2452,7 @@ img { max-width: 100%; }
   flex: 1;
   font-weight: 500;
   font-size: 0.95rem;
+  color: var(--text);
 }
 
 .category-picker-check {
