@@ -2385,14 +2385,22 @@ img { max-width: 100%; }
   flex-shrink: 0;
 }
 
-.grocery-edit,
+.grocery-edit {
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.grocery-edit:hover {
+  opacity: 0.8;
+}
+
 .grocery-delete {
   flex-shrink: 0;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
 
-.grocery-edit:hover,
 .grocery-delete:hover {
   opacity: 1;
 }
