@@ -2431,6 +2431,7 @@ img { max-width: 100%; }
   transition: all 0.2s;
   text-align: left;
   width: 100%;
+  color: var(--text);
 }
 
 .category-picker-option:hover {
