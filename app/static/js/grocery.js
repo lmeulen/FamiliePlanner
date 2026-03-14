@@ -207,7 +207,10 @@
           <div class="grocery-item-name">${FP.esc(item.display_name)}</div>
           ${quantityText ? `<div class="grocery-item-quantity">${FP.esc(quantityText)}</div>` : ''}
         </div>
-        <button class="btn btn--icon btn--danger-ghost grocery-delete" data-id="${item.id}" title="Verwijderen" aria-label="Verwijderen">🗑️</button>
+        <div class="grocery-item-actions">
+          <button class="btn btn--icon btn--ghost grocery-edit" data-id="${item.id}" title="Categorie wijzigen" aria-label="Categorie wijzigen">✏️</button>
+          <button class="btn btn--icon btn--danger-ghost grocery-delete" data-id="${item.id}" title="Verwijderen" aria-label="Verwijderen">🗑️</button>
+        </div>
       </div>`;
   }
 
@@ -241,6 +244,17 @@
           console.error('Failed to update item:', err);
           Toast.show('Fout bij bijwerken', 'error');
         }
+      });
+    });
+
+    // Edit category
+    document.querySelectorAll('.grocery-edit').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = parseInt(btn.dataset.id);
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        openCategoryPicker(item);
       });
     });
 
@@ -305,6 +319,53 @@
     } catch (err) {
       console.error('Failed to add item:', err);
       Toast.show(err.message || 'Fout bij toevoegen', 'error');
+    }
+  }
+
+  // ── Edit item category ────────────────────────────────────────
+  async function openCategoryPicker(item) {
+    if (!isOnline) {
+      Toast.show('Categorie wijzigen is alleen online mogelijk', 'warning');
+      return;
+    }
+
+    Modal.open('tpl-category-picker');
+
+    // Set item info
+    document.getElementById('picker-item-name').textContent = item.display_name;
+
+    // Render category options
+    const container = document.getElementById('category-picker-list');
+    container.innerHTML = categories.map(cat => `
+      <button
+        type="button"
+        class="category-picker-option ${cat.id === item.category_id ? 'active' : ''}"
+        data-category-id="${cat.id}"
+      >
+        <span class="category-picker-icon">${cat.icon}</span>
+        <span class="category-picker-name">${FP.esc(cat.name)}</span>
+        ${cat.id === item.category_id ? '<span class="category-picker-check">✓</span>' : ''}
+      </button>
+    `).join('');
+
+    // Bind click events
+    container.querySelectorAll('.category-picker-option').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const newCategoryId = parseInt(btn.dataset.categoryId);
+        await updateItemCategory(item.id, newCategoryId);
+      });
+    });
+  }
+
+  async function updateItemCategory(itemId, categoryId) {
+    try {
+      await API.patch(`/api/grocery/items/${itemId}`, { category_id: categoryId });
+      Toast.show('Categorie gewijzigd!');
+      Modal.close();
+      await loadItems();
+    } catch (err) {
+      console.error('Failed to update category:', err);
+      Toast.show('Fout bij wijzigen categorie', 'error');
     }
   }
 

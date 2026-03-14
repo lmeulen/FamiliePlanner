@@ -45,6 +45,18 @@
   </button>
 </div>
 
+<!-- Category picker modal -->
+<template id="tpl-category-picker">
+  <div class="modal-form">
+    <h3 class="modal-title">Categorie wijzigen</h3>
+    <p style="color: var(--text-muted); margin-bottom: 0.5rem;">
+      Kies een nieuwe categorie voor:
+    </p>
+    <p style="font-weight: 600; margin-bottom: 1rem;" id="picker-item-name"></p>
+    <div id="category-picker-list" class="category-picker-list"></div>
+  </div>
+</template>
+
 <!-- Category reorder modal -->
 <template id="tpl-manage-categories">
   <form id="category-order-form" class="modal-form">
