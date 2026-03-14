@@ -4,15 +4,17 @@
 import sqlite3
 
 try:
-    conn = sqlite3.connect('app.db')
+    conn = sqlite3.connect("app.db")
     cursor = conn.cursor()
 
     # Check for grocery tables
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT name FROM sqlite_master
         WHERE type='table' AND name LIKE 'grocery%'
         ORDER BY name
-    """)
+    """
+    )
 
     tables = cursor.fetchall()
 

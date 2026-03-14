@@ -11,7 +11,8 @@ import sys
 # Disable auth for testing
 os.environ["AUTH_DISABLED"] = "1"
 
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 
 
@@ -66,7 +67,7 @@ async def test_grocery_endpoints():
         resp = await client.post("/api/grocery/items", json={"raw_input": "tomaten"})
         assert resp.status_code == 201
         new_item = resp.json()
-        print(f"   ✓ Added 'tomaten' again")
+        print("   ✓ Added 'tomaten' again")
         print(f"     Category: {new_item['category_id']} (should match previous)")
 
         # 6. Update item category
@@ -86,7 +87,7 @@ async def test_grocery_endpoints():
         print("\n8. DELETE /api/grocery/items/done")
         resp = await client.delete("/api/grocery/items/done")
         assert resp.status_code == 204
-        print(f"   ✓ Cleared checked items")
+        print("   ✓ Cleared checked items")
 
         # 9. Delete an item
         print("\n9. DELETE /api/grocery/items/{id}")
@@ -109,5 +110,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

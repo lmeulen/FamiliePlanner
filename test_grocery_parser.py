@@ -11,7 +11,6 @@ def test_parser():
     """Test various input formats for the grocery parser."""
     test_cases = [
         # Format: (input, expected_quantity, expected_unit, expected_product)
-
         # Dutch inputs with quantities (normalized units)
         ("2 kg tomaten", "2", "kg", "tomaten"),
         ("500 gram kaas", "500", "g", "kaas"),  # gram → g
@@ -23,7 +22,6 @@ def test_parser():
         ("3 blikken tomaten", "3", "blik", "tomaten"),  # blikken → blik
         ("1 pak suiker", "1", "pak", "suiker"),
         ("2 zakken chips", "2", "zak", "chips"),  # zakken → zak
-
         # English inputs with quantities (translated to Dutch units)
         ("2 lb chicken", "2", "lb", "chicken"),
         ("500 g cheese", "500", "g", "cheese"),
@@ -31,22 +29,18 @@ def test_parser():
         ("1 bottle wine", "1", "fles", "wine"),  # bottle → fles
         ("2 cans tomatoes", "2", "blik", "tomatoes"),  # cans → blik
         ("1 bag sugar", "1", "zak", "sugar"),  # bag → zak
-
         # Decimal quantities (comma normalized to dot)
         ("2.5 kg vlees", "2.5", "kg", "vlees"),
         ("1,5 liter melk", "1.5", "liter", "melk"),  # 1,5 → 1.5
         ("0.5 kg kaas", "0.5", "kg", "kaas"),
-
         # Range quantities
         ("2-3 kg aardappelen", "2-3", "kg", "aardappelen"),
         ("1-2 stuks bloemkool", "1-2", "stuks", "bloemkool"),
-
         # No quantities (just product names)
         ("brood", None, None, "brood"),
         ("melk", None, None, "melk"),
         ("kaas", None, None, "kaas"),
         ("Tomaten", None, None, "tomaten"),
-
         # Edge cases
         ("2kg tomaten", "2", "kg", "tomaten"),  # No space between quantity and unit
         ("500g kaas", "500", "g", "kaas"),
@@ -64,11 +58,7 @@ def test_parser():
         qty, unit, product = parse_grocery_input(input_text)
 
         # Normalize for comparison
-        success = (
-            qty == exp_qty and
-            unit == exp_unit and
-            product == exp_product
-        )
+        success = qty == exp_qty and unit == exp_unit and product == exp_product
 
         status = "✓ PASS" if success else "✗ FAIL"
 
@@ -90,5 +80,6 @@ def test_parser():
 
 if __name__ == "__main__":
     import sys
+
     success = test_parser()
     sys.exit(0 if success else 1)

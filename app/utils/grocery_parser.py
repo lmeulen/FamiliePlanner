@@ -2,7 +2,6 @@
 
 import re
 
-
 # Dutch units
 DUTCH_UNITS = {
     "kg": "kg",

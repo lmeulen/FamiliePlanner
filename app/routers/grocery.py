@@ -183,9 +183,7 @@ async def suggest_category(product_name: str, db: AsyncSession = Depends(get_db)
 
 async def update_learning(db: AsyncSession, product_name: str, category_id: int):
     """Update product-category learning."""
-    result = await db.execute(
-        select(GroceryProductLearning).where(GroceryProductLearning.product_name == product_name)
-    )
+    result = await db.execute(select(GroceryProductLearning).where(GroceryProductLearning.product_name == product_name))
     learning = result.scalar_one_or_none()
 
     if learning:
