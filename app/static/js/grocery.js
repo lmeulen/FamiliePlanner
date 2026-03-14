@@ -159,30 +159,35 @@
       const catItems = grouped.get(cat.id) || [];
       if (!catItems.length) return;
 
+      // Consolidate duplicate items by product_name
+      const consolidated = consolidateItems(catItems);
+
       html += `
         <div class="grocery-category-group">
           <div class="grocery-category-header">
             <span class="grocery-category-icon">${cat.icon}</span>
             <span class="grocery-category-name">${FP.esc(cat.name)}</span>
-            <span class="grocery-category-count">${catItems.length}</span>
+            <span class="grocery-category-count">${consolidated.length}</span>
           </div>
           <div class="grocery-items">
-            ${catItems.map(renderItem).join('')}
+            ${consolidated.map(renderItem).join('')}
           </div>
         </div>`;
     });
 
     // Render done items at bottom
     if (doneItems.length) {
+      const consolidatedDone = consolidateItems(doneItems);
+
       html += `
         <div class="grocery-category-group grocery-done-group">
           <div class="grocery-category-header">
             <span class="grocery-category-icon">✅</span>
             <span class="grocery-category-name">Klaar</span>
-            <span class="grocery-category-count">${doneItems.length}</span>
+            <span class="grocery-category-count">${consolidatedDone.length}</span>
           </div>
           <div class="grocery-items">
-            ${doneItems.map(renderItem).join('')}
+            ${consolidatedDone.map(renderItem).join('')}
           </div>
         </div>`;
 
@@ -195,21 +200,49 @@
     bindItemEvents();
   }
 
+  function consolidateItems(itemList) {
+    // Group by product_name and merge duplicates
+    const productMap = new Map();
+
+    itemList.forEach(item => {
+      const key = item.product_name;
+      if (!productMap.has(key)) {
+        productMap.set(key, {
+          ...item,
+          count: 1,
+          ids: [item.id], // Track all IDs for bulk operations
+        });
+      } else {
+        const existing = productMap.get(key);
+        existing.count++;
+        existing.ids.push(item.id);
+      }
+    });
+
+    return Array.from(productMap.values());
+  }
+
   function renderItem(item) {
     const quantityText = item.quantity && item.unit
       ? `${item.quantity} ${item.unit}`
       : item.quantity || '';
 
+    // Show count if there are duplicates
+    const countText = item.count > 1 ? `, ${item.count}` : '';
+
+    // Use comma-separated IDs for bulk operations
+    const dataIds = item.ids ? item.ids.join(',') : item.id;
+
     return `
-      <div class="grocery-item ${item.checked ? 'checked' : ''}" data-id="${item.id}">
-        <button class="grocery-check" data-id="${item.id}" aria-label="Afvinken"></button>
+      <div class="grocery-item ${item.checked ? 'checked' : ''}" data-id="${item.id}" data-ids="${dataIds}">
+        <button class="grocery-check" data-ids="${dataIds}" aria-label="Afvinken"></button>
         <div class="grocery-item-content">
-          <div class="grocery-item-name">${FP.esc(item.display_name)}</div>
+          <div class="grocery-item-name">${FP.esc(item.display_name)}${countText}</div>
           ${quantityText ? `<div class="grocery-item-quantity">${FP.esc(quantityText)}</div>` : ''}
         </div>
         <div class="grocery-item-actions">
           <button class="btn btn--icon btn--ghost grocery-edit" data-id="${item.id}" title="Categorie wijzigen" aria-label="Categorie wijzigen">✏️</button>
-          <button class="btn btn--icon btn--danger-ghost grocery-delete" data-id="${item.id}" title="Verwijderen" aria-label="Verwijderen">🗑️</button>
+          <button class="btn btn--icon btn--danger-ghost grocery-delete" data-ids="${dataIds}" title="Verwijderen" aria-label="Verwijderen">🗑️</button>
         </div>
       </div>`;
   }
@@ -218,26 +251,30 @@
     // Check/uncheck
     document.querySelectorAll('.grocery-check').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = parseInt(btn.dataset.id);
-        const item = items.find(i => i.id === id);
-        if (!item) return;
-
-        const newChecked = !item.checked;
+        const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
 
         try {
-          if (isOnline) {
-            await API.patch(`/api/grocery/items/${id}`, { checked: newChecked });
-          } else {
-            // Update locally and queue sync
-            await db.updateItemOffline(id, {
-              checked: newChecked,
-              checked_at: newChecked ? new Date().toISOString() : null
-            });
-            await db.queueSync({
-              type: 'update',
-              itemId: id,
-              payload: { checked: newChecked }
-            });
+          // Update all items in the group
+          for (const id of ids) {
+            const item = items.find(i => i.id === id);
+            if (!item) continue;
+
+            const newChecked = !item.checked;
+
+            if (isOnline) {
+              await API.patch(`/api/grocery/items/${id}`, { checked: newChecked });
+            } else {
+              // Update locally and queue sync
+              await db.updateItemOffline(id, {
+                checked: newChecked,
+                checked_at: newChecked ? new Date().toISOString() : null
+              });
+              await db.queueSync({
+                type: 'update',
+                itemId: id,
+                payload: { checked: newChecked }
+              });
+            }
           }
           await loadItems();
         } catch (err) {
@@ -261,18 +298,28 @@
     // Delete
     document.querySelectorAll('.grocery-delete').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = parseInt(btn.dataset.id);
-        if (!confirm('Item verwijderen?')) return;
+        const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
+        const count = ids.length;
+        const confirmMsg = count > 1
+          ? `${count} items verwijderen?`
+          : 'Item verwijderen?';
+
+        if (!confirm(confirmMsg)) return;
 
         try {
-          if (isOnline) {
-            await API.delete(`/api/grocery/items/${id}`);
-          } else {
-            // Delete locally and queue sync
-            await db.deleteItemOffline(id);
-            await db.queueSync({ type: 'delete', itemId: id });
+          // Delete all items in the group
+          for (const id of ids) {
+            if (isOnline) {
+              await API.delete(`/api/grocery/items/${id}`);
+            } else {
+              // Delete locally and queue sync
+              await db.deleteItemOffline(id);
+              await db.queueSync({ type: 'delete', itemId: id });
+            }
           }
-          Toast.show('Item verwijderd', 'warning');
+
+          const msg = count > 1 ? `${count} items verwijderd` : 'Item verwijderd';
+          Toast.show(msg, 'warning');
           await loadItems();
         } catch (err) {
           console.error('Failed to delete item:', err);
@@ -331,8 +378,15 @@
 
     Modal.open('tpl-category-picker');
 
+    // Find all items with same product_name
+    const relatedItems = items.filter(i => i.product_name === item.product_name && !i.checked);
+    const itemCount = relatedItems.length;
+
     // Set item info
-    document.getElementById('picker-item-name').textContent = item.display_name;
+    const displayText = itemCount > 1
+      ? `${item.display_name} (${itemCount} items)`
+      : item.display_name;
+    document.getElementById('picker-item-name').textContent = displayText;
 
     // Render category options
     const container = document.getElementById('category-picker-list');
@@ -348,19 +402,26 @@
       </button>
     `).join('');
 
-    // Bind click events
+    // Bind click events - update all related items
     container.querySelectorAll('.category-picker-option').forEach(btn => {
       btn.addEventListener('click', async () => {
         const newCategoryId = parseInt(btn.dataset.categoryId);
-        await updateItemCategory(item.id, newCategoryId);
+        await updateItemCategory(relatedItems.map(i => i.id), newCategoryId, itemCount);
       });
     });
   }
 
-  async function updateItemCategory(itemId, categoryId) {
+  async function updateItemCategory(itemIds, categoryId, count) {
     try {
-      await API.patch(`/api/grocery/items/${itemId}`, { category_id: categoryId });
-      Toast.show('Categorie gewijzigd!');
+      // Update all items with same product_name
+      for (const id of itemIds) {
+        await API.patch(`/api/grocery/items/${id}`, { category_id: categoryId });
+      }
+
+      const msg = count > 1
+        ? `${count} items verplaatst!`
+        : 'Categorie gewijzigd!';
+      Toast.show(msg);
       Modal.close();
       await loadItems();
     } catch (err) {
