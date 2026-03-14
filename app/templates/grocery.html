@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Boodschappenlijst – FamiliePlanner{% endblock %}
+{% block nav_grocery %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🛒 Boodschappenlijst</h1>
+</div>
+
+<!-- Add item form -->
+<div class="card" style="margin-bottom: 1rem;">
+  <form id="add-item-form" style="display: flex; gap: 0.5rem;">
+    <input
+      type="text"
+      id="item-input"
+      name="item"
+      placeholder="Bijv: 2 kg tomaten, 500g kaas, brood"
+      style="flex: 1;"
+      autocomplete="off"
+      required
+    />
+    <button type="submit" class="btn btn--primary">Toevoegen</button>
+  </form>
+  <div id="suggestion-hint" class="hidden" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+    💡 <span id="suggestion-text"></span>
+  </div>
+</div>
+
+<!-- Category management -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+  <h2 class="section-title" style="margin: 0;">Categorieën</h2>
+  <button class="btn btn--secondary btn--sm" id="btn-manage-categories">Volgorde aanpassen</button>
+</div>
+
+<!-- Grocery list (grouped by category) -->
+<div id="grocery-list"></div>
+
+<!-- Empty state -->
+<p class="empty-state hidden" id="empty-state">Nog geen boodschappen toegevoegd</p>
+
+<!-- Clear done button -->
+<div style="margin-top: 1.5rem; text-align: center;">
+  <button class="btn btn--secondary hidden" id="btn-clear-done">
+    🗑️ Afgevinkte items verwijderen
+  </button>
+</div>
+
+<!-- Category picker modal -->
+<template id="tpl-category-picker">
+  <div class="modal-form">
+    <h3 class="modal-title">Categorie wijzigen</h3>
+    <p style="color: var(--text-muted); margin-bottom: 0.5rem;">
+      Kies een nieuwe categorie voor:
+    </p>
+    <p style="font-weight: 600; margin-bottom: 1rem;" id="picker-item-name"></p>
+    <div id="category-picker-list" class="category-picker-list"></div>
+  </div>
+</template>
+
+<!-- Category reorder modal -->
+<template id="tpl-manage-categories">
+  <form id="category-order-form" class="modal-form">
+    <h3 class="modal-title">Categorieën ordenen</h3>
+    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+      Versleep categorieën om de volgorde aan te passen aan je winkelindeling.
+    </p>
+    <div id="category-order-list" style="margin-bottom: 1rem;"></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn--primary">Opslaan</button>
+    </div>
+  </form>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/grocery-db.js?v={{ static_v }}"></script>
+<script src="/static/js/grocery.js?v={{ static_v }}"></script>
+{% endblock %}

@@ -22,6 +22,8 @@ const STATIC_ASSETS = [
   '/static/js/form-controllers/recurrence-ui.js',
   '/static/js/form-controllers/event-form.js',
   '/static/js/form-controllers/task-form.js',
+  '/static/js/grocery.js',
+  '/boodschappen',
 ];
 
 // ── Install Event ──────────────────────────────────────────────
