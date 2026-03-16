@@ -1341,8 +1341,11 @@ img { max-width: 100%; }
   .dashboard-main {
     order: 1;
   }
-  /* Hide photo on mobile */
+  /* Hide photo and weather widget on mobile */
   .dashboard-photo-wrap {
+    display: none !important;
+  }
+  .weather-widget {
     display: none !important;
   }
 }
