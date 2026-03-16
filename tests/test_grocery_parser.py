@@ -75,11 +75,15 @@ def test_parser():
     print(f"Results: {passed} passed, {failed} failed out of {len(test_cases)} tests")
     print("=" * 80)
 
-    return failed == 0
+    # For pytest compatibility, use assert instead of return
+    assert failed == 0, f"{failed} test(s) failed"
 
 
 if __name__ == "__main__":
     import sys
 
-    success = test_parser()
-    sys.exit(0 if success else 1)
+    try:
+        test_parser()
+        sys.exit(0)
+    except AssertionError:
+        sys.exit(1)
