@@ -473,7 +473,7 @@ ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest te
 ```
 
 **Test coverage:**
-- ~106 tests (pytest + pytest-asyncio)
+- ~123 tests (pytest + pytest-asyncio)
 - Backend API tests (agenda, tasks, meals, family, photos, search, stats)
 - Error handling tests
 - Recurrence logic tests
@@ -515,31 +515,6 @@ Volledige schema documentatie: [docs/database.md](docs/database.md)
 - **Global utilities** - `window.FP` object met helpers (date/time, members, UI)
 - **Service Worker** - Offline-first caching strategy
 
-## 🗺️ Roadmap
-
-### Planned Features (by Priority)
-
-#### High Priority
-- [ ] **Task Priorities & Dependencies** - Priority levels (low/med/high/urgent), task dependencies
-- [ ] **Grocery List from Meals** - Auto-generate shopping list from weekly meal plan
-- [ ] **Notification System** - Email/push notifications for reminders and daily digest
-
-#### Medium Priority
-- [ ] **Advanced Search Filters** - Date range, member, type, status filters with pagination
-- [ ] **Background Sync** - Queue offline changes, auto-sync when online
-- [ ] **Share Functionality** - Share photos/events from other apps to FamiliePlanner
-
-#### Low Priority
-- [ ] **Push Notifications** - Browser push for upcoming events/tasks
-- [ ] **Periodic Background Sync** - Auto-refresh data while app closed
-- [ ] **Multi-language Support** - i18n framework for translations
-
-### Recently Completed ✅
-- PWA implementation with offline support (v1.4.0)
-- Form controller refactoring (v1.3.0)
-- Global search across modules (v1.2.0)
-- Statistics dashboard (v1.2.0)
-- Recurring series for events & tasks (v1.0.0)
 
 ## 🤝 Contributing
 
@@ -563,15 +538,3 @@ pytest tests/ -v
 ## 📄 License
 
 Dit is een privéproject voor persoonlijk gebruik. Geen specifieke licentie.
-
-## 🙏 Acknowledgments
-
-- **FastAPI** - Modern, fast web framework
-- **SQLAlchemy** - Excellent ORM with async support
-- **Loguru** - Best-in-class Python logging
-- **Ruff** - Blazingly fast linter
-- **Claude Sonnet 4.5** - AI pair programming assistant
-
----
-
-**Gemaakt met ❤️ voor efficiënte gezinsorganisatie**
