@@ -57,11 +57,12 @@ async def week_meals(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=MealOut, status_code=201)
 async def create_meal(payload: MealCreate, db: AsyncSession = Depends(get_db)):
+    logger.debug("meals.meal.create_request payload_date={} payload_dict={}", payload.date, payload.model_dump())
     meal = Meal(**payload.model_dump())
     db.add(meal)
     await db.commit()
     await db.refresh(meal)
-    logger.info("meals.meal.created id={} name='{}' date={}", meal.id, meal.name, meal.date)
+    logger.info("meals.meal.created id={} name='{}' date={} saved_date={}", meal.id, meal.name, payload.date, meal.date)
     meals_created_total.inc()
     return meal
 
