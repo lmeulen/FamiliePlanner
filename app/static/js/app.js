@@ -411,6 +411,12 @@ window.FP = (() => {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   }
 
+  function dateToStr(d) {
+    // Convert Date object to YYYY-MM-DD string using LOCAL date components
+    // (NOT UTC via toISOString which can shift by 1 day due to timezone)
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+
   function pad(n) { return String(n).padStart(2, '0'); }
 
   function formatDate(d) {
@@ -710,7 +716,7 @@ window.FP = (() => {
     esc,
     loadMembers, getMembers, getMember, memberColor, memberAvatar,
     agendaEventColors, agendaEventColor, agendaEventBackground,
-    today, todayStr, pad, formatDate, formatTime, formatDateShort,
+    today, todayStr, dateToStr, pad, formatDate, formatTime, formatDateShort,
     dayName, dayNameFull, isToday, isSameDay, addDays, startOfWeek,
     toLocalDatetimeInput, mealTypeLabel,
     buildMemberChips, populateMemberSelect, buildMemberPicker, getSelectedMemberIds,

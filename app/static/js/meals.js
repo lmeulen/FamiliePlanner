@@ -9,8 +9,8 @@
 
   // ── Load ──────────────────────────────────────────────────────
   async function loadMeals() {
-    const start = curMonday.toISOString().split('T')[0];
-    const end   = FP.addDays(curMonday, 6).toISOString().split('T')[0];
+    const start = FP.dateToStr(curMonday);
+    const end   = FP.dateToStr(FP.addDays(curMonday, 6));
     try {
       meals = await API.get(`/api/meals/?start=${start}&end=${end}`);
     } catch {
@@ -41,7 +41,7 @@
     let html = '';
     for (let i = 0; i < 7; i++) {
       const day = FP.addDays(curMonday, i);
-      const dayStr = day.toISOString().split('T')[0];
+      const dayStr = FP.dateToStr(day);
       const dayMeals = fm.filter(m => m.date === dayStr);
       const isToday = FP.isToday(day);
 

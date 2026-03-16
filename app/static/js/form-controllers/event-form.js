@@ -321,7 +321,7 @@ class EventFormController {
         if (endTime === '00:00' || endTime.startsWith('00:00:')) {
           const endDateObj = new Date(seriesEndDate);
           endDateObj.setDate(endDateObj.getDate() - 1);
-          seriesEndDate = endDateObj.toISOString().split('T')[0];
+          seriesEndDate = FP.dateToStr(endDateObj);
         }
         seriesPayload.series_end = seriesEndDate;
         delete seriesPayload.count;
