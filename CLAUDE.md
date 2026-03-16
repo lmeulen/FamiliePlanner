@@ -80,6 +80,9 @@ python -m tools.cozi_importer --today   # Import only today's events
 
 # Security
 python -m tools.hash_password           # Generate bcrypt hash for passwords
+
+# Grocery debugging
+python -m tools.check_grocery_db        # Verify grocery database state and learning data
 ```
 
 **Nightly backup system:** The app automatically creates JSON backups at midnight via `app/backup_scheduler.py`. Backups are stored in `backups/DDMMYYYY.json` with full database export (events, tasks, meals, family members, photos metadata). The backup scheduler runs as a background task launched during app startup (lifespan context manager) and is gracefully stopped on shutdown.
@@ -97,7 +100,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 
 **Module Organization:**
 - `app/main.py` - FastAPI app, middleware stack, page routes, exception handlers
-- `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, settings, search, stats)
+- `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, grocery, settings, search, stats)
 - `app/models/*.py` - SQLAlchemy ORM models (Base from database.py)
 - `app/schemas/*.py` - Pydantic request/response schemas with validation
 - `app/utils/*.py` - Shared utilities (recurrence logic, DB helpers)
@@ -122,7 +125,8 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - `app/static/js/modal.js` - Reusable modal controller
 - `app/static/js/theme.js` - Theme switcher (light/dark/system)
 - `app/static/js/cache.js` - Client-side caching utilities
-- `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, meals.js, photos.js, dashboard.js, family.js, settings.js, search.js, stats.js)
+- `app/static/js/grocery-db.js` - IndexedDB wrapper for offline grocery list
+- `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, meals.js, grocery.js, photos.js, dashboard.js, family.js, settings.js, search.js, stats.js)
 - `app/templates/*.html` - Jinja2 templates extending `base.html`
 
 **Global Objects:**
@@ -213,8 +217,9 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 ### CSRF Protection
 
 - Enabled via `CSRFMiddleware` in main.py
-- Token auto-injected in base.html: `<meta name="csrf-token" content="{{ request.session.csrf }}">`
-- `api.js` reads token and adds to all non-GET requests
+- Token auto-injected in base.html: `<meta name="csrf-token" content="{{ request.state.csrf_token }}">`
+- `api.js` reads token and adds to all non-GET requests via `X-CSRF-Token` header
+- `/login` endpoint is exempt from CSRF checks (no session exists at first login)
 
 ### Error Handling
 
@@ -261,6 +266,31 @@ test: Add tests for series deletion cascade
 
 11. **SQLite migrations** - Always use `batch_alter_table` context manager in Alembic migrations for SQLite compatibility. SQLite has limited ALTER TABLE support, and batch mode creates a temporary table, copies data, and swaps tables atomically.
 
+12. **Grocery parser** - The grocery parser (`app/utils/grocery_parser.py`) intelligently parses freeform input like "2 kg tomaten" or "500g cheese" to extract quantity, unit, and product name. Supports Dutch and English units with auto-translation. Use `parse_grocery_input()` for parsing and `display_product_name()` for user-friendly capitalization.
+
+13. **Grocery learning algorithm** - The grocery system learns product-category associations in `grocery_product_learning` table. When a user adds a product, it remembers the category. Next time the same product is added, it auto-suggests the most frequently used category. Learning data updates on both manual category changes and initial selections.
+
+14. **Offline grocery support** - The grocery list uses IndexedDB (`grocery-db.js`) for offline-first functionality. When offline, items are stored locally with temporary negative IDs and queued for sync. When online, a background sync process uploads pending changes and resolves ID conflicts. The UI shows an offline indicator and sync status banner.
+
+## Grocery List Feature
+
+**Smart grocery list** with offline PWA support, category learning, and intelligent parsing.
+
+**Key Features:**
+- **Smart parser** - Parses "2 kg tomaten" → quantity: 2, unit: "kg", product: "tomaten"
+- **Category learning** - Remembers product-category associations, auto-suggests on next use
+- **Offline-first** - IndexedDB storage, works without internet, auto-syncs when online
+- **11 default categories** - Groente & fruit, Zuivel, Vlees & vis, Brood & bakkerij, etc.
+- **Category reordering** - Custom sort order via drag-and-drop modal
+- **Bilingual parsing** - Dutch and English units (lb → kg, pieces → stuks)
+
+**Architecture:**
+- **Three-table model** - `grocery_categories`, `grocery_items`, `grocery_product_learning`
+- **Smart parsing** - Regex-based parser extracts quantity/unit/product from freeform text
+- **Learning table** - Tracks product→category mappings with usage count for confidence
+- **IndexedDB sync** - Offline queue with background sync, temporary negative IDs for conflicts
+- **Optimistic updates** - UI updates immediately, syncs in background
+
 ## API Documentation
 
 Interactive docs available at: `http://localhost:8000/api/docs` (Swagger UI)
@@ -285,6 +315,19 @@ Tracked metrics include:
 - Business metrics: `events_created_total`, `tasks_created_total`, `tasks_completed_total`, `meals_created_total`, `photos_uploaded_total`
 
 Metrics configured in `app/metrics.py`, middleware in `PrometheusMiddleware`
+
+### Grocery API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/grocery/categories` | GET | List all categories (ordered by sort_order) |
+| `/api/grocery/categories/reorder` | PUT | Update category sort order |
+| `/api/grocery/items` | GET | List all items (unchecked first, then by category) |
+| `/api/grocery/items` | POST | Create item with smart parsing and learning |
+| `/api/grocery/items/{id}` | PATCH | Update item (check/uncheck, change category) |
+| `/api/grocery/items/{id}` | DELETE | Delete single item |
+| `/api/grocery/items/done` | DELETE | Clear all checked items |
+| `/api/grocery/suggest/{product}` | GET | Get category suggestion based on learning |
 
 ## Useful Queries
 

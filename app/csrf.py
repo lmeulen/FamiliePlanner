@@ -2,9 +2,12 @@
 
 A per-session token is stored in the Starlette session and must be echoed:
 - As the ``X-CSRF-Token`` request header for AJAX/API calls.
-- As a hidden form field ``csrf_token`` for native HTML form POSTs (login).
 
 The token is exposed to templates via ``request.state.csrf_token``.
+
+Note: The /login endpoint is exempt from CSRF checks since there's no session yet
+at first login. Session is created after successful authentication.
+
 Set ``AUTH_DISABLED=1`` in the environment to skip CSRF checks (tests only).
 """
 
@@ -17,6 +20,7 @@ from starlette.requests import Request
 
 _SESSION_KEY = "csrf_token"
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_CSRF_EXEMPT_PATHS = frozenset({"/login"})  # Login has no session yet, exempt from CSRF
 # TEST bypass
 _TEST_DISABLED = os.environ.get("AUTH_DISABLED", "").lower() in ("1", "true", "yes")
 
@@ -33,7 +37,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         token: str = request.session[_SESSION_KEY]
 
-        if request.method not in _SAFE_METHODS:
+        # Skip CSRF check for exempt paths (like /login which has no session yet)
+        if request.method not in _SAFE_METHODS and request.url.path not in _CSRF_EXEMPT_PATHS:
             # API calls send the token as a header (body is not consumed)
             submitted = request.headers.get("X-CSRF-Token", "")
             if not secrets.compare_digest(submitted, token):
