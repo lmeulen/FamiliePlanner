@@ -607,9 +607,28 @@
     load();
   })();
 
+  // ── Dashboard search bar ─────────────────────────────────────
+  function initSearchBar() {
+    const form = document.getElementById('dashboard-search-form');
+    const input = form?.querySelector('input[name="q"]');
+
+    if (!form || !input) return;
+
+    form.addEventListener('submit', (e) => {
+      const query = input.value.trim();
+      if (query.length < 3) {
+        e.preventDefault();
+        Toast.show('Voer minimaal 3 karakters in', 'warning');
+        input.focus();
+      }
+      // Otherwise allow natural form submission to /zoeken?q=...
+    });
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     initWeatherWidget();
+    initSearchBar();
     await FP.loadMembers();
     initFab();
     await Promise.all([loadEvents(), loadMeals(), loadTasks()]);

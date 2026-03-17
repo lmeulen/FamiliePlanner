@@ -4,6 +4,20 @@
 {% block nav_dashboard %}active{% endblock %}
 
 {% block content %}
+<!-- Search bar -->
+<div class="dashboard-search-bar">
+  <form action="/zoeken" method="get" id="dashboard-search-form">
+    <input
+      type="text"
+      name="q"
+      class="dashboard-search-input"
+      placeholder="🔍 Zoeken in afspraken, taken en maaltijden..."
+      autocomplete="off"
+      minlength="3"
+    />
+  </form>
+</div>
+
 <!-- Two-column layout: 2/3 main · 1/3 tasks -->
 <div class="dashboard-grid">
 

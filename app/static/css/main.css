@@ -1311,6 +1311,32 @@ img { max-width: 100%; }
 }
 .recur-icon { font-size: .75em; opacity: .8; }
 
+/* ── DASHBOARD SEARCH BAR ────────────────────────────────────── */
+.dashboard-search-bar {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-search-input {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.dashboard-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.dashboard-search-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 /* ── DASHBOARD TWO-COLUMN GRID ──────────────────────────────── */
 .dashboard-grid {
   display: grid;
