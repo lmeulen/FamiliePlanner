@@ -2588,3 +2588,60 @@ img { max-width: 100%; }
     padding: 0.4rem 0.6rem;
   }
 }
+
+/* ================================================================
+   Swipe Gestures
+   ================================================================ */
+
+.swipeable-item {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y; /* Allow vertical scroll, handle horizontal */
+}
+
+.swipe-action-left,
+.swipe-action-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.swipe-action-right {
+  left: 0;
+  background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+  justify-content: flex-start;
+  padding-left: 1.5rem;
+}
+
+.swipe-action-left {
+  right: 0;
+  background: linear-gradient(90deg, #e53935 0%, #d32f2f 100%);
+  justify-content: flex-end;
+  padding-right: 1.5rem;
+}
+
+.swipe-action-icon {
+  font-size: 1.5rem;
+  color: white;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Ensure swipeable items have proper stacking */
+.swipeable-item > *:not(.swipe-action-left):not(.swipe-action-right) {
+  position: relative;
+  z-index: 1;
+  background: var(--card-bg);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .swipeable-item > *:not(.swipe-action-left):not(.swipe-action-right) {
+  background: var(--card-bg);
+}

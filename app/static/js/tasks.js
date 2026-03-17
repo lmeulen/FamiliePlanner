@@ -80,6 +80,7 @@
 
     body.innerHTML = html;
     bindTaskEvents();
+    initSwipeGestures();
   }
 
   function groupByList(tasks) {
@@ -99,7 +100,7 @@
     const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
     const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${FP.esc(m.name)}">${m.avatar}</div>`).join('');
     return `
-      <div class="card task-card${isOverdue ? ' task-overdue' : ''}" data-id="${task.id}">
+      <div class="card task-card swipeable-item${isOverdue ? ' task-overdue' : ''}" data-id="${task.id}">
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body" style="cursor:pointer" data-edit="${task.id}">
           <div class="task-title ${task.done ? 'done' : ''}">${FP.esc(task.title)}${recurIcon}</div>
@@ -127,6 +128,67 @@
 
     document.querySelectorAll('[data-edit]').forEach(el => {
       el.addEventListener('click', () => openTaskForm(parseInt(el.dataset.edit)));
+    });
+  }
+
+  // ── Swipe gestures ────────────────────────────────────────────
+  let swipeHandler = null;
+  function initSwipeGestures() {
+    // Destroy previous handler if exists
+    if (swipeHandler) {
+      swipeHandler.destroy();
+    }
+
+    // Only initialize on touch devices
+    if (!('ontouchstart' in window) || !window.SwipeHandler) {
+      return;
+    }
+
+    const tasksBody = document.getElementById('tasks-body');
+    if (!tasksBody) return;
+
+    swipeHandler = new window.SwipeHandler(tasksBody, {
+      selector: '.task-card',
+      threshold: 80,
+      rightActionIcon: '✓',
+      leftActionIcon: '🗑️',
+      rightActionColor: '#4CAF50',
+      leftActionColor: '#F44336',
+
+      // Swipe right = toggle complete
+      onSwipeRight: async (element) => {
+        const taskId = parseInt(element.dataset.id);
+        try {
+          await API.patch(`/api/tasks/${taskId}/toggle`);
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            Toast.show(task.done ? 'Taak gemarkeerd als niet afgerond' : 'Taak afgerond! ✓');
+          }
+          await loadTasks();
+        } catch (err) {
+          Toast.show('Fout bij bijwerken', 'error');
+          console.error('Failed to toggle task:', err);
+        }
+      },
+
+      // Swipe left = delete
+      onSwipeLeft: async (element) => {
+        const taskId = parseInt(element.dataset.id);
+        const task = tasks.find(t => t.id === taskId);
+
+        if (!confirm(`Taak "${task?.title || 'deze'}" verwijderen?`)) {
+          return;
+        }
+
+        try {
+          await API.delete(`/api/tasks/${taskId}`);
+          Toast.show('Taak verwijderd', 'warning');
+          await loadTasks();
+        } catch (err) {
+          Toast.show('Fout bij verwijderen', 'error');
+          console.error('Failed to delete task:', err);
+        }
+      }
     });
   }
 

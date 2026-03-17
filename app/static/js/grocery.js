@@ -198,6 +198,7 @@
 
     container.innerHTML = html;
     bindItemEvents();
+    initSwipeGestures();
   }
 
   function consolidateItems(itemList) {
@@ -250,7 +251,7 @@
     }
 
     return `
-      <div class="grocery-item ${item.checked ? 'checked' : ''}" data-id="${item.id}" data-ids="${dataIds}">
+      <div class="grocery-item swipeable-item ${item.checked ? 'checked' : ''}" data-id="${item.id}" data-ids="${dataIds}">
         <button class="grocery-check" data-ids="${dataIds}" aria-label="Afvinken"></button>
         <div class="grocery-item-content">
           <div class="grocery-item-name">${FP.esc(item.display_name)}${quantityDisplay}</div>
@@ -341,6 +342,102 @@
           Toast.show('Fout bij verwijderen', 'error');
         }
       });
+    });
+  }
+
+  // ── Swipe gestures ────────────────────────────────────────────
+  let swipeHandler = null;
+  function initSwipeGestures() {
+    // Destroy previous handler if exists
+    if (swipeHandler) {
+      swipeHandler.destroy();
+    }
+
+    // Only initialize on touch devices
+    if (!('ontouchstart' in window) || !window.SwipeHandler) {
+      return;
+    }
+
+    const groceryList = document.getElementById('grocery-list');
+    if (!groceryList) return;
+
+    swipeHandler = new window.SwipeHandler(groceryList, {
+      selector: '.grocery-item',
+      threshold: 80,
+      rightActionIcon: '✓',
+      leftActionIcon: '🗑️',
+      rightActionColor: '#4CAF50',
+      leftActionColor: '#F44336',
+
+      // Swipe right = toggle check
+      onSwipeRight: async (element) => {
+        const ids = element.dataset.ids.split(',').map(id => parseInt(id));
+
+        try {
+          // Update all items in the group
+          for (const id of ids) {
+            const item = items.find(i => i.id === id);
+            if (!item) continue;
+
+            const newChecked = !item.checked;
+
+            if (isOnline) {
+              await API.patch(`/api/grocery/items/${id}`, { checked: newChecked });
+            } else {
+              // Update locally and queue sync
+              await db.updateItemOffline(id, {
+                checked: newChecked,
+                checked_at: newChecked ? new Date().toISOString() : null
+              });
+              await db.queueSync({
+                type: 'update',
+                itemId: id,
+                payload: { checked: newChecked }
+              });
+            }
+          }
+
+          const item = items.find(i => i.id === ids[0]);
+          Toast.show(item?.checked ? 'Niet afgevinkt' : 'Afgevinkt! ✓');
+          await loadItems();
+        } catch (err) {
+          console.error('Failed to update item:', err);
+          Toast.show('Fout bij bijwerken', 'error');
+        }
+      },
+
+      // Swipe left = delete
+      onSwipeLeft: async (element) => {
+        const ids = element.dataset.ids.split(',').map(id => parseInt(id));
+        const count = ids.length;
+        const confirmMsg = count > 1
+          ? `${count} items verwijderen?`
+          : 'Item verwijderen?';
+
+        if (!confirm(confirmMsg)) {
+          return;
+        }
+
+        try {
+          // Delete all items in the group
+          for (const id of ids) {
+            if (isOnline) {
+              await API.delete(`/api/grocery/items/${id}`);
+            } else {
+              // Delete locally and queue sync
+              await db.deleteItemOffline(id);
+              await db.queueSync({ type: 'delete', itemId: id });
+            }
+          }
+
+          const msg = count > 1 ? `${count} items verwijderd` : 'Item verwijderd';
+          Toast.show(msg, 'warning');
+          await loadItems();
+        } catch (err) {
+          console.error('Failed to delete item:', err);
+          Toast.show('Fout bij verwijderen', 'error');
+        }
+      }
     });
   }
 
