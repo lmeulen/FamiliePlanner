@@ -704,8 +704,9 @@
       // Show max 5 results per type
       data.events.slice(0, 5).forEach(event => {
         const start = new Date(event.start_time);
+        const dateStr = FP.dateToStr(start);
         html += `
-          <div class="dashboard-search-result" data-type="event" data-id="${event.id}">
+          <div class="dashboard-search-result" data-type="event" data-id="${event.id}" data-date="${dateStr}">
             <div class="dashboard-search-result-title">
               <span class="dashboard-search-result-type event">📅 Afspraak</span>
               ${FP.esc(event.title)}
@@ -731,7 +732,7 @@
 
       data.meals.slice(0, 5).forEach(meal => {
         html += `
-          <div class="dashboard-search-result" data-type="meal" data-id="${meal.id}">
+          <div class="dashboard-search-result" data-type="meal" data-id="${meal.id}" data-date="${meal.date}">
             <div class="dashboard-search-result-title">
               <span class="dashboard-search-result-type meal">🍽️ Maaltijd</span>
               ${FP.esc(meal.name)}
@@ -745,8 +746,8 @@
       // Add "see all results" link if more results
       if (totalResults > 15) {
         html += `
-          <div style="padding: 0.75rem; text-align: center; border-top: 1px solid var(--border); margin-top: 0.5rem;">
-            <a href="/zoeken?q=${encodeURIComponent(lastQuery)}" style="color: var(--accent); font-weight: 500; text-decoration: none;">
+          <div style="padding: 0.75rem; text-align: center; border-top: 1px solid rgba(255,255,255,0.2); margin-top: 0.5rem;">
+            <a href="/zoeken?q=${encodeURIComponent(lastQuery)}" style="color: #6C5CE7; font-weight: 500; text-decoration: none;">
               Zie alle ${totalResults} resultaten →
             </a>
           </div>`;
@@ -759,11 +760,22 @@
         el.addEventListener('click', () => {
           const type = el.dataset.type;
           const id = parseInt(el.dataset.id);
+          const date = el.dataset.date;
 
           // Redirect to appropriate page with the item
-          if (type === 'event') window.location.href = '/agenda';
-          else if (type === 'task') window.location.href = '/taken';
-          else if (type === 'meal') window.location.href = '/maaltijden';
+          if (type === 'event' && date) {
+            // Open agenda on the event's date
+            window.location.href = `/agenda?date=${date}`;
+          } else if (type === 'event') {
+            window.location.href = '/agenda';
+          } else if (type === 'task') {
+            window.location.href = '/taken';
+          } else if (type === 'meal' && date) {
+            // Open meals on the week containing this meal
+            window.location.href = `/maaltijden?date=${date}`;
+          } else if (type === 'meal') {
+            window.location.href = '/maaltijden';
+          }
         });
       });
     }

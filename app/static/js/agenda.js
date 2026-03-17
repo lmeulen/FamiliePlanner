@@ -386,14 +386,26 @@
 
     await FP.buildMemberChips('agenda-member-chips', m => { activeMember = m; render(); });
 
+    // Check for URL parameter to jump to specific date (from search)
+    const params = new URLSearchParams(window.location.search);
+    const dateParam = params.get('date');
+    if (dateParam) {
+      const targetDate = new Date(dateParam);
+      if (!isNaN(targetDate.getTime())) {
+        curDate = targetDate;
+      }
+    }
+
     await loadEvents();
 
     // Check for URL parameter to open specific event modal (from search)
-    const params = new URLSearchParams(window.location.search);
     const eventId = params.get('event');
     if (eventId) {
       openEventForm(parseInt(eventId));
-      // Clean URL without reload
+    }
+
+    // Clean URL without reload if there were params
+    if (dateParam || eventId) {
       window.history.replaceState({}, '', '/agenda');
     }
   }

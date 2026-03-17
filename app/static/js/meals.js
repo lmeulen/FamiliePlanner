@@ -192,14 +192,26 @@
 
     document.getElementById('btn-add-meal')?.addEventListener('click', () => openMealForm());
 
+    // Check for URL parameter to jump to specific date (from search)
+    const params = new URLSearchParams(window.location.search);
+    const dateParam = params.get('date');
+    if (dateParam) {
+      const targetDate = new Date(dateParam);
+      if (!isNaN(targetDate.getTime())) {
+        curMonday = FP.startOfWeek(targetDate);
+      }
+    }
+
     await loadMeals();
 
     // Check for URL parameter to open specific meal modal (from search)
-    const params = new URLSearchParams(window.location.search);
     const mealId = params.get('meal');
     if (mealId) {
       openMealForm(parseInt(mealId));
-      // Clean URL without reload
+    }
+
+    // Clean URL without reload if there were params
+    if (dateParam || mealId) {
       window.history.replaceState({}, '', '/maaltijden');
     }
   }

@@ -1342,7 +1342,7 @@ img { max-width: 100%; }
   top: calc(100% + 0.5rem);
   left: 0;
   right: 0;
-  background: var(--bg-card);
+  background: #2a2a2a;
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -1368,18 +1368,18 @@ img { max-width: 100%; }
 }
 
 .dashboard-search-result:hover {
-  background: var(--bg-hover);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dashboard-search-result-title {
   font-weight: 500;
-  color: var(--text-primary);
+  color: #ffffff;
   margin-bottom: 0.25rem;
 }
 
 .dashboard-search-result-meta {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: #b0b0b0;
 }
 
 .dashboard-search-result-type {
