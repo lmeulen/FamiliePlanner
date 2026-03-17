@@ -9,8 +9,6 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.database import Base, get_db
-
 # Register all models at module level so they're available when Base.metadata is accessed
 import app.models.agenda  # noqa: F401
 import app.models.family  # noqa: F401
@@ -19,6 +17,7 @@ import app.models.meals  # noqa: F401
 import app.models.photos  # noqa: F401
 import app.models.settings  # noqa: F401
 import app.models.tasks  # noqa: F401
+from app.database import Base, get_db
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
