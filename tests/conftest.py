@@ -11,6 +11,15 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 
+# Register all models at module level so they're available when Base.metadata is accessed
+import app.models.agenda  # noqa: F401
+import app.models.family  # noqa: F401
+import app.models.grocery  # noqa: F401
+import app.models.meals  # noqa: F401
+import app.models.photos  # noqa: F401
+import app.models.settings  # noqa: F401
+import app.models.tasks  # noqa: F401
+
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
@@ -18,15 +27,6 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 async def db_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
-        # Register all models
-        import app.models.agenda  # noqa: F401
-        import app.models.family  # noqa: F401
-        import app.models.grocery  # noqa: F401
-        import app.models.meals  # noqa: F401
-        import app.models.photos  # noqa: F401
-        import app.models.settings  # noqa: F401
-        import app.models.tasks  # noqa: F401
-
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()
