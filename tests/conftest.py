@@ -21,7 +21,9 @@ async def db_engine():
         # Register all models
         import app.models.agenda  # noqa: F401
         import app.models.family  # noqa: F401
+        import app.models.grocery  # noqa: F401
         import app.models.meals  # noqa: F401
+        import app.models.photos  # noqa: F401
         import app.models.settings  # noqa: F401
         import app.models.tasks  # noqa: F401
 
