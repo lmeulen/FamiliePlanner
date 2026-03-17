@@ -1,6 +1,6 @@
 """Grocery list CRUD router."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.grocery import GroceryCategory, GroceryItem, GroceryProductLearning
 from app.schemas.grocery import (
+    GroceryCategoryCreate,
     GroceryCategoryOut,
     GroceryCategoryReorder,
     GroceryItemCreate,
@@ -33,6 +34,26 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+@router.post("/categories", response_model=GroceryCategoryOut, status_code=201)
+async def create_category(payload: GroceryCategoryCreate, db: AsyncSession = Depends(get_db)):
+    """Create new grocery category."""
+    # Get max sort_order and add 10
+    result = await db.execute(select(GroceryCategory.sort_order).order_by(GroceryCategory.sort_order.desc()).limit(1))
+    max_sort = result.scalar_one_or_none() or 0
+
+    category = GroceryCategory(
+        name=payload.name,
+        icon=payload.icon,
+        color=payload.color,
+        sort_order=max_sort + 10,
+    )
+    db.add(category)
+    await db.commit()
+    await db.refresh(category)
+    logger.info("grocery.category.created id={} name='{}'", category.id, category.name)
+    return category
+
+
 @router.put("/categories/reorder")
 async def reorder_categories(items: list[GroceryCategoryReorder], db: AsyncSession = Depends(get_db)):
     """Update category sort order."""
@@ -43,6 +64,54 @@ async def reorder_categories(items: list[GroceryCategoryReorder], db: AsyncSessi
     await db.commit()
     logger.info("grocery.categories.reordered count={}", len(items))
     return {"message": "Categories reordered"}
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category(category_id: int, db: AsyncSession = Depends(get_db)):
+    """Delete category and move all items to 'Overig' (last category by sort_order)."""
+    category = await db.get(GroceryCategory, category_id)
+    if not category:
+        raise HTTPException(404, "Category not found")
+
+    # Get "Overig" category (last by sort_order)
+    result = await db.execute(select(GroceryCategory).order_by(GroceryCategory.sort_order.desc()).limit(1))
+    overig_category = result.scalar_one()
+
+    # Prevent deleting the last category
+    if overig_category.id == category_id:
+        result = await db.execute(select(GroceryCategory))
+        all_categories = result.scalars().all()
+        if len(all_categories) == 1:
+            raise HTTPException(400, "Cannot delete the last category")
+        # If deleting "Overig", pick the second-to-last category
+        result = await db.execute(
+            select(GroceryCategory)
+            .where(GroceryCategory.id != category_id)
+            .order_by(GroceryCategory.sort_order.desc())
+            .limit(1)
+        )
+        overig_category = result.scalar_one()
+
+    # Move all items from this category to "Overig"
+    await db.execute(
+        update(GroceryItem).where(GroceryItem.category_id == category_id).values(category_id=overig_category.id)
+    )
+
+    # Move all learning entries to "Overig"
+    await db.execute(
+        update(GroceryProductLearning)
+        .where(GroceryProductLearning.category_id == category_id)
+        .values(category_id=overig_category.id)
+    )
+
+    await db.delete(category)
+    await db.commit()
+    logger.info(
+        "grocery.category.deleted id={} name='{}' (items moved to category_id={})",
+        category_id,
+        category.name,
+        overig_category.id,
+    )
 
 
 # ── Items ─────────────────────────────────────────────────────
@@ -128,7 +197,7 @@ async def update_item(item_id: int, payload: GroceryItemUpdate, db: AsyncSession
 
     if payload.checked is not None:
         item.checked = payload.checked
-        item.checked_at = datetime.utcnow() if payload.checked else None
+        item.checked_at = datetime.now(UTC) if payload.checked else None
 
     await db.commit()
     await db.refresh(item)
@@ -189,7 +258,7 @@ async def update_learning(db: AsyncSession, product_name: str, category_id: int)
     if learning:
         learning.category_id = category_id
         learning.usage_count += 1
-        learning.last_used = datetime.utcnow()
+        learning.last_used = datetime.now(UTC)
     else:
         learning = GroceryProductLearning(product_name=product_name, category_id=category_id, usage_count=1)
         db.add(learning)

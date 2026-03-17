@@ -1,6 +1,7 @@
 """
 Seed script – clears the database and inserts fresh sample data.
-Run:  python seed.py
+Uses static family members and grocery categories from the live database.
+Run:  python -m tools.seed
 """
 
 import asyncio
@@ -8,13 +9,40 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy import delete
 
-from app.config import FAMILY_MEMBERS_DEFAULT
 from app.database import AsyncSessionLocal, init_db
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members
 from app.models.family import FamilyMember
+from app.models.grocery import GroceryCategory
 from app.models.meals import Meal, MealType
 from app.models.settings import AppSetting
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members
+
+# Static data from live database
+FAMILY_MEMBERS = [
+    {"id": 1, "name": "Leo", "color": "#ff6b6b", "avatar": "🧒"},
+    {"id": 2, "name": "Erna", "color": "#4ECDC4", "avatar": "👩"},
+    {"id": 3, "name": "Ruben", "color": "#FFE66D", "avatar": "🧒"},
+    {"id": 4, "name": "Thomas", "color": "#6C5CE7", "avatar": "🧒"},
+    {"id": 5, "name": "Hayden", "color": "#FF8E53", "avatar": "🧒"},
+    {"id": 6, "name": "All", "color": "#000000", "avatar": "🏠"},
+    {"id": 7, "name": "Odi", "color": "#808080", "avatar": "🐱"},
+    {"id": 8, "name": "Milo", "color": "#c0c0c0", "avatar": "🐱"},
+    {"id": 9, "name": "Drakenpaleis", "color": "#ff00ff", "avatar": "🛝"},
+]
+
+GROCERY_CATEGORIES = [
+    {"id": 1, "name": "Groente & Fruit", "icon": "🥬", "color": "#4CAF50", "sort_order": 10},
+    {"id": 2, "name": "Brood & Bakkerij", "icon": "🍞", "color": "#FF9800", "sort_order": 20},
+    {"id": 3, "name": "Zuivel", "icon": "🥛", "color": "#2196F3", "sort_order": 30},
+    {"id": 4, "name": "Vlees & Vis", "icon": "🥩", "color": "#F44336", "sort_order": 40},
+    {"id": 5, "name": "Kaas & Vleeswaren", "icon": "🧀", "color": "#FFC107", "sort_order": 50},
+    {"id": 6, "name": "Conserven & Sauzen", "icon": "🥫", "color": "#795548", "sort_order": 60},
+    {"id": 7, "name": "Pasta & Rijst", "icon": "🍝", "color": "#FFEB3B", "sort_order": 70},
+    {"id": 8, "name": "Koek & Snoep", "icon": "🍪", "color": "#E91E63", "sort_order": 80},
+    {"id": 9, "name": "Diepvries", "icon": "🧊", "color": "#00BCD4", "sort_order": 90},
+    {"id": 10, "name": "Non-food", "icon": "🧴", "color": "#9E9E9E", "sort_order": 100},
+    {"id": 11, "name": "Overig", "icon": "❓", "color": "#9EA7C4", "sort_order": 110},
+]
 
 
 async def seed():
@@ -28,15 +56,26 @@ async def seed():
         await db.execute(delete(TaskList))
         await db.execute(delete(Meal))
         await db.execute(delete(FamilyMember))
+        await db.execute(delete(GroceryCategory))
         await db.execute(delete(AppSetting))
         await db.commit()
         print("[OK] Database cleared")
 
         # ---- Family members ----
-        for m in FAMILY_MEMBERS_DEFAULT:
+        for m in FAMILY_MEMBERS:
             db.add(FamilyMember(id=m["id"], name=m["name"], color=m["color"], avatar=m["avatar"]))
         await db.commit()
-        print("[OK] Family members created")
+        print(f"[OK] {len(FAMILY_MEMBERS)} family members created")
+
+        # ---- Grocery categories ----
+        for c in GROCERY_CATEGORIES:
+            db.add(
+                GroceryCategory(
+                    id=c["id"], name=c["name"], icon=c["icon"], color=c["color"], sort_order=c["sort_order"]
+                )
+            )
+        await db.commit()
+        print(f"[OK] {len(GROCERY_CATEGORIES)} grocery categories created")
 
         # ---- Task lists ----
         lists = [
@@ -63,7 +102,7 @@ async def seed():
         ]
         db.add_all(tasks_seed)
         await db.flush()
-        # Assign member 3 (child) to the first task as example
+        # Assign Ruben (id=3) to the first task
         await db.execute(task_members.insert().values(task_id=tasks_seed[0].id, member_id=3))
         await db.commit()
         print("[OK] Task lists & tasks created")
@@ -87,8 +126,8 @@ async def seed():
         db.add_all([ev1, ev2, ev3])
         await db.flush()
         # Assign members
-        await db.execute(agenda_event_members.insert().values(event_id=ev1.id, member_id=3))
-        await db.execute(agenda_event_members.insert().values(event_id=ev3.id, member_id=1))
+        await db.execute(agenda_event_members.insert().values(event_id=ev1.id, member_id=3))  # Ruben
+        await db.execute(agenda_event_members.insert().values(event_id=ev3.id, member_id=1))  # Leo
         await db.commit()
         print("[OK] Agenda events created")
 

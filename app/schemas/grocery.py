@@ -17,6 +17,14 @@ class GroceryCategoryOut(BaseModel):
     color: str
 
 
+class GroceryCategoryCreate(BaseModel):
+    """Create grocery category."""
+
+    name: str
+    icon: str
+    color: str = "#9EA7C4"
+
+
 class GroceryCategoryReorder(BaseModel):
     """Schema for reordering categories."""
 

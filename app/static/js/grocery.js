@@ -460,6 +460,40 @@
       e.preventDefault();
       await saveCategoryOrder();
     }, { once: true });
+
+    // Add category button handler
+    document.getElementById('btn-add-category')?.addEventListener('click', async () => {
+      const nameInput = document.getElementById('new-category-name');
+      const iconInput = document.getElementById('new-category-icon');
+      const colorInput = document.getElementById('new-category-color');
+
+      const name = nameInput.value.trim();
+      const icon = iconInput.value.trim() || '🏷️';
+      const color = colorInput.value;
+
+      if (!name) {
+        Toast.show('Geef een naam op', 'error');
+        nameInput.focus();
+        return;
+      }
+
+      try {
+        await API.post('/api/grocery/categories', { name, icon, color });
+        Toast.show('Categorie toegevoegd!');
+
+        // Clear inputs
+        nameInput.value = '';
+        iconInput.value = '';
+        colorInput.value = '#9EA7C4';
+
+        // Reload and re-render
+        await loadCategories();
+        renderCategoryOrder();
+      } catch (err) {
+        console.error('Failed to create category:', err);
+        Toast.show(err.message || 'Fout bij toevoegen', 'error');
+      }
+    }, { once: true });
   }
 
   function renderCategoryOrder() {
@@ -473,6 +507,7 @@
         <div class="manage-list-btns">
           <button type="button" class="icon-btn cat-up" data-idx="${idx}" ${idx === 0 ? 'disabled' : ''} title="Omhoog">▲</button>
           <button type="button" class="icon-btn cat-down" data-idx="${idx}" ${idx === sortedCats.length - 1 ? 'disabled' : ''} title="Omlaag">▼</button>
+          <button type="button" class="btn btn--icon btn--danger-ghost cat-delete" data-cat-id="${cat.id}" title="Verwijderen">🗑️</button>
         </div>
       </div>
     `).join('');
@@ -493,6 +528,27 @@
         if (i === sortedCats.length - 1) return;
         [sortedCats[i], sortedCats[i + 1]] = [sortedCats[i + 1], sortedCats[i]];
         renderCategoryOrder();
+      });
+    });
+
+    // Bind delete buttons
+    container.querySelectorAll('.cat-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const catId = parseInt(btn.dataset.catId);
+        const category = sortedCats.find(c => c.id === catId);
+        if (!category) return;
+
+        if (!confirm(`Categorie "${category.name}" verwijderen?\n\nAlle boodschappen in deze categorie worden verplaatst naar "Overig".`)) return;
+
+        try {
+          await API.delete(`/api/grocery/categories/${catId}`);
+          Toast.show('Categorie verwijderd', 'warning');
+          await loadCategories();
+          renderCategoryOrder();
+        } catch (err) {
+          console.error('Failed to delete category:', err);
+          Toast.show(err.message || 'Fout bij verwijderen', 'error');
+        }
       });
     });
 

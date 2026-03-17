@@ -60,11 +60,44 @@
 <!-- Category reorder modal -->
 <template id="tpl-manage-categories">
   <form id="category-order-form" class="modal-form">
-    <h3 class="modal-title">Categorieën ordenen</h3>
+    <h3 class="modal-title">Categorieën beheren</h3>
+
+    <!-- Add category section -->
+    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--card-bg); border-radius: 8px;">
+      <h4 style="margin: 0 0 0.75rem 0; font-size: 0.95rem;">Nieuwe categorie toevoegen</h4>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <input
+          type="text"
+          id="new-category-name"
+          placeholder="Naam"
+          style="flex: 1; min-width: 120px;"
+        />
+        <input
+          type="text"
+          id="new-category-icon"
+          placeholder="🏷️"
+          maxlength="2"
+          style="width: 60px; text-align: center;"
+        />
+        <input
+          type="color"
+          id="new-category-color"
+          value="#9EA7C4"
+          title="Kleur"
+          style="width: 60px; height: 38px; padding: 2px; border: 1px solid var(--border); border-radius: 6px;"
+        />
+        <button type="button" id="btn-add-category" class="btn btn--primary" style="white-space: nowrap;">
+          ＋ Toevoegen
+        </button>
+      </div>
+    </div>
+
+    <!-- Reorder section -->
     <p style="color: var(--text-muted); margin-bottom: 1rem;">
       Versleep categorieën om de volgorde aan te passen aan je winkelindeling.
     </p>
     <div id="category-order-list" style="margin-bottom: 1rem;"></div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>
     </div>
