@@ -358,5 +358,64 @@
   updateCacheStats();
   setInterval(updateCacheStats, 2000);
 
+  // ── PWA Install ───────────────────────────────────────────────
+  const pwaInstallSection = document.getElementById('pwa-install-section');
+  const pwaInstallBtn = document.getElementById('pwa-install-btn');
+  let deferredPrompt = null;
+
+  // Check if already installed
+  const isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
+                      window.navigator.standalone === true;
+
+  if (!isInstalled) {
+    // Listen for beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('[PWA] Install prompt available in settings');
+      e.preventDefault();
+      deferredPrompt = e;
+
+      // Show install section
+      if (pwaInstallSection) {
+        pwaInstallSection.style.display = '';
+      }
+    });
+
+    // Handle install button click
+    pwaInstallBtn?.addEventListener('click', async () => {
+      if (!deferredPrompt) {
+        Toast.show('Installatie is momenteel niet beschikbaar. Probeer het later opnieuw.', 'warning');
+        return;
+      }
+
+      // Show browser's install prompt
+      deferredPrompt.prompt();
+
+      // Wait for user choice
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('[PWA] User choice:', outcome);
+
+      if (outcome === 'accepted') {
+        Toast.show('App wordt geïnstalleerd...', 'success');
+        if (pwaInstallSection) {
+          pwaInstallSection.style.display = 'none';
+        }
+      } else {
+        Toast.show('Installatie geannuleerd', 'info');
+      }
+
+      deferredPrompt = null;
+    });
+
+    // Listen for successful installation
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] App installed successfully from settings');
+      Toast.show('App succesvol geïnstalleerd! 🎉', 'success');
+      if (pwaInstallSection) {
+        pwaInstallSection.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+  }
+
   load();
 })();
