@@ -610,10 +610,60 @@
   // ── Dashboard search bar ─────────────────────────────────────
   function initSearchBar() {
     const form = document.getElementById('dashboard-search-form');
-    const input = form?.querySelector('input[name="q"]');
+    const input = document.getElementById('dashboard-search-input');
+    const resultsDropdown = document.getElementById('dashboard-search-results');
+    const loadingEl = document.getElementById('dashboard-search-loading');
+    const emptyEl = document.getElementById('dashboard-search-empty');
+    const noResultsEl = document.getElementById('dashboard-search-no-results');
+    const listEl = document.getElementById('dashboard-search-list');
 
     if (!form || !input) return;
 
+    let searchTimeout = null;
+    let lastQuery = '';
+
+    // Search as user types
+    input.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+
+      if (searchTimeout) clearTimeout(searchTimeout);
+
+      if (query.length < 3) {
+        hideAllSearchStates();
+        if (query.length > 0) {
+          emptyEl.classList.remove('hidden');
+          resultsDropdown.classList.remove('hidden');
+        } else {
+          resultsDropdown.classList.add('hidden');
+        }
+        lastQuery = '';
+        return;
+      }
+
+      // Show loading
+      hideAllSearchStates();
+      loadingEl.classList.remove('hidden');
+      resultsDropdown.classList.remove('hidden');
+
+      // Debounce search
+      searchTimeout = setTimeout(() => performDashboardSearch(query), 300);
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dashboard-search-bar')) {
+        resultsDropdown.classList.add('hidden');
+      }
+    });
+
+    // Show dropdown again when focusing input with existing query
+    input.addEventListener('focus', () => {
+      if (input.value.trim().length >= 3) {
+        resultsDropdown.classList.remove('hidden');
+      }
+    });
+
+    // Form submit - go to full search page
     form.addEventListener('submit', (e) => {
       const query = input.value.trim();
       if (query.length < 3) {
@@ -623,6 +673,106 @@
       }
       // Otherwise allow natural form submission to /zoeken?q=...
     });
+
+    async function performDashboardSearch(query) {
+      if (query === lastQuery) return;
+      lastQuery = query;
+
+      try {
+        const data = await API.get(`/api/search/?q=${encodeURIComponent(query)}`);
+        displayDashboardResults(data);
+      } catch (err) {
+        hideAllSearchStates();
+        Toast.show('Fout bij zoeken', 'error');
+        resultsDropdown.classList.add('hidden');
+      }
+    }
+
+    function displayDashboardResults(data) {
+      const totalResults = data.events.length + data.tasks.length + data.meals.length;
+
+      if (totalResults === 0) {
+        hideAllSearchStates();
+        noResultsEl.classList.remove('hidden');
+        listEl.innerHTML = '';
+        return;
+      }
+
+      hideAllSearchStates();
+      let html = '';
+
+      // Show max 5 results per type
+      data.events.slice(0, 5).forEach(event => {
+        const start = new Date(event.start_time);
+        html += `
+          <div class="dashboard-search-result" data-type="event" data-id="${event.id}">
+            <div class="dashboard-search-result-title">
+              <span class="dashboard-search-result-type event">📅 Afspraak</span>
+              ${FP.esc(event.title)}
+            </div>
+            <div class="dashboard-search-result-meta">
+              ${FP.formatDate(start)} ${event.all_day ? '(hele dag)' : FP.formatTime(start)}
+            </div>
+          </div>`;
+      });
+
+      data.tasks.slice(0, 5).forEach(task => {
+        html += `
+          <div class="dashboard-search-result" data-type="task" data-id="${task.id}">
+            <div class="dashboard-search-result-title">
+              <span class="dashboard-search-result-type task">✅ Taak</span>
+              ${FP.esc(task.title)}
+            </div>
+            <div class="dashboard-search-result-meta">
+              ${task.list_name || 'Overige taken'} ${task.due_date ? '· ' + FP.formatDate(new Date(task.due_date)) : ''}
+            </div>
+          </div>`;
+      });
+
+      data.meals.slice(0, 5).forEach(meal => {
+        html += `
+          <div class="dashboard-search-result" data-type="meal" data-id="${meal.id}">
+            <div class="dashboard-search-result-title">
+              <span class="dashboard-search-result-type meal">🍽️ Maaltijd</span>
+              ${FP.esc(meal.name)}
+            </div>
+            <div class="dashboard-search-result-meta">
+              ${FP.formatDate(new Date(meal.date))} · ${FP.mealTypeLabel(meal.meal_type)}
+            </div>
+          </div>`;
+      });
+
+      // Add "see all results" link if more results
+      if (totalResults > 15) {
+        html += `
+          <div style="padding: 0.75rem; text-align: center; border-top: 1px solid var(--border); margin-top: 0.5rem;">
+            <a href="/zoeken?q=${encodeURIComponent(lastQuery)}" style="color: var(--accent); font-weight: 500; text-decoration: none;">
+              Zie alle ${totalResults} resultaten →
+            </a>
+          </div>`;
+      }
+
+      listEl.innerHTML = html;
+
+      // Click handlers for results
+      listEl.querySelectorAll('.dashboard-search-result').forEach(el => {
+        el.addEventListener('click', () => {
+          const type = el.dataset.type;
+          const id = parseInt(el.dataset.id);
+
+          // Redirect to appropriate page with the item
+          if (type === 'event') window.location.href = '/agenda';
+          else if (type === 'task') window.location.href = '/taken';
+          else if (type === 'meal') window.location.href = '/maaltijden';
+        });
+      });
+    }
+
+    function hideAllSearchStates() {
+      loadingEl.classList.add('hidden');
+      emptyEl.classList.add('hidden');
+      noResultsEl.classList.add('hidden');
+    }
   }
 
   // ── Init ──────────────────────────────────────────────────────
