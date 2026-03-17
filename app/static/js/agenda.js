@@ -62,7 +62,7 @@
     if (!el) return;
     if (curView === 'day') {
       const rangeEnd = FP.addDays(curDate, 3);
-      el.textContent = `${FP.formatDateShort(curDate)} – ${FP.formatDateShort(rangeEnd)}`;
+      el.textContent = `${FP.dayNameFull(curDate)} ${FP.formatDateShort(curDate)} – ${FP.formatDateShort(rangeEnd)}`;
     } else if (curView === 'week') {
       const mon = FP.startOfWeek(curDate);
       const sun = FP.addDays(mon, 6);
@@ -144,7 +144,7 @@
         .filter(e => FP.isSameDay(new Date(e.start_time), day))
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-      const dayLabel = FP.formatDate(day);
+      const dayLabel = `${FP.dayNameFull(day)} ${FP.formatDate(day)}`;
       const daySub = FP.isToday(day) ? 'Vandaag' : '';
 
       return `<section class="agenda-day-section">
