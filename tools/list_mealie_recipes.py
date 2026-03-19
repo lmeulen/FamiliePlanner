@@ -5,8 +5,10 @@ Fetches recipes from configured Mealie instance and displays them.
 
 Run:  python -m tools.list_mealie_recipes
 Options:
-  --detailed    Show additional info (slug, categories, tags, rating)
-  --page N      Show page N (default: all pages)
+  --detailed       Show additional info (slug, categories, tags, rating)
+  --ingredients    Fetch and show ingredients (slower, requires API call per recipe)
+  --page N         Show page N (default: all pages)
+  --configure      Interactive configuration helper
 """
 
 import argparse
@@ -89,6 +91,21 @@ async def fetch_recipes(mealie_url: str, token: str, page: int = 1, per_page: in
             sys.exit(1)
 
 
+async def fetch_recipe_details(mealie_url: str, token: str, slug: str):
+    """Fetch full recipe details including ingredients."""
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{mealie_url.rstrip('/')}/api/recipes/{slug}"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception:
+            return None
+
+
 def format_categories(categories: list) -> str:
     """Format category list for display."""
     if not categories:
@@ -103,7 +120,35 @@ def format_tags(tags: list) -> str:
     return f"#{', #'.join(tags[:3])}{'...' if len(tags) > 3 else ''}"
 
 
-async def list_recipes(detailed: bool = False, page: int | None = None):
+def format_ingredients(ingredients: list) -> list[str]:
+    """Format ingredient list for display."""
+    if not ingredients:
+        return []
+
+    formatted = []
+    for ing in ingredients:
+        if isinstance(ing, dict):
+            display = ing.get("display", "")
+            if display:
+                formatted.append(display)
+            else:
+                # Fallback to constructing from parts
+                quantity = ing.get("quantity", "")
+                unit = ing.get("unit", {})
+                food = ing.get("food", {})
+
+                unit_name = unit.get("name", "") if isinstance(unit, dict) else str(unit) if unit else ""
+                food_name = food.get("name", "") if isinstance(food, dict) else str(food) if food else ""
+
+                parts = [str(quantity), unit_name, food_name]
+                formatted.append(" ".join(p for p in parts if p).strip())
+        else:
+            formatted.append(str(ing))
+
+    return formatted
+
+
+async def list_recipes(detailed: bool = False, page: int | None = None, with_ingredients: bool = False):
     """List all recipes from Mealie."""
     await init_db()
 
@@ -134,6 +179,25 @@ async def list_recipes(detailed: bool = False, page: int | None = None):
         current_page += 1
 
     print(f"\n📖 Found {len(all_recipes)} recipe(s) in total\n")
+
+    # Fetch full details if ingredients requested
+    if with_ingredients and all_recipes:
+        print("📥 Fetching full recipe details (this may take a moment)...\n")
+        detailed_recipes = []
+        for i, recipe in enumerate(all_recipes, 1):
+            slug = recipe.get("slug", "")
+            if slug:
+                print(f"   Fetching {i}/{len(all_recipes)}: {recipe.get('name', 'Unknown')}...", end="\r")
+                full_recipe = await fetch_recipe_details(mealie_url, token, slug)
+                if full_recipe:
+                    detailed_recipes.append(full_recipe)
+                else:
+                    detailed_recipes.append(recipe)  # Fallback to summary
+            else:
+                detailed_recipes.append(recipe)
+        all_recipes = detailed_recipes
+        print(f"\n✅ Fetched details for {len(detailed_recipes)} recipes\n")
+
     print("=" * 80)
 
     if not all_recipes:
@@ -147,6 +211,7 @@ async def list_recipes(detailed: bool = False, page: int | None = None):
         rating = recipe.get("rating")
         categories = recipe.get("recipeCategory", [])
         tags = recipe.get("tags", [])
+        ingredients = recipe.get("recipeIngredient", [])
 
         if detailed:
             # Detailed view
@@ -160,6 +225,15 @@ async def list_recipes(detailed: bool = False, page: int | None = None):
                 # Convert to int for star display
                 stars = int(round(rating))
                 print(f"     Rating: {'⭐' * stars} ({rating:.1f})")
+
+            # Show ingredients
+            if ingredients:
+                formatted_ingredients = format_ingredients(ingredients)
+                print(f"     Ingredients ({len(formatted_ingredients)}):")
+                for ing in formatted_ingredients[:10]:  # Show max 10 ingredients
+                    print(f"       • {ing}")
+                if len(formatted_ingredients) > 10:
+                    print(f"       ... and {len(formatted_ingredients) - 10} more")
             print()
         else:
             # Simple list
@@ -168,7 +242,10 @@ async def list_recipes(detailed: bool = False, page: int | None = None):
                 rating_str = f" {'⭐' * stars}"
             else:
                 rating_str = ""
-            print(f"{i:3d}. {name}{rating_str}")
+
+            # Show ingredient count
+            ing_count = f" ({len(ingredients)} ingredients)" if ingredients else ""
+            print(f"{i:3d}. {name}{rating_str}{ing_count}")
 
     print("=" * 80)
     print(f"\nTotal: {len(all_recipes)} recipes")
@@ -219,12 +296,15 @@ def main():
 Examples:
   python -m tools.list_mealie_recipes                  # List all recipes
   python -m tools.list_mealie_recipes --detailed       # Show detailed info
+  python -m tools.list_mealie_recipes --ingredients    # Show ingredients (slower)
+  python -m tools.list_mealie_recipes --detailed --ingredients  # Show everything
   python -m tools.list_mealie_recipes --page 2         # Show page 2 only
   python -m tools.list_mealie_recipes --configure      # Configure Mealie settings
         """,
     )
 
     parser.add_argument("--detailed", action="store_true", help="Show detailed information")
+    parser.add_argument("--ingredients", action="store_true", help="Fetch and show ingredients (requires API call per recipe)")
     parser.add_argument("--page", type=int, help="Show specific page only (1-based)")
     parser.add_argument("--configure", action="store_true", help="Configure Mealie settings")
 
@@ -234,7 +314,11 @@ Examples:
         if args.configure:
             asyncio.run(configure())
         else:
-            asyncio.run(list_recipes(detailed=args.detailed, page=args.page))
+            asyncio.run(list_recipes(
+                detailed=args.detailed,
+                page=args.page,
+                with_ingredients=args.ingredients
+            ))
     except KeyboardInterrupt:
         print("\n\n👋 Interrupted by user")
         sys.exit(0)
