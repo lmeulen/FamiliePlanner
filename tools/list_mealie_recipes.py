@@ -110,14 +110,28 @@ def format_categories(categories: list) -> str:
     """Format category list for display."""
     if not categories:
         return ""
-    return f"[{', '.join(categories[:3])}{'...' if len(categories) > 3 else ''}]"
+    # Handle both string and dict formats
+    cat_names = []
+    for cat in categories[:3]:
+        if isinstance(cat, dict):
+            cat_names.append(cat.get("name", str(cat)))
+        else:
+            cat_names.append(str(cat))
+    return f"[{', '.join(cat_names)}{'...' if len(categories) > 3 else ''}]"
 
 
 def format_tags(tags: list) -> str:
     """Format tag list for display."""
     if not tags:
         return ""
-    return f"#{', #'.join(tags[:3])}{'...' if len(tags) > 3 else ''}"
+    # Handle both string and dict formats
+    tag_names = []
+    for tag in tags[:3]:
+        if isinstance(tag, dict):
+            tag_names.append(tag.get("name", str(tag)))
+        else:
+            tag_names.append(str(tag))
+    return f"#{', #'.join(tag_names)}{'...' if len(tags) > 3 else ''}"
 
 
 def format_ingredients(ingredients: list) -> list[str]:
