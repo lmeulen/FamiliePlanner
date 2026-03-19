@@ -157,11 +157,17 @@ async def list_recipes(detailed: bool = False, page: int | None = None):
             if tags:
                 print(f"     Tags: {format_tags(tags)}")
             if rating:
-                print(f"     Rating: {'⭐' * rating}")
+                # Convert to int for star display
+                stars = int(round(rating))
+                print(f"     Rating: {'⭐' * stars} ({rating:.1f})")
             print()
         else:
             # Simple list
-            rating_str = f" {'⭐' * rating}" if rating else ""
+            if rating:
+                stars = int(round(rating))
+                rating_str = f" {'⭐' * stars}"
+            else:
+                rating_str = ""
             print(f"{i:3d}. {name}{rating_str}")
 
     print("=" * 80)
