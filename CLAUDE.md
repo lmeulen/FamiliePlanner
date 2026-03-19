@@ -83,6 +83,12 @@ python -m tools.hash_password           # Generate bcrypt hash for passwords
 
 # Grocery debugging
 python -m tools.check_grocery_db        # Verify grocery database state and learning data
+
+# Mealie recipe integration
+python -m tools.list_mealie_recipes              # List all recipe names from Mealie
+python -m tools.list_mealie_recipes --detailed   # Show detailed info (categories, tags, rating)
+python -m tools.list_mealie_recipes --page 2     # Show specific page only
+python -m tools.list_mealie_recipes --configure  # Configure Mealie settings interactively
 ```
 
 **Nightly backup system:** The app automatically creates JSON backups at midnight via `app/backup_scheduler.py`. Backups are stored in `backups/DDMMYYYY.json` with full database export (events, tasks, meals, family members, photos metadata). The backup scheduler runs as a background task launched during app startup (lifespan context manager) and is gracefully stopped on shutdown.
