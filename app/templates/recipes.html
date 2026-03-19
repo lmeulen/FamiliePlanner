@@ -21,12 +21,12 @@
   </select>
 </div>
 
-<!-- Recipe grid -->
-<div id="recipes-grid" class="recipes-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-  <div class="skeleton-grid" style="display: contents;">
-    <div class="skeleton" style="height: 320px; border-radius: 12px;"></div>
-    <div class="skeleton" style="height: 320px; border-radius: 12px;"></div>
-    <div class="skeleton" style="height: 320px; border-radius: 12px;"></div>
+<!-- Recipe list -->
+<div id="recipes-grid" class="recipes-list" style="margin-bottom: 2rem;">
+  <div class="skeleton-list">
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
   </div>
 </div>
 
@@ -53,9 +53,9 @@
 
 <!-- Recipe detail modal template -->
 <template id="tpl-recipe-detail">
-  <div class="recipe-detail" style="max-width: 800px; margin: 0 auto;">
+  <div class="recipe-detail" style="width: 90%; margin: 0 auto;">
     <div class="recipe-header" style="margin-bottom: 2rem;">
-      <img id="recipe-image" class="recipe-image" alt="" style="width: 100%; height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 1rem; display: none;" />
+      <img id="recipe-image" class="recipe-image" alt="" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; margin-bottom: 1rem; display: none;" />
       <div class="recipe-meta">
         <h3 id="recipe-name" class="recipe-name" style="font-size: 1.75rem; margin-bottom: 0.5rem;"></h3>
         <p id="recipe-description" class="recipe-description" style="color: var(--text-muted); margin-bottom: 1rem;"></p>

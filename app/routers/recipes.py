@@ -62,6 +62,34 @@ async def _mealie_request(method: str, url: str, token: str, path: str, **kwargs
             raise HTTPException(500, f"Fout bij communicatie met Mealie: {str(e)}") from e
 
 
+def _fix_image_url(mealie_url: str, image: str | None) -> str | None:
+    """Convert relative Mealie image paths to absolute URLs."""
+    if not image:
+        return None
+    if image.startswith("http://") or image.startswith("https://"):
+        return image
+    # Mealie returns either:
+    # - short image ID like "zDeP" -> /api/media/recipes/{id}/images/min-original.webp
+    # - full path like "/api/media/..."
+    if image.startswith("/"):
+        return f"{mealie_url.rstrip('/')}{image}"
+    else:
+        # Short image ID - construct full path
+        return f"{mealie_url.rstrip('/')}/api/media/recipes/{image}/images/min-original.webp"
+
+
+def _transform_recipe_images(mealie_url: str, data: dict | list) -> dict | list:
+    """Transform image URLs in recipe data to absolute URLs."""
+    if isinstance(data, list):
+        return [_transform_recipe_images(mealie_url, item) for item in data]
+    if isinstance(data, dict):
+        if "image" in data:
+            data["image"] = _fix_image_url(mealie_url, data.get("image"))
+        if "items" in data and isinstance(data["items"], list):
+            data["items"] = [_transform_recipe_images(mealie_url, item) for item in data["items"]]
+    return data
+
+
 @router.get("/", response_model=RecipeListResponse)
 async def list_recipes(
     page: int = Query(1, ge=1),
@@ -89,6 +117,9 @@ async def list_recipes(
 
     data = await _mealie_request("GET", mealie_url, token, "/recipes", params=params)
 
+    # Transform image URLs to absolute
+    data = _transform_recipe_images(mealie_url, data)
+
     # Transform Mealie response to our schema
     return RecipeListResponse(
         page=data.get("page", page),
@@ -104,6 +135,7 @@ async def get_recipe(slug: str, db: AsyncSession = Depends(get_db)):
     """Get single recipe by slug."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("GET", mealie_url, token, f"/recipes/{slug}")
+    data = _transform_recipe_images(mealie_url, data)
     return data
 
 
@@ -112,6 +144,7 @@ async def create_recipe(payload: RecipeCreate, db: AsyncSession = Depends(get_db
     """Create new recipe (returns stub with slug for subsequent PUT)."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("POST", mealie_url, token, "/recipes", json=payload.model_dump())
+    data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.created slug={}", data.get("slug"))
     return data
 
@@ -123,6 +156,7 @@ async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Dep
     data = await _mealie_request(
         "PUT", mealie_url, token, f"/recipes/{slug}", json=payload.model_dump(exclude_unset=True)
     )
+    data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.updated slug={}", slug)
     return data
 
@@ -132,6 +166,7 @@ async def patch_recipe(slug: str, payload: dict, db: AsyncSession = Depends(get_
     """Partial update of recipe."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("PATCH", mealie_url, token, f"/recipes/{slug}", json=payload)
+    data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.patched slug={}", slug)
     return data
 
@@ -154,22 +189,39 @@ async def upload_recipe_image(slug: str, file: UploadFile = File(...), db: Async
     files = {"image": (file.filename, content, file.content_type)}
 
     data = await _mealie_request("PUT", mealie_url, token, f"/recipes/{slug}/image", files=files)
+    if data:
+        data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.image_uploaded slug={}", slug)
     return data
 
 
-@router.get("/categories/all", response_model=list[str])
+@router.get("/categories/all")
 async def list_categories(db: AsyncSession = Depends(get_db)):
-    """Get all available recipe categories."""
+    """Get all available recipe categories with slugs for filtering."""
     mealie_url, token = await _get_mealie_config(db)
-    data = await _mealie_request("GET", mealie_url, token, "/recipes/category")
-    # Extract just category names from response
-    return [cat["name"] for cat in data] if isinstance(data, list) else []
+    try:
+        data = await _mealie_request("GET", mealie_url, token, "/organizers/categories")
+        # Return name and slug for each category
+        if isinstance(data, dict) and "items" in data:
+            return [{"name": cat["name"], "slug": cat["slug"]} for cat in data["items"]]
+        return []
+    except HTTPException as e:
+        # If categories endpoint doesn't exist, return empty list
+        logger.warning("categories_endpoint_failed status={} detail={}", e.status_code, e.detail)
+        return []
 
 
-@router.get("/tags/all", response_model=list[str])
+@router.get("/tags/all")
 async def list_tags(db: AsyncSession = Depends(get_db)):
-    """Get all available recipe tags."""
+    """Get all available recipe tags with slugs for filtering."""
     mealie_url, token = await _get_mealie_config(db)
-    data = await _mealie_request("GET", mealie_url, token, "/recipes/tags")
-    return [tag["name"] for tag in data] if isinstance(data, list) else []
+    try:
+        data = await _mealie_request("GET", mealie_url, token, "/organizers/tags")
+        # Return name and slug for each tag
+        if isinstance(data, dict) and "items" in data:
+            return [{"name": tag["name"], "slug": tag["slug"]} for tag in data["items"]]
+        return []
+    except HTTPException as e:
+        # If tags endpoint doesn't exist, return empty list
+        logger.warning("tags_endpoint_failed status={} detail={}", e.status_code, e.detail)
+        return []

@@ -92,27 +92,25 @@
     }
 
     grid.innerHTML = recipes.map(recipe => {
-      const categories = (recipe.recipeCategory || []).slice(0, 2).map(cat =>
-        `<span style="padding: 0.15rem 0.5rem; background: var(--accent-bg); color: var(--accent); border-radius: 4px; font-size: 0.75rem;">${FP.esc(cat)}</span>`
+      const categories = (recipe.recipeCategory || []).slice(0, 3).map(cat =>
+        `<span style="padding: 0.25rem 0.6rem; background: var(--accent-bg); color: var(--accent); border-radius: 4px; font-size: 0.8rem;">${FP.esc(cat)}</span>`
       ).join('');
 
-      const tags = (recipe.tags || []).slice(0, 2).map(tag =>
-        `<span style="padding: 0.15rem 0.5rem; background: var(--bg-secondary); color: var(--text-muted); border-radius: 4px; font-size: 0.75rem;">#${FP.esc(tag)}</span>`
+      const tags = (recipe.tags || []).slice(0, 3).map(tag =>
+        `<span style="padding: 0.25rem 0.6rem; background: var(--bg-secondary); color: var(--text-muted); border-radius: 4px; font-size: 0.8rem;">#${FP.esc(tag)}</span>`
       ).join('');
 
-      const imageUrl = recipe.image || '/static/images/recipe-placeholder.png';
-      const description = recipe.description ? FP.esc(recipe.description.substring(0, 80)) + (recipe.description.length > 80 ? '...' : '') : '';
+      const description = recipe.description ? FP.esc(recipe.description.substring(0, 150)) + (recipe.description.length > 150 ? '...' : '') : '';
 
-      return `<div class="card recipe-card" data-slug="${FP.esc(recipe.slug)}" style="cursor: pointer; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;">
-        <div style="width: 100%; height: 180px; background: var(--bg-secondary); position: relative; overflow: hidden;">
-          <img src="${imageUrl}" alt="${FP.esc(recipe.name)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/static/images/recipe-placeholder.png'" />
-        </div>
-        <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column;">
-          <h4 style="font-size: 1.05rem; margin: 0 0 0.5rem 0; font-weight: 600;">${FP.esc(recipe.name)}</h4>
-          ${description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.75rem 0;">${description}</p>` : ''}
-          <div style="margin-top: auto;">
-            ${categories ? `<div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.5rem;">${categories}</div>` : ''}
-            ${tags ? `<div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">${tags}</div>` : ''}
+      const rating = recipe.rating ? '⭐'.repeat(Math.round(recipe.rating)) : '';
+
+      return `<div class="card recipe-card" data-slug="${FP.esc(recipe.slug)}" style="cursor: pointer; display: flex; flex-direction: row; align-items: center; padding: 1rem 1.25rem; margin-bottom: 0.75rem; border-radius: 8px; transition: background 0.15s;">
+        <div style="flex: 1; min-width: 0;">
+          <h4 style="font-size: 1.1rem; margin: 0 0 0.4rem 0; font-weight: 600;">${FP.esc(recipe.name)} ${rating ? `<span style="margin-left: 0.5rem; font-size: 0.9rem;">${rating}</span>` : ''}</h4>
+          ${description ? `<p style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 0.5rem 0;">${description}</p>` : ''}
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            ${categories}
+            ${tags}
           </div>
         </div>
       </div>`;
@@ -363,12 +361,12 @@
       const categories = await API.get('/api/recipes/categories/all');
       const categorySelect = document.getElementById('category-filter');
       categorySelect.innerHTML = '<option value="">Alle categorieën</option>' +
-        categories.map(cat => `<option value="${FP.esc(cat)}">${FP.esc(cat)}</option>`).join('');
+        categories.map(cat => `<option value="${FP.esc(cat.slug)}">${FP.esc(cat.name)}</option>`).join('');
 
       const tags = await API.get('/api/recipes/tags/all');
       const tagSelect = document.getElementById('tag-filter');
       tagSelect.innerHTML = '<option value="">Alle tags</option>' +
-        tags.map(tag => `<option value="${FP.esc(tag)}">${FP.esc(tag)}</option>`).join('');
+        tags.map(tag => `<option value="${FP.esc(tag.slug)}">${FP.esc(tag.name)}</option>`).join('');
     } catch (err) {
       // Silently fail if filters can't be loaded
       console.warn('Could not load filters:', err);
