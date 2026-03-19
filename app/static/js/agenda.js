@@ -327,9 +327,39 @@
       .filter(e => new Date(e.start_time) >= new Date())
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-    if (!fe.length) { listView.innerHTML = '<p class="empty-state">Geen aankomende afspraken</p>'; return; }
+    if (!fe.length) {
+      listView.innerHTML = '<p class="empty-state">Geen aankomende afspraken</p>';
+      return;
+    }
 
-    listView.innerHTML = fe.map(ev => renderAgendaEventCard(ev, { includeDate: true })).join('');
+    // Group events by date
+    const eventsByDate = new Map();
+    fe.forEach(event => {
+      const eventDate = new Date(event.start_time);
+      const dateKey = eventDate.toDateString();
+      if (!eventsByDate.has(dateKey)) {
+        eventsByDate.set(dateKey, { date: eventDate, events: [] });
+      }
+      eventsByDate.get(dateKey).events.push(event);
+    });
+
+    // Render date sections
+    const sectionsHtml = Array.from(eventsByDate.values()).map(({ date, events }) => {
+      const dayLabel = `${FP.dayNameFull(date)} ${FP.formatDate(date)}`;
+      const daySub = FP.isToday(date) ? 'Vandaag' : '';
+
+      return `<section class="agenda-day-section">
+        <div class="agenda-day-section-header">
+          <div class="agenda-day-section-title">${FP.esc(dayLabel)}</div>
+          ${daySub ? `<div class="agenda-day-section-badge">${daySub}</div>` : ''}
+        </div>
+        <div class="agenda-day-section-list card-list">
+          ${events.map(renderAgendaEventCard).join('')}
+        </div>
+      </section>`;
+    }).join('');
+
+    listView.innerHTML = `<div class="agenda-day-list">${sectionsHtml}</div>`;
 
     listView.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', () => openEventForm(parseInt(card.dataset.id)));
