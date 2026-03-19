@@ -13,6 +13,8 @@
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
   const weatherLocationInput = document.getElementById('weather-location');
+  const mealieServerUrlInput = document.getElementById('mealie-server-url');
+  const mealieApiTokenInput = document.getElementById('mealie-api-token');
   const saveStatus        = document.getElementById('save-status');
 
   function t(key, vars = {}) {
@@ -85,6 +87,9 @@
     weatherToggle.checked = !!s.weather_enabled;
     weatherLocationInput.value = s.weather_location || 'Amsterdam,NL';
 
+    mealieServerUrlInput.value = s.mealie_server_url || '';
+    mealieApiTokenInput.value = s.mealie_api_token || '';
+
     updatePhotoHeightRow();
     updateWeatherLocationRow();
   }
@@ -117,6 +122,8 @@
       theme,
       weather_enabled: weatherToggle.checked,
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',
+      mealie_server_url: mealieServerUrlInput.value.trim(),
+      mealie_api_token: mealieApiTokenInput.value.trim(),
     };
 
     const updatedSettings = await API.put('/api/settings/', payload);
