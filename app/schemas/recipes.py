@@ -59,7 +59,7 @@ class RecipeUpdate(BaseModel):
     tags: list[str | dict] = Field(default_factory=list)  # Mealie returns dicts
     tools: list[str] = Field(default_factory=list)
     rating: int | float | None = Field(None, ge=1, le=5)  # Mealie returns float
-    orgURL: str = Field(default="", max_length=1000)
+    orgURL: str | None = Field(None, max_length=1000)
 
     @field_validator("recipeCategory", "tags", mode="before")
     @classmethod
@@ -94,7 +94,7 @@ class RecipeOut(BaseModel):
     tags: list[str | dict] = Field(default_factory=list)  # Mealie returns dicts
     tools: list[str] = Field(default_factory=list)
     rating: int | float | None = None  # Mealie returns float
-    orgURL: str = ""
+    orgURL: str | None = None
     dateAdded: datetime | None = None
     dateUpdated: datetime | None = None
     lastMade: datetime | None = None
