@@ -196,13 +196,12 @@
         originalLink.style.display = 'none';
       }
 
-      // Wire up action buttons
-      document.getElementById('btn-edit-recipe').onclick = () => {
-        Modal.close();
-        openRecipeForm(slug);
-      };
-
-      document.getElementById('btn-delete-recipe').onclick = () => deleteRecipe(slug);
+      // Edit and delete buttons removed - recipes are read-only
+      // document.getElementById('btn-edit-recipe').onclick = () => {
+      //   Modal.close();
+      //   openRecipeForm(slug);
+      // };
+      // document.getElementById('btn-delete-recipe').onclick = () => deleteRecipe(slug);
 
     } catch (err) {
       Toast.show('Fout bij laden recept: ' + (err.detail || err.message), 'error');
@@ -413,8 +412,11 @@
       }
     });
 
-    // Add recipe button
-    document.getElementById('btn-add-recipe').addEventListener('click', () => openRecipeForm());
+    // Add recipe button disabled - recipes are read-only
+    // const addBtn = document.getElementById('btn-add-recipe');
+    // if (addBtn) {
+    //   addBtn.addEventListener('click', () => openRecipeForm());
+    // }
 
     // Initial load
     loadRecipes();

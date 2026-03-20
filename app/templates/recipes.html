@@ -48,8 +48,8 @@
   Configureer je Mealie server URL en API token in <a href="/instellingen" style="color: inherit; text-decoration: underline;">Instellingen</a>.
 </div>
 
-<!-- FAB: add recipe -->
-<button class="fab" id="btn-add-recipe" aria-label="Recept toevoegen">＋</button>
+<!-- FAB disabled - recipes are read-only -->
+<!-- <button class="fab" id="btn-add-recipe" aria-label="Recept toevoegen">＋</button> -->
 
 <!-- Recipe detail modal template -->
 <template id="tpl-recipe-detail">
@@ -80,9 +80,10 @@
       </div>
     </div>
     <div class="recipe-actions" style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-      <button id="btn-edit-recipe" class="btn btn--primary">✏️ Bewerken</button>
-      <button id="btn-delete-recipe" class="btn btn--danger">🗑️ Verwijderen</button>
-      <a id="btn-view-original" class="btn btn--secondary" target="_blank" rel="noopener" style="display: none;">🔗 Origineel</a>
+      <!-- Edit and delete disabled - recipes are read-only -->
+      <!-- <button id="btn-edit-recipe" class="btn btn--primary">✏️ Bewerken</button> -->
+      <!-- <button id="btn-delete-recipe" class="btn btn--danger">🗑️ Verwijderen</button> -->
+      <a id="btn-view-original" class="btn btn--primary" target="_blank" rel="noopener" style="display: none;">🔗 Origineel bekijken</a>
     </div>
   </div>
 </template>
