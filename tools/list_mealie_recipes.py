@@ -33,7 +33,7 @@ async def get_mealie_config():
         if not url:
             print("❌ Error: Mealie server URL not configured")
             print("   Configure in Settings page or run:")
-            print("   python -c \"from tools.list_mealie_recipes import configure; configure()\"")
+            print('   python -c "from tools.list_mealie_recipes import configure; configure()"')
             sys.exit(1)
 
         if not token:
@@ -182,7 +182,6 @@ async def list_recipes(detailed: bool = False, page: int | None = None, with_ing
         all_recipes.extend(recipes)
 
         total_pages = data.get("total_pages", 1)
-        total_count = data.get("total", 0)
 
         print(f"({len(recipes)} recipes)")
 
@@ -318,7 +317,9 @@ Examples:
     )
 
     parser.add_argument("--detailed", action="store_true", help="Show detailed information")
-    parser.add_argument("--ingredients", action="store_true", help="Fetch and show ingredients (requires API call per recipe)")
+    parser.add_argument(
+        "--ingredients", action="store_true", help="Fetch and show ingredients (requires API call per recipe)"
+    )
     parser.add_argument("--page", type=int, help="Show specific page only (1-based)")
     parser.add_argument("--configure", action="store_true", help="Configure Mealie settings")
 
@@ -328,11 +329,7 @@ Examples:
         if args.configure:
             asyncio.run(configure())
         else:
-            asyncio.run(list_recipes(
-                detailed=args.detailed,
-                page=args.page,
-                with_ingredients=args.ingredients
-            ))
+            asyncio.run(list_recipes(detailed=args.detailed, page=args.page, with_ingredients=args.ingredients))
     except KeyboardInterrupt:
         print("\n\n👋 Interrupted by user")
         sys.exit(0)

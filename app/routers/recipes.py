@@ -51,7 +51,7 @@ async def _mealie_request(method: str, url: str, token: str, path: str, **kwargs
             if response.status_code == 204:
                 return None
 
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
 
         except httpx.TimeoutException as e:
             raise HTTPException(504, "Mealie server timeout - controleer of server bereikbaar is.") from e
@@ -118,16 +118,21 @@ async def list_recipes(
     data = await _mealie_request("GET", mealie_url, token, "/recipes", params=params)
 
     # Transform image URLs to absolute
-    data = _transform_recipe_images(mealie_url, data)
+    if data is not None:
+        data = _transform_recipe_images(mealie_url, data)
 
     # Transform Mealie response to our schema
-    return RecipeListResponse(
-        page=data.get("page", page),
-        per_page=data.get("per_page", per_page),
-        total=data.get("total", 0),
-        total_pages=data.get("total_pages", 0),
-        items=data.get("items", []),
-    )
+    if isinstance(data, dict):
+        return RecipeListResponse(
+            page=data.get("page", page),
+            per_page=data.get("per_page", per_page),
+            total=data.get("total", 0),
+            total_pages=data.get("total_pages", 0),
+            items=data.get("items", []),
+        )
+
+    # Fallback for unexpected response
+    return RecipeListResponse(page=page, per_page=per_page, total=0, total_pages=0, items=[])
 
 
 @router.get("/{slug}", response_model=RecipeOut)
@@ -135,7 +140,8 @@ async def get_recipe(slug: str, db: AsyncSession = Depends(get_db)):
     """Get single recipe by slug."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("GET", mealie_url, token, f"/recipes/{slug}")
-    data = _transform_recipe_images(mealie_url, data)
+    if data is not None:
+        data = _transform_recipe_images(mealie_url, data)
     return data
 
 
@@ -144,8 +150,10 @@ async def create_recipe(payload: RecipeCreate, db: AsyncSession = Depends(get_db
     """Create new recipe (returns stub with slug for subsequent PUT)."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("POST", mealie_url, token, "/recipes", json=payload.model_dump())
-    data = _transform_recipe_images(mealie_url, data)
-    logger.info("recipes.recipe.created slug={}", data.get("slug"))
+    if data is not None:
+        data = _transform_recipe_images(mealie_url, data)
+    if isinstance(data, dict):
+        logger.info("recipes.recipe.created slug={}", data.get("slug"))
     return data
 
 
@@ -156,7 +164,8 @@ async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Dep
     data = await _mealie_request(
         "PUT", mealie_url, token, f"/recipes/{slug}", json=payload.model_dump(exclude_unset=True)
     )
-    data = _transform_recipe_images(mealie_url, data)
+    if data is not None:
+        data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.updated slug={}", slug)
     return data
 
@@ -166,7 +175,8 @@ async def patch_recipe(slug: str, payload: dict, db: AsyncSession = Depends(get_
     """Partial update of recipe."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request("PATCH", mealie_url, token, f"/recipes/{slug}", json=payload)
-    data = _transform_recipe_images(mealie_url, data)
+    if data is not None:
+        data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.patched slug={}", slug)
     return data
 

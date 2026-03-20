@@ -1,6 +1,6 @@
 """Tests for Mealie recipe integration."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
