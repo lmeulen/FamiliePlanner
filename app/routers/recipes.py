@@ -1,5 +1,7 @@
 """API router for Mealie recipe integration (proxy)."""
 
+import uuid
+
 import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from loguru import logger
@@ -90,6 +92,35 @@ def _transform_recipe_images(mealie_url: str, data: dict | list) -> dict | list:
     return data
 
 
+def _normalize_ingredients(ingredients: list) -> list:
+    """Normalize ingredient data for Mealie API.
+
+    Ensures all required fields are present:
+    - referenceId: UUID (required by Mealie)
+    - quantity: number (defaults to 1.0)
+    - disableAmount: boolean (true when using display text only)
+    - unit, food, isFood: nullable fields
+    """
+    normalized = []
+    for ing in ingredients:
+        if not isinstance(ing, dict):
+            continue
+
+        # Ensure referenceId exists
+        if "referenceId" not in ing or not ing["referenceId"]:
+            ing["referenceId"] = str(uuid.uuid4())
+
+        # Set defaults for required fields
+        ing.setdefault("quantity", 1.0)
+        ing.setdefault("disableAmount", True)
+        ing.setdefault("unit", None)
+        ing.setdefault("food", None)
+        ing.setdefault("isFood", False)
+
+        normalized.append(ing)
+    return normalized
+
+
 @router.get("/", response_model=RecipeListResponse)
 async def list_recipes(
     page: int = Query(1, ge=1),
@@ -165,6 +196,10 @@ async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Dep
     # Convert category/tag names to full objects for Mealie
     update_data = payload.model_dump(exclude_unset=True)
 
+    # Normalize ingredients - add required Mealie fields
+    if "recipeIngredient" in update_data:
+        update_data["recipeIngredient"] = _normalize_ingredients(update_data["recipeIngredient"])
+
     # Handle categories - convert names to objects
     if "recipeCategory" in update_data and update_data["recipeCategory"]:
         categories_data = await _mealie_request("GET", mealie_url, token, "/organizers/categories")
@@ -213,6 +248,11 @@ async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Dep
 async def patch_recipe(slug: str, payload: dict, db: AsyncSession = Depends(get_db)):
     """Partial update of recipe."""
     mealie_url, token = await _get_mealie_config(db)
+
+    # Normalize ingredients if present
+    if "recipeIngredient" in payload:
+        payload["recipeIngredient"] = _normalize_ingredients(payload["recipeIngredient"])
+
     data = await _mealie_request("PATCH", mealie_url, token, f"/recipes/{slug}", json=payload)
     if data is not None:
         data = _transform_recipe_images(mealie_url, data)
