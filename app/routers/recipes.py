@@ -162,7 +162,7 @@ async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Dep
     """Update full recipe details."""
     mealie_url, token = await _get_mealie_config(db)
     data = await _mealie_request(
-        "PUT", mealie_url, token, f"/recipes/{slug}", json=payload.model_dump(exclude_unset=True)
+        "PATCH", mealie_url, token, f"/recipes/{slug}", json=payload.model_dump(exclude_unset=True)
     )
     if data is not None:
         data = _transform_recipe_images(mealie_url, data)

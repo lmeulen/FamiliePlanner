@@ -1,6 +1,6 @@
 """Grocery list CRUD router."""
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -197,7 +197,7 @@ async def update_item(item_id: int, payload: GroceryItemUpdate, db: AsyncSession
 
     if payload.checked is not None:
         item.checked = payload.checked
-        item.checked_at = datetime.now(UTC) if payload.checked else None
+        item.checked_at = datetime.now(timezone.utc) if payload.checked else None
 
     await db.commit()
     await db.refresh(item)
@@ -258,7 +258,7 @@ async def update_learning(db: AsyncSession, product_name: str, category_id: int)
     if learning:
         learning.category_id = category_id
         learning.usage_count += 1
-        learning.last_used = datetime.now(UTC)
+        learning.last_used = datetime.now(timezone.utc)
     else:
         learning = GroceryProductLearning(product_name=product_name, category_id=category_id, usage_count=1)
         db.add(learning)
