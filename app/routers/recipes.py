@@ -161,9 +161,48 @@ async def create_recipe(payload: RecipeCreate, db: AsyncSession = Depends(get_db
 async def update_recipe(slug: str, payload: RecipeUpdate, db: AsyncSession = Depends(get_db)):
     """Update full recipe details."""
     mealie_url, token = await _get_mealie_config(db)
-    data = await _mealie_request(
-        "PATCH", mealie_url, token, f"/recipes/{slug}", json=payload.model_dump(exclude_unset=True)
-    )
+
+    # Convert category/tag names to full objects for Mealie
+    update_data = payload.model_dump(exclude_unset=True)
+
+    # Handle categories - convert names to objects
+    if "recipeCategory" in update_data and update_data["recipeCategory"]:
+        categories_data = await _mealie_request("GET", mealie_url, token, "/organizers/categories")
+        if isinstance(categories_data, dict) and "items" in categories_data:
+            category_map = {cat["slug"]: cat for cat in categories_data["items"]}
+            # Match by slug or name
+            matched_categories = []
+            for cat_name in update_data["recipeCategory"]:
+                slug_version = cat_name.lower().replace(" ", "-")
+                if slug_version in category_map:
+                    matched_categories.append(category_map[slug_version])
+                else:
+                    # Try to find by name
+                    for cat in categories_data["items"]:
+                        if cat["name"].lower() == cat_name.lower():
+                            matched_categories.append(cat)
+                            break
+            update_data["recipeCategory"] = matched_categories
+
+    # Handle tags - convert names to objects
+    if "tags" in update_data and update_data["tags"]:
+        tags_data = await _mealie_request("GET", mealie_url, token, "/organizers/tags")
+        if isinstance(tags_data, dict) and "items" in tags_data:
+            tag_map = {tag["slug"]: tag for tag in tags_data["items"]}
+            matched_tags = []
+            for tag_name in update_data["tags"]:
+                slug_version = tag_name.lower().replace(" ", "-")
+                if slug_version in tag_map:
+                    matched_tags.append(tag_map[slug_version])
+                else:
+                    # Try to find by name
+                    for tag in tags_data["items"]:
+                        if tag["name"].lower() == tag_name.lower():
+                            matched_tags.append(tag)
+                            break
+            update_data["tags"] = matched_tags
+
+    data = await _mealie_request("PATCH", mealie_url, token, f"/recipes/{slug}", json=update_data)
     if data is not None:
         data = _transform_recipe_images(mealie_url, data)
     logger.info("recipes.recipe.updated slug={}", slug)
