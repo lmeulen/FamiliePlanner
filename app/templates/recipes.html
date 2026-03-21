@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Recepten – FamiliePlanner{% endblock %}
+{% block nav_recipes %}active{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">📖 Recepten</h1>
+</div>
+
+<!-- Search and filters -->
+<div class="recipes-controls" style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+  <input type="search" id="recipe-search" placeholder="Zoek recepten..."
+         style="flex: 1; min-width: 200px; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;" />
+
+  <select id="category-filter" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; min-width: 150px;">
+    <option value="">Alle categorieën</option>
+  </select>
+
+  <select id="tag-filter" style="padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; min-width: 150px;">
+    <option value="">Alle tags</option>
+  </select>
+</div>
+
+<!-- Recipe list -->
+<div id="recipes-grid" class="recipes-list" style="margin-bottom: 2rem;">
+  <div class="skeleton-list">
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
+    <div class="skeleton" style="height: 80px; border-radius: 8px; margin-bottom: 0.75rem;"></div>
+  </div>
+</div>
+
+<!-- Pagination -->
+<div id="pagination" class="pagination hidden" style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin: 2rem 0;">
+  <button id="prev-page" class="btn btn--secondary">‹ Vorige</button>
+  <span id="page-info" style="font-size: 0.9rem; color: var(--text-muted);">Pagina 1 van 1</span>
+  <button id="next-page" class="btn btn--secondary">Volgende ›</button>
+</div>
+
+<!-- Empty state -->
+<p class="empty-state hidden" id="recipes-empty">
+  Geen recepten gevonden. Configureer Mealie in Instellingen of maak je eerste recept aan! 📖
+</p>
+
+<!-- Error state -->
+<div class="alert alert--error hidden" id="config-error" style="max-width: 600px; margin: 2rem auto; padding: 1.5rem; border-radius: 12px; background: var(--error-bg, #fee); border: 1px solid var(--error-border, #f88); color: var(--error-text, #c33);">
+  <strong>⚙️ Configuratie vereist</strong><br>
+  Configureer je Mealie server URL en API token in <a href="/instellingen" style="color: inherit; text-decoration: underline;">Instellingen</a>.
+</div>
+
+<!-- FAB disabled - recipes are read-only -->
+<!-- <button class="fab" id="btn-add-recipe" aria-label="Recept toevoegen">＋</button> -->
+
+<!-- Recipe detail modal template -->
+<template id="tpl-recipe-detail">
+  <div class="recipe-detail" style="width: 90%; margin: 0 auto;">
+    <div class="recipe-header" style="margin-bottom: 2rem;">
+      <img id="recipe-image" class="recipe-image" alt="" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; margin-bottom: 1rem; display: none;" />
+      <div class="recipe-meta">
+        <h3 id="recipe-name" class="recipe-name" style="font-size: 1.75rem; margin-bottom: 0.5rem;"></h3>
+        <p id="recipe-description" class="recipe-description" style="color: var(--text-muted); margin-bottom: 1rem;"></p>
+        <div class="recipe-info" style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+          <span id="recipe-prep-time"></span>
+          <span id="recipe-cook-time"></span>
+          <span id="recipe-servings"></span>
+          <span id="recipe-rating"></span>
+        </div>
+        <div id="recipe-categories" class="recipe-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;"></div>
+        <div id="recipe-tags" class="recipe-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+      </div>
+    </div>
+    <div class="recipe-body" style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-bottom: 2rem;">
+      <div class="recipe-ingredients">
+        <h4 style="margin-bottom: 1rem; font-size: 1.1rem;">Ingrediënten</h4>
+        <ul id="ingredients-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+      </div>
+      <div class="recipe-instructions">
+        <h4 style="margin-bottom: 1rem; font-size: 1.1rem;">Bereiding</h4>
+        <ol id="instructions-list" style="padding-left: 1.5rem;"></ol>
+      </div>
+    </div>
+    <div class="recipe-actions" style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+      <!-- Edit and delete disabled - recipes are read-only -->
+      <!-- <button id="btn-edit-recipe" class="btn btn--primary">✏️ Bewerken</button> -->
+      <!-- <button id="btn-delete-recipe" class="btn btn--danger">🗑️ Verwijderen</button> -->
+      <a id="btn-view-original" class="btn btn--primary" target="_blank" rel="noopener" style="display: none;">🔗 Origineel bekijken</a>
+    </div>
+  </div>
+</template>
+
+<!-- Recipe form template -->
+<template id="tpl-recipe-form">
+  <form id="recipe-form" class="modal-form recipe-form" style="max-width: 600px; margin: 0 auto;">
+    <h3 id="recipe-form-title" style="margin-bottom: 1.5rem;">Recept toevoegen</h3>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Naam *</span>
+      <input type="text" name="name" required maxlength="200" placeholder="Bijv. Spaghetti Carbonara"
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Beschrijving</span>
+      <textarea name="description" rows="3" maxlength="2000"
+                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; resize: vertical;"></textarea>
+    </label>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+      <label>
+        <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Bereidingstijd (min)</span>
+        <input type="number" name="prepTime" min="0" max="1440"
+               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+      </label>
+      <label>
+        <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Kooktijd (min)</span>
+        <input type="number" name="cookTime" min="0" max="1440"
+               style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+      </label>
+    </div>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Aantal porties</span>
+      <input type="text" name="recipeYield" maxlength="100" placeholder="Bijv. 4 personen"
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Categorieën (komma gescheiden)</span>
+      <input type="text" name="categories" maxlength="500" placeholder="Bijv. Italiaans, Pasta"
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Tags (komma gescheiden)</span>
+      <input type="text" name="tags" maxlength="500" placeholder="Bijv. Vegetarisch, Makkelijk"
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Ingrediënten (één per regel)</span>
+      <textarea name="ingredients" rows="8" placeholder="200g spaghetti&#10;100g pancetta&#10;2 eieren&#10;50g parmezaan"
+                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; resize: vertical; font-family: monospace;"></textarea>
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Bereidingswijze</span>
+      <textarea name="instructions" rows="10" placeholder="Stap 1: Kook de pasta...&#10;Stap 2: Snijd de pancetta..."
+                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; resize: vertical;"></textarea>
+    </label>
+
+    <label style="display: block; margin-bottom: 1rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Originele bron URL</span>
+      <input type="url" name="orgURL" maxlength="1000" placeholder="https://..."
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <label style="display: block; margin-bottom: 1.5rem;">
+      <span style="display: block; margin-bottom: 0.25rem; font-weight: 500;">Afbeelding uploaden</span>
+      <input type="file" name="image" accept="image/jpeg,image/png,image/webp"
+             style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+    </label>
+
+    <div class="form-actions" style="display: flex; gap: 0.75rem; justify-content: center;">
+      <button type="submit" class="btn btn--primary">💾 Opslaan</button>
+      <button type="button" class="btn btn--secondary" onclick="Modal.close()">Annuleren</button>
+    </div>
+  </form>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/recipes.js?v={{ static_v }}"></script>
+{% endblock %}

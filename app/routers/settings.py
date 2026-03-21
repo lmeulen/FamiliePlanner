@@ -39,6 +39,8 @@ _KEYS = {
     "theme",
     "weather_enabled",
     "weather_location",
+    "mealie_server_url",
+    "mealie_api_token",
 }
 
 
@@ -74,6 +76,8 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "theme": await _get(db, "theme", "system"),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
+        "mealie_server_url": await _get(db, "mealie_server_url", ""),
+        "mealie_api_token": await _get(db, "mealie_api_token", ""),
     }
 
 
@@ -130,6 +134,16 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "weather_location" in payload:
         loc = str(payload["weather_location"]).strip()[:100]  # max 100 chars
         await _set(db, "weather_location", loc)
+
+    if "mealie_server_url" in payload:
+        url = str(payload["mealie_server_url"]).strip()[:500]  # max 500 chars
+        if url and not (url.startswith("http://") or url.startswith("https://")):
+            raise HTTPException(400, "Mealie server URL moet beginnen met http:// of https://")
+        await _set(db, "mealie_server_url", url)
+
+    if "mealie_api_token" in payload:
+        token = str(payload["mealie_api_token"]).strip()[:500]  # max 500 chars
+        await _set(db, "mealie_api_token", token)
 
     logger.info("settings.updated payload={}", {k: v for k, v in payload.items() if k in _KEYS})
     return await _build_settings_dict(db)

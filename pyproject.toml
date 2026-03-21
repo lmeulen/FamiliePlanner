@@ -30,6 +30,8 @@ ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # function calls in argument defaults (FastAPI Depends)
     "B905",  # zip without explicit strict parameter
+    "UP017", # Use datetime.UTC (not compatible with Python 3.10)
+    "UP042", # Use StrEnum (not compatible with Python 3.10)
 ]
 
 [tool.ruff.lint.isort]
