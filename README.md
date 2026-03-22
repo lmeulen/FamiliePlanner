@@ -4,12 +4,12 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 
 ## 🚀 Highlights
 
-- ⚡ **Snelle PWA** - Installeer als native app, werkt offline, instant loading
-- 🔄 **Herhaalde Series** - Slimme recurrence voor events en taken (dagelijks tot jaarlijks)
 - 👥 **Multi-user** - Kleur-gecodeerde gezinsleden met avatar en filtering
 - 🌓 **Dark Mode** - Light/dark/system thema met smooth transitions
 - 📱 **Mobile First** - Responsive design, touch-optimized, safe-area support
 - 🔍 **Global Search** - Zoek door alle modules (events, tasks, meals)
+- ⚡ **Snelle PWA** - Installeer als native app, werkt offline, instant loading
+- 🔄 **Herhaalde Series** - Slimme recurrence voor events en taken (dagelijks tot jaarlijks)
 - 📊 **Statistieken** - Inzicht in gebruikspatronen en activiteit
 - 💾 **Auto Backup** - Dagelijkse JSON backups om 00:00
 - 🔒 **Veilig** - CSRF protection, rate limiting, session-based auth
@@ -19,7 +19,6 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 
 | Module | Beschrijving |
 |--------|-------------|
-| **📱 Progressive Web App** | Installeerbaar als native app, werkt offline, app shortcuts, snelle laadtijden |
 | **🏠 Overzicht** | Dashboard met fotodiashow, agenda van vandaag, maaltijden en taken met snelle toevoeg-opties |
 | **📅 Agenda** | Dag / week / maand / lijstweergave, herhaalde afspraken, multi-day support, filter op gezinslid, iCal export |
 | **✅ Taken** | Meerdere takenlijsten met custom volgorde, herhaalde taken, toewijzen aan gezinsleden, vervaldatum, verlopen-taken groepering |
@@ -27,6 +26,7 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 | **👨‍👩‍👧‍👦 Gezin** | Gezinsleden beheren met naam, kleur en emoji-avatar |
 | **🖼️ Foto's** | Upload foto's (JPEG/PNG), automatische thumbnails, diashow op dashboard, fullscreen viewer |
 | **🔍 Zoeken** | Globaal zoeken door agenda, taken en maaltijden met deep-linking |
+| **📱 Progressive Web App** | Installeerbaar als native app, werkt offline, app shortcuts, snelle laadtijden |
 | **📊 Statistieken** | Inzicht in gebruikspatronen, meest actieve leden, populaire maaltijden |
 | **⚙️ Instellingen** | Thema (licht/donker/systeem), fotogrootte dashboard, authenticatie toggle, export/import |
 
@@ -39,17 +39,6 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 - ✅ **Custom install prompt** - Gebruiksvriendelijke installatie-banner
 - ✅ **Update notificaties** - Automatische meldingen bij nieuwe versies
 - ✅ **Standalone mode** - Geen browser chrome, volledige app-ervaring
-
-### Herhaalde Series
-- **Agenda events** - Dagelijks, wekelijks, tweewekelijks, maandelijks, jaarlijks
-- **Taken** - Terugkerende taken met flexibele planning
-- **Exception handling** - Bewerk individuele voorkomsten zonder serie te breken
-- **Bulk updates** - Pas hele serie aan met één actie
-
-### Geavanceerde Filters
-- **Gezinslid filtering** - Zie alleen relevante items per persoon
-- **Type filtering** - Filter op maaltijdtype, takenlijst, etc.
-- **Datum ranges** - Flexibele datumbereiken voor overzichten
 
 ## 📋 Vereisten
 
@@ -435,35 +424,13 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-Standaard URL: **http://localhost:8002**
+Standaard URL: **http://localhost:8000**
 
 Zie volledige handleiding: [docs/README.docker.md](docs/README.docker.md)
 
 ## Database
 
 Het databaseschema en relaties staan in: [docs/database.md](docs/database.md)
-
-## 🆕 Recent Updates
-
-### v1.4.0 - PWA Implementation (March 2026)
-- ✅ Progressive Web App met offline support
-- ✅ Installeerbaar als native app (Android, iOS, Desktop)
-- ✅ Service Worker met intelligente caching
-- ✅ App shortcuts voor snelle toegang
-- ✅ Custom install prompt met smart dismissal
-- ✅ Safe-area support voor notched devices
-
-### v1.3.0 - Form Controller Refactoring (March 2026)
-- ✅ Gedeelde form controllers voor events en taken
-- ✅ Recurrence UI controller voor herhalings-logica
-- ✅ ~700 regels code duplicatie geëlimineerd (95% reductie)
-- ✅ Consistent gedrag over alle formulieren
-- ✅ Simplified mode voor dashboard quick-add
-
-### v1.2.0 - UI Improvements (March 2026)
-- ✅ Maandweergave met gelijkmatige kolom-breedtes
-- ✅ Foto modal met correcte aspect ratio
-- ✅ Maximale weergave-grootte voor foto's
 
 ## 🧪 Kwaliteit & Testing
 
@@ -473,7 +440,7 @@ ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest te
 ```
 
 **Test coverage:**
-- ~123 tests (pytest + pytest-asyncio)
+- ~150 tests (pytest + pytest-asyncio)
 - Backend API tests (agenda, tasks, meals, family, photos, search, stats)
 - Error handling tests
 - Recurrence logic tests
@@ -486,11 +453,6 @@ ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest te
 - ✅ Pytest test suite
 - ✅ Commitlint (conventional commits)
 
-**Code quality tools:**
-- **Ruff** - Fast Python linter (line length 120)
-- **Black** - Code formatter
-- **Mypy** - Static type checker (strict imports)
-- **Pytest** - Testing framework met async support
 ## 🏗️ Architectuur
 
 ### Request Flow
