@@ -10,6 +10,7 @@
   const screensaverTimeoutInput = document.getElementById('screensaver-timeout');
   const overviewRedirectTimeoutInput = document.getElementById('overview-redirect-timeout');
   const languageSelect    = document.getElementById('language');
+  const timezoneSelect    = document.getElementById('timezone');
   const weatherToggle     = document.getElementById('weather-enabled');
   const weatherLocationRow = document.getElementById('weather-location-row');
   const weatherLocationInput = document.getElementById('weather-location');
@@ -80,6 +81,10 @@
       languageSelect.value = s.language || 'nl';
     }
 
+    if (timezoneSelect) {
+      timezoneSelect.value = s.timezone || 'UTC';
+    }
+
     const theme = s.theme || 'system';
     const radio = form.querySelector(`input[name="theme"][value="${theme}"]`);
     if (radio) radio.checked = true;
@@ -119,6 +124,7 @@
       dashboard_screensaver_seconds: screensaverMinutes * 60,
       overview_redirect_seconds: overviewRedirectSeconds,
       language: languageSelect?.value || 'nl',
+      timezone: timezoneSelect?.value || 'UTC',
       theme,
       weather_enabled: weatherToggle.checked,
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',

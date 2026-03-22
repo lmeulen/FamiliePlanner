@@ -37,6 +37,7 @@ _KEYS = {
     "idle_redirect_seconds",
     "language",
     "theme",
+    "timezone",
     "weather_enabled",
     "weather_location",
     "mealie_server_url",
@@ -74,6 +75,7 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "idle_redirect_seconds": int(await _get(db, "overview_redirect_seconds", "60")),
         "language": language,
         "theme": await _get(db, "theme", "system"),
+        "timezone": await _get(db, "timezone", "UTC"),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
         "mealie_server_url": await _get(db, "mealie_server_url", ""),
@@ -127,6 +129,15 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "theme" in payload:
         t = payload["theme"] if payload["theme"] in ("light", "dark", "system") else "system"
         await _set(db, "theme", t)
+
+    if "timezone" in payload:
+        from zoneinfo import available_timezones
+
+        tz = str(payload["timezone"]).strip()
+        # Validate timezone exists
+        if tz not in available_timezones():
+            raise HTTPException(400, f"Ongeldige timezone: {tz}")
+        await _set(db, "timezone", tz)
 
     if "weather_enabled" in payload:
         await _set(db, "weather_enabled", str(bool(payload["weather_enabled"])).lower())
