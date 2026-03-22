@@ -331,6 +331,7 @@
         });
       }
 
+      Cache.invalidate(/^recipes_/);
       Modal.close();
       await loadRecipes();
     } catch (err) {
@@ -346,6 +347,7 @@
 
     try {
       await API.delete(`/api/recipes/${slug}`);
+      Cache.invalidate(/^recipes_/);
       Toast.show('Recept verwijderd', 'success');
       Modal.close();
       await loadRecipes();

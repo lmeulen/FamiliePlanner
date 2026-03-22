@@ -385,7 +385,7 @@
       simplified: false,
       eventCache: events,
       onSave: () => {
-        Cache.invalidate('agenda_events_');
+        Cache.invalidate(/^agenda_events_/);
         loadEvents(false);
       },
     });

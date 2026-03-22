@@ -26,6 +26,7 @@ confirmBtn.addEventListener('click', async () => {
   if (!pendingDeleteId) return;
   deleteOverlay.classList.add('hidden');
   await API.delete(`/api/photos/${pendingDeleteId}`);
+  Cache.invalidate(/^photos_/);
   await loadPhotos();
   pendingDeleteId = null;
 });
@@ -119,6 +120,7 @@ async function uploadFile(file) {
   try {
     const result = await API.post('/api/photos/', form);
     if (result) {
+      Cache.invalidate(/^photos_/);
       statusEl.textContent = 'Geüpload!';
       fileInput.value = '';
       await loadPhotos();
