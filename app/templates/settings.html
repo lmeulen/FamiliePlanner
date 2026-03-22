@@ -42,6 +42,29 @@
         </div>
       </div>
 
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main" data-i18n="settings.timezone">Tijdzone</span>
+          <span class="settings-label-hint" data-i18n="settings.timezoneHint">Tijdzone voor het weergeven van afspraken</span>
+        </span>
+        <div class="settings-control">
+          <select id="timezone" name="timezone" style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+            <option value="UTC">UTC</option>
+            <option value="Europe/Amsterdam">Europe/Amsterdam (CET/CEST)</option>
+            <option value="Europe/Brussels">Europe/Brussels</option>
+            <option value="Europe/London">Europe/London (GMT/BST)</option>
+            <option value="Europe/Paris">Europe/Paris</option>
+            <option value="Europe/Berlin">Europe/Berlin</option>
+            <option value="America/New_York">America/New_York (EST/EDT)</option>
+            <option value="America/Chicago">America/Chicago (CST/CDT)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+            <option value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="settings-row">
         <span class="settings-label">
           <span class="settings-label-main" data-i18n="settings.theme">Thema</span>
