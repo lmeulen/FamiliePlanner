@@ -1,6 +1,6 @@
 """CRUD router for FamilyMember."""
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Response
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.family import FamilyMember
 from app.schemas.family import FamilyMemberCreate, FamilyMemberOut, FamilyMemberUpdate
+from app.utils.crud import delete_model, get_or_404, update_model
 
 router = APIRouter(prefix="/api/family", tags=["family"])
 
@@ -32,33 +33,18 @@ async def create_member(payload: FamilyMemberCreate, db: AsyncSession = Depends(
 
 @router.get("/{member_id}", response_model=FamilyMemberOut)
 async def get_member(member_id: int, db: AsyncSession = Depends(get_db)):
-    member = await db.get(FamilyMember, member_id)
-    if not member:
-        logger.warning("family.member.not_found id={}", member_id)
-        raise HTTPException(404, "Family member not found")
-    return member
+    return await get_or_404(db, FamilyMember, member_id, "Family member not found")
 
 
 @router.put("/{member_id}", response_model=FamilyMemberOut)
 async def update_member(member_id: int, payload: FamilyMemberUpdate, db: AsyncSession = Depends(get_db)):
-    member = await db.get(FamilyMember, member_id)
-    if not member:
-        logger.warning("family.member.not_found id={}", member_id)
-        raise HTTPException(404, "Family member not found")
-    for key, value in payload.model_dump(exclude_unset=True).items():
-        setattr(member, key, value)
-    await db.commit()
-    await db.refresh(member)
+    member = await get_or_404(db, FamilyMember, member_id, "Family member not found")
+    await update_model(db, member, payload.model_dump(exclude_unset=True))
     logger.info("family.member.updated id={} name='{}'", member.id, member.name)
     return member
 
 
 @router.delete("/{member_id}", status_code=204)
 async def delete_member(member_id: int, db: AsyncSession = Depends(get_db)):
-    member = await db.get(FamilyMember, member_id)
-    if not member:
-        logger.warning("family.member.not_found id={}", member_id)
-        raise HTTPException(404, "Family member not found")
-    await db.delete(member)
-    await db.commit()
+    await delete_model(db, FamilyMember, member_id, "Family member not found")
     logger.info("family.member.deleted id={}", member_id)
