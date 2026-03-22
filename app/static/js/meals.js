@@ -151,6 +151,7 @@
           await API.post('/api/meals/', data);
           Toast.show('Maaltijd toegevoegd!');
         }
+        Cache.invalidate(/^meals_/);
         Modal.close();
         loadMeals();
       } catch (err) { Toast.show(err.message || 'Fout', 'error'); }
@@ -160,6 +161,7 @@
       if (!confirm('Maaltijd verwijderen?')) return;
       try {
         await API.delete(`/api/meals/${editId}`);
+        Cache.invalidate(/^meals_/);
         Toast.show('Maaltijd verwijderd', 'warning');
         Modal.close();
         loadMeals();

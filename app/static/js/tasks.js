@@ -120,6 +120,7 @@
         e.stopPropagation();
         try {
           await API.patch(`/api/tasks/${btn.dataset.id}/toggle`);
+          Cache.invalidate(/^tasks_/);
           Toast.show('Taak bijgewerkt!');
           loadTasks();
         } catch { Toast.show('Fout', 'error'); }
@@ -160,6 +161,7 @@
         const taskId = parseInt(element.dataset.id);
         try {
           await API.patch(`/api/tasks/${taskId}/toggle`);
+          Cache.invalidate(/^tasks_/);
           const task = tasks.find(t => t.id === taskId);
           if (task) {
             Toast.show(task.done ? 'Taak gemarkeerd als niet afgerond' : 'Taak afgerond! ✓');
@@ -182,6 +184,7 @@
 
         try {
           await API.delete(`/api/tasks/${taskId}`);
+          Cache.invalidate(/^tasks_/);
           Toast.show('Taak verwijderd', 'warning');
           await loadTasks();
         } catch (err) {
@@ -199,7 +202,10 @@
       formId: 'task-form',
       simplified: false,
       taskCache: tasks,
-      onSave: loadTasks,
+      onSave: () => {
+        Cache.invalidate(/^tasks_/);
+        loadTasks();
+      },
     });
 
     await controller.open(id);
@@ -214,6 +220,7 @@
       const data = { name: form.name.value, color: form.color.value };
       try {
         await API.post('/api/tasks/lists', data);
+        Cache.invalidate(/^tasks_/);
         Toast.show('Lijst aangemaakt!');
         Modal.close();
         await loadLists();
@@ -284,6 +291,7 @@
           API.put('/api/tasks/lists/reorder', listItems.map(i => ({ id: i.id, sort_order: i.sort_order }))),
           API.put('/api/tasks/overdue-position', { sort_order: overdueItem?.sort_order ?? 9999 }),
         ]);
+        Cache.invalidate(/^tasks_/);
         Toast.show('Volgorde opgeslagen!');
         Modal.close();
         await loadLists();

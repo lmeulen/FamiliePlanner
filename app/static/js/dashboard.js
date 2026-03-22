@@ -410,6 +410,7 @@
       btn.addEventListener('click', async () => {
         try {
           await API.patch(`/api/tasks/${btn.dataset.id}/toggle`);
+          Cache.invalidate(/^tasks_/);
           loadTasks();
           Toast.show('Taak bijgewerkt!');
         } catch {
@@ -464,7 +465,10 @@
       formId: 'event-form',
       simplified: true,
       eventCache: _events,
-      onSave: loadEvents,
+      onSave: () => {
+        Cache.invalidate(/^agenda_events_/);
+        loadEvents();
+      },
     });
 
     await controller.open(id);
@@ -477,7 +481,10 @@
       formId: 'task-form',
       simplified: true,
       taskCache: _tasks,
-      onSave: loadTasks,
+      onSave: () => {
+        Cache.invalidate(/^tasks_/);
+        loadTasks();
+      },
     });
 
     await controller.open(id);
@@ -534,6 +541,7 @@
           await API.post('/api/meals/', data);
           Toast.show('Maaltijd toegevoegd!');
         }
+        Cache.invalidate(/^meals_/);
         Modal.close(); loadMeals();
       } catch (err) { Toast.show(err.message || 'Fout bij opslaan', 'error'); }
     }, { once: true });
@@ -542,6 +550,7 @@
       if (!confirm('Maaltijd verwijderen?')) return;
       try {
         await API.delete(`/api/meals/${id}`);
+        Cache.invalidate(/^meals_/);
         Toast.show('Maaltijd verwijderd', 'warning');
         Modal.close(); loadMeals();
       } catch { Toast.show('Fout bij verwijderen', 'error'); }
