@@ -36,7 +36,7 @@
   }
 
   // ── Load recipes ────────────────────────────────────────────
-  async function loadRecipes() {
+  async function loadRecipes(useCache = true) {
     const grid = document.getElementById('recipes-grid');
     const emptyState = document.getElementById('recipes-empty');
     const configError = document.getElementById('config-error');
@@ -56,9 +56,36 @@
       if (categoryFilter) params.set('categories', categoryFilter);
       if (tagFilter) params.set('tags', tagFilter);
 
+      // Build cache key
+      const cacheKey = `recipes_list_${params.toString()}`;
+
+      // Try cache first
+      if (useCache) {
+        const cached = Cache.get(cacheKey);
+        if (cached) {
+          recipes = cached.items || [];
+          totalPages = cached.total_pages || 1;
+
+          if (recipes.length === 0) {
+            emptyState.classList.remove('hidden');
+            pagination.classList.add('hidden');
+          } else {
+            pagination.classList.remove('hidden');
+          }
+
+          renderGrid();
+          updatePagination();
+          return;
+        }
+      }
+
+      // Fetch from API
       const data = await API.get(`/api/recipes/?${params}`);
       recipes = data.items || [];
       totalPages = data.total_pages || 1;
+
+      // Cache for 10 minutes (recipes don't change often)
+      Cache.set(cacheKey, data, 600000);
 
       if (recipes.length === 0) {
         emptyState.classList.remove('hidden');
@@ -135,7 +162,17 @@
   // ── Open recipe detail ──────────────────────────────────────
   async function openRecipeDetail(slug) {
     try {
-      const recipe = await API.get(`/api/recipes/${slug}`);
+      // Build cache key
+      const cacheKey = `recipes_detail_${slug}`;
+
+      // Try cache first
+      let recipe = Cache.get(cacheKey);
+      if (!recipe) {
+        // Fetch from API
+        recipe = await API.get(`/api/recipes/${slug}`);
+        // Cache for 10 minutes
+        Cache.set(cacheKey, recipe, 600000);
+      }
 
       Modal.open('tpl-recipe-detail');
 
@@ -220,7 +257,13 @@
       title.textContent = 'Recept bewerken';
 
       try {
-        const recipe = await API.get(`/api/recipes/${slug}`);
+        // Try cache first
+        const cacheKey = `recipes_detail_${slug}`;
+        let recipe = Cache.get(cacheKey);
+        if (!recipe) {
+          recipe = await API.get(`/api/recipes/${slug}`);
+          Cache.set(cacheKey, recipe, 600000);
+        }
 
         form.elements.name.value = recipe.name || '';
         form.elements.description.value = recipe.description || '';
@@ -359,12 +402,26 @@
   // ── Load categories and tags for filters ────────────────────
   async function loadFilters() {
     try {
-      const categories = await API.get('/api/recipes/categories/all');
+      // Try cache for categories
+      let categories = Cache.get('recipes_categories');
+      if (!categories) {
+        categories = await API.get('/api/recipes/categories/all');
+        // Cache for 1 hour (categories rarely change)
+        Cache.set('recipes_categories', categories, 3600000);
+      }
+
       const categorySelect = document.getElementById('category-filter');
       categorySelect.innerHTML = '<option value="">Alle categorieën</option>' +
         categories.map(cat => `<option value="${FP.esc(cat.slug)}">${FP.esc(cat.name)}</option>`).join('');
 
-      const tags = await API.get('/api/recipes/tags/all');
+      // Try cache for tags
+      let tags = Cache.get('recipes_tags');
+      if (!tags) {
+        tags = await API.get('/api/recipes/tags/all');
+        // Cache for 1 hour (tags rarely change)
+        Cache.set('recipes_tags', tags, 3600000);
+      }
+
       const tagSelect = document.getElementById('tag-filter');
       tagSelect.innerHTML = '<option value="">Alle tags</option>' +
         tags.map(tag => `<option value="${FP.esc(tag.slug)}">${FP.esc(tag.name)}</option>`).join('');
@@ -381,7 +438,7 @@
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.trim();
       currentPage = 1;
-      loadRecipes();
+      loadRecipes(true); // Use cache for search
     });
 
     // Filters
@@ -389,28 +446,28 @@
     categorySelect.addEventListener('change', (e) => {
       categoryFilter = e.target.value;
       currentPage = 1;
-      loadRecipes();
+      loadRecipes(true); // Use cache for filters
     });
 
     const tagSelect = document.getElementById('tag-filter');
     tagSelect.addEventListener('change', (e) => {
       tagFilter = e.target.value;
       currentPage = 1;
-      loadRecipes();
+      loadRecipes(true); // Use cache for filters
     });
 
     // Pagination
     document.getElementById('prev-page').addEventListener('click', () => {
       if (currentPage > 1) {
         currentPage--;
-        loadRecipes();
+        loadRecipes(true); // Use cache for pagination
       }
     });
 
     document.getElementById('next-page').addEventListener('click', () => {
       if (currentPage < totalPages) {
         currentPage++;
-        loadRecipes();
+        loadRecipes(true); // Use cache for pagination
       }
     });
 
