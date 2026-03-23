@@ -1681,6 +1681,59 @@ img { max-width: 100%; }
   }
 }
 
+/* Phone-specific styles (does not affect tablets at 768px+) */
+@media (max-width: 640px) {
+  .settings-row,
+  .settings-row--col {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .5rem;
+  }
+
+  .settings-control {
+    flex-basis: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .settings-row--col:has(.settings-number-input) .settings-control {
+    flex-basis: auto;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .settings-label {
+    flex: 1 1 auto;
+  }
+
+  .settings-row .toggle-wrap {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
+  .theme-options {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .theme-option {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .settings-section-title {
+    font-size: .8rem;
+  }
+
+  .settings-label-main {
+    font-size: .88rem;
+  }
+
+  .settings-label-hint {
+    font-size: .75rem;
+  }
+}
+
 .settings-sidebar {
   position: sticky;
   top: .75rem;

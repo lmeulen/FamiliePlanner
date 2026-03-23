@@ -54,6 +54,17 @@ alembic revision --autogenerate -m "Description"
 alembic upgrade head
 ```
 
+### Docker
+
+FamiliePlanner supports Docker deployment:
+
+```bash
+cp .env.example .env
+docker-compose up -d
+```
+
+See full guide: [docs/README.docker.md](docs/README.docker.md)
+
 ### Utility Tools
 
 The `tools/` directory contains standalone scripts for maintenance and data operations:
@@ -133,9 +144,21 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - `app/static/js/modal.js` - Reusable modal controller
 - `app/static/js/theme.js` - Theme switcher (light/dark/system)
 - `app/static/js/cache.js` - Client-side caching utilities
+- `app/static/js/pwa-install.js` - PWA install prompt handler
 - `app/static/js/grocery-db.js` - IndexedDB wrapper for offline grocery list
+- `app/static/js/form-controllers/` - **Shared form controllers** for DRY principle
+  - `recurrence-ui.js` - Recurrence field management (used by both events and tasks)
+  - `event-form.js` - Event CRUD controller (agenda + dashboard)
+  - `task-form.js` - Task CRUD controller (tasks + dashboard)
 - `app/static/js/{page}.js` - Page-specific logic (agenda.js, tasks.js, meals.js, grocery.js, photos.js, dashboard.js, family.js, settings.js, search.js, stats.js)
 - `app/templates/*.html` - Jinja2 templates extending `base.html`
+
+**PWA Features:**
+- Installable as native app (Android, iOS, Windows, macOS)
+- Service Worker with offline-first caching strategy (`app/static/sw.js`)
+- App shortcuts for quick access (Agenda, Taken, Maaltijden)
+- Manifest file (`app/static/manifest.json`) with icons and theme colors
+- Update notifications when new versions are available
 
 **Global Objects:**
 - `window.FP` - Date/time formatting, member utilities, UI helpers
@@ -221,6 +244,15 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 4. POST/PUT/DELETE via `API.*()`
 5. Success → re-fetch and re-render OR update local state
 6. Show Toast notification
+
+### Frontend Patterns
+
+**Form Controllers (DRY Principle):**
+- Shared form controllers in `app/static/js/form-controllers/` to avoid code duplication
+- `event-form.js` handles event CRUD across both agenda page and dashboard quick-add
+- `task-form.js` handles task CRUD across tasks page and dashboard quick-add
+- `recurrence-ui.js` manages recurrence UI fields for both events and tasks
+- When modifying event/task forms, update the controller, not individual page scripts
 
 ### CSRF Protection
 
