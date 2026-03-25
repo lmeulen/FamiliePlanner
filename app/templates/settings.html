@@ -196,6 +196,67 @@
       </div>
     </section>
 
+    <!-- ── Calendar Sync ─────────────────────────────────────────────── -->
+    <section class="settings-section card">
+      <h2 class="settings-section-title">📅 Agenda Synchronisatie</h2>
+      <p class="settings-side-intro">
+        Synchroniseer je agenda met externe kalender apps (Google Calendar, Apple Calendar, Outlook).
+      </p>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Abonnements-URL</span>
+          <span class="settings-label-hint">Gebruik deze URL in je kalender app om te abonneren</span>
+        </span>
+        <div class="settings-control">
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="calendar-sub-url" readonly
+                   style="flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); color: var(--text); font-family: monospace; font-size: 0.85rem;" />
+            <button type="button" id="copy-sub-url-btn" class="btn btn--secondary" style="white-space: nowrap;">
+              📋 Kopieer
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Per Gezinslid</span>
+          <span class="settings-label-hint">Specifieke agenda voor één gezinslid</span>
+        </span>
+        <div id="member-subscription-urls" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Dynamically populated by JavaScript -->
+        </div>
+      </div>
+
+      <details class="settings-instructions">
+        <summary style="cursor: pointer; font-weight: 500; padding: 0.5rem 0;">
+          📖 Instructies voor kalender apps
+        </summary>
+        <div style="padding: 1rem 0; line-height: 1.6;">
+          <strong>Google Calendar:</strong><br>
+          1. Open Google Calendar op je computer<br>
+          2. Klik links op "+" naast "Andere agenda's"<br>
+          3. Selecteer "Van URL"<br>
+          4. Plak de abonnements-URL<br>
+          5. Klik "Agenda toevoegen"<br><br>
+
+          <strong>Apple Calendar (iPhone/iPad/Mac):</strong><br>
+          1. Open Instellingen → Agenda → Accounts<br>
+          2. Tik "Account toevoegen" → "Overige" → "CalDAV-account"<br>
+          3. Plak de volledige URL in het Server-veld<br>
+          4. Laat Gebruikersnaam en Wachtwoord leeg<br>
+          5. Tik "Volgende"<br><br>
+
+          <strong>Outlook:</strong><br>
+          1. Open Outlook Calendar<br>
+          2. Klik "Agenda toevoegen" → "Abonneren vanaf web"<br>
+          3. Plak de abonnements-URL<br>
+          4. Geef een naam en klik "Importeren"
+        </div>
+      </details>
+    </section>
+
         <div class="settings-actions">
           <button type="submit" class="btn btn--primary" data-i18n="settings.save">Opslaan</button>
           <span class="settings-save-status hidden" id="save-status" data-i18n="settings.saved">✅ Opgeslagen</span>

@@ -30,6 +30,43 @@ from app.utils.recurrence import generate_occurrence_dates
 router = APIRouter(prefix="/api/agenda", tags=["agenda"])
 
 
+# ── Calendar subscription caching ──────────────────────────────────────
+
+_calendar_cache: dict[str, tuple[bytes, float]] = {}
+_CACHE_TTL = 300  # 5 minutes
+
+
+def _get_cache_key(member_id: int | None) -> str:
+    """Generate cache key for subscription."""
+    return f"cal:{member_id or 'all'}"
+
+
+def _get_cached_calendar(cache_key: str) -> bytes | None:
+    """Get cached calendar if still valid."""
+    if cache_key in _calendar_cache:
+        ical_bytes, expiry = _calendar_cache[cache_key]
+        if datetime.now().timestamp() < expiry:
+            return ical_bytes
+        del _calendar_cache[cache_key]
+    return None
+
+
+def _cache_calendar(cache_key: str, ical_bytes: bytes):
+    """Cache calendar with TTL."""
+    expiry = datetime.now().timestamp() + _CACHE_TTL
+    _calendar_cache[cache_key] = (ical_bytes, expiry)
+
+    # Cleanup expired entries when cache grows
+    if len(_calendar_cache) > 50:
+        now = datetime.now().timestamp()
+        expired = [k for k, (_, exp) in _calendar_cache.items() if exp < now]
+        for k in expired:
+            del _calendar_cache[k]
+
+
+# ──────────────────────────────────────────────────────────────────────
+
+
 def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
     occurrence_dates = generate_occurrence_dates(
         recurrence_type=series.recurrence_type,
@@ -430,3 +467,177 @@ async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(event)
     await db.commit()
     logger.info("agenda.event.deleted id={}", event_id)
+
+
+# ── Calendar Subscription ─────────────────────────────────────────────
+
+
+@router.get("/export/calendar.ics", response_class=Response)
+async def export_calendar_subscription(
+    member_id: int | None = Query(None, description="Filter by family member"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Public calendar subscription endpoint for external calendar apps.
+
+    Returns all events (30 days past + 365 days future) as iCal feed.
+    No authentication required - calendar apps can subscribe directly.
+    """
+    # Check cache
+    cache_key = _get_cache_key(member_id)
+    cached = _get_cached_calendar(cache_key)
+    if cached:
+        logger.debug("calendar.subscription.cache_hit member_id={}", member_id)
+        return Response(
+            content=cached,
+            media_type="text/calendar",
+            headers={
+                "Content-Disposition": 'inline; filename="familieplanner.ics"',
+                "Cache-Control": "public, max-age=300",
+            },
+        )
+
+    # Query events: 30 days past + 365 days future
+    today = date.today()
+    start_dt = datetime.combine(today - timedelta(days=30), datetime.min.time())
+    end_dt = datetime.combine(today + timedelta(days=365), datetime.max.time())
+
+    # Build query with optional member filter
+    stmt = (
+        select(AgendaEvent)
+        .options(selectinload(AgendaEvent.members))
+        .where(
+            AgendaEvent.start_time >= start_dt,
+            AgendaEvent.start_time <= end_dt,
+        )
+    )
+
+    if member_id is not None:
+        stmt = stmt.join(agenda_event_members).where(agenda_event_members.c.member_id == member_id)
+
+    stmt = stmt.order_by(AgendaEvent.start_time)
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+
+    # Load all series for RRULE export
+    series_ids = {e.series_id for e in events if e.series_id is not None}
+    series_map = {}
+    if series_ids:
+        series_result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id.in_(series_ids)))
+        series_map = {s.id: s for s in series_result.scalars().all()}
+
+    # Build calendar
+    cal = Calendar()
+    cal.add("prodid", "-//FamiliePlanner//Calendar Subscription//NL")
+    cal.add("version", "2.0")
+    cal.add("calscale", "GREGORIAN")
+    cal.add("method", "PUBLISH")
+    cal.add("x-wr-calname", "FamiliePlanner")
+    cal.add("x-wr-timezone", "UTC")
+    cal.add("refresh-interval", timedelta(minutes=30))
+    cal.add("x-published-ttl", timedelta(minutes=30))
+
+    # Track exported series to avoid duplicates
+    exported_series: set[int] = set()
+
+    for event in events:
+        series = series_map.get(event.series_id) if event.series_id else None
+
+        # Export series with RRULE (once per series)
+        if series and not event.is_exception and event.series_id and event.series_id not in exported_series:
+            ical_event = _build_series_event(series, event)
+            cal.add_component(ical_event)
+            exported_series.add(event.series_id)  # series_id is guaranteed to be int here
+
+        # Export exceptions and standalone events individually
+        elif event.is_exception or not series:
+            ical_event = _build_single_event(event, series)
+            cal.add_component(ical_event)
+
+    ical_bytes = cal.to_ical()
+    _cache_calendar(cache_key, ical_bytes)
+
+    logger.info(
+        "calendar.subscription.generated member_id={} events={} series={}",
+        member_id,
+        len(events),
+        len(exported_series),
+    )
+
+    return Response(
+        content=ical_bytes,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": 'inline; filename="familieplanner.ics"',
+            "Cache-Control": "public, max-age=300",
+        },
+    )
+
+
+def _build_series_event(series: RecurrenceSeries, base_event: AgendaEvent) -> ICalEvent:
+    """Build iCal event for recurring series with RRULE."""
+    ical_event = ICalEvent()
+    ical_event.add("uid", f"familieplanner-series-{series.id}@familieplanner")
+    ical_event.add("summary", series.title)
+
+    if series.description:
+        ical_event.add("description", series.description)
+    if series.location:
+        ical_event.add("location", series.location)
+
+    ical_event.add("dtstamp", datetime.now())
+    ical_event.add("created", series.created_at)
+
+    # Use first occurrence as base date
+    if series.all_day:
+        event_date = base_event.start_time.date()
+        ical_event.add("dtstart", event_date)
+        end_date = base_event.end_time.date() + timedelta(days=1)
+        ical_event.add("dtend", end_date)
+    else:
+        ical_event.add("dtstart", base_event.start_time)
+        ical_event.add("dtend", base_event.end_time)
+
+    # Add RRULE (reuse existing _build_rrule function)
+    rrule = _build_rrule(series)
+    if rrule:
+        ical_event.add("rrule", rrule)
+
+    return ical_event
+
+
+def _build_single_event(event: AgendaEvent, series: RecurrenceSeries | None) -> ICalEvent:
+    """Build iCal event for standalone or exception event."""
+    ical_event = ICalEvent()
+
+    # For exceptions, use series UID + RECURRENCE-ID
+    if event.is_exception and event.series_id:
+        ical_event.add("uid", f"familieplanner-series-{event.series_id}@familieplanner")
+        # RECURRENCE-ID indicates which occurrence is modified
+        if event.all_day:
+            ical_event.add("recurrence-id", event.start_time.date())
+        else:
+            ical_event.add("recurrence-id", event.start_time)
+    else:
+        ical_event.add("uid", f"familieplanner-event-{event.id}@familieplanner")
+
+    ical_event.add("summary", event.title)
+
+    if event.description:
+        ical_event.add("description", event.description)
+    if event.location:
+        ical_event.add("location", event.location)
+
+    ical_event.add("dtstamp", datetime.now())
+    ical_event.add("created", event.created_at)
+
+    if event.all_day:
+        event_date = event.start_time.date()
+        ical_event.add("dtstart", event_date)
+        end_date = event.end_time.date() + timedelta(days=1)
+        ical_event.add("dtend", end_date)
+    else:
+        ical_event.add("dtstart", event.start_time)
+        ical_event.add("dtend", event.end_time)
+
+    return ical_event
