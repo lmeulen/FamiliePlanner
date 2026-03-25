@@ -430,5 +430,68 @@
     });
   }
 
+  // ── Calendar Subscription ────────────────────────────────
+  const calendarSubUrlInput = document.getElementById('calendar-sub-url');
+  const copySubUrlBtn = document.getElementById('copy-sub-url-btn');
+  const memberSubscriptionUrlsDiv = document.getElementById('member-subscription-urls');
+
+  function loadSubscriptionUrl() {
+    // Build full URL (no token needed - public endpoint)
+    const baseUrl = window.location.origin;
+    const subscriptionUrl = `${baseUrl}/api/agenda/export/calendar.ics`;
+    calendarSubUrlInput.value = subscriptionUrl;
+
+    // Load family members for per-member URLs
+    API.get('/api/family/').then(members => {
+      if (members && members.length > 0) {
+        memberSubscriptionUrlsDiv.innerHTML = '';
+        members.forEach(member => {
+          const memberUrl = `${baseUrl}/api/agenda/export/calendar.ics?member_id=${member.id}`;
+
+          const container = document.createElement('div');
+          container.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+
+          const label = document.createElement('span');
+          label.textContent = member.avatar + ' ' + member.name;
+          label.style.cssText = 'min-width: 120px; font-weight: 500;';
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = memberUrl;
+          input.readOnly = true;
+          input.style.cssText = 'flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-alt); color: var(--text); font-family: monospace; font-size: 0.85rem;';
+
+          const copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'btn btn--secondary';
+          copyBtn.textContent = '📋';
+          copyBtn.style.whiteSpace = 'nowrap';
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(memberUrl);
+            Toast.show(`URL voor ${member.name} gekopieerd!`, 'success');
+          };
+
+          container.appendChild(label);
+          container.appendChild(input);
+          container.appendChild(copyBtn);
+          memberSubscriptionUrlsDiv.appendChild(container);
+        });
+      }
+    }).catch(err => {
+      console.error('Failed to load family members:', err);
+    });
+  }
+
+  copySubUrlBtn?.addEventListener('click', () => {
+    const url = calendarSubUrlInput.value;
+    if (url) {
+      navigator.clipboard.writeText(url);
+      Toast.show('Abonnements-URL gekopieerd!', 'success');
+    }
+  });
+
+  // Load subscription URL on page load
+  loadSubscriptionUrl();
+
   load();
 })();
