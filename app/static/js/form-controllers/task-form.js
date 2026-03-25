@@ -179,21 +179,25 @@ class TaskFormController {
     const listSel = this.form.querySelector('select[name="list_id"]');
     const listId = listSel?.value ? parseInt(listSel.value) : (this.lists[0]?.id || null);
 
-    // Check if creating new recurring series
-    const recurToggle = this.form.querySelector('#recurrence-toggle');
-    if (!this.editId && recurToggle?.checked) {
-      await this.handleCreateSeries(listId, memberIds);
-      return;
-    }
+    const saveButton = this.form.querySelector('button[type="submit"]');
 
-    // Check if editing series
-    if (this.seriesId && this.editScope === 'series') {
-      await this.handleUpdateSeries(listId, memberIds);
-      return;
-    }
+    await API.withButtonLoading(saveButton, async () => {
+      // Check if creating new recurring series
+      const recurToggle = this.form.querySelector('#recurrence-toggle');
+      if (!this.editId && recurToggle?.checked) {
+        await this.handleCreateSeries(listId, memberIds);
+        return;
+      }
 
-    // Single task create/update
-    await this.handleSingleTask(listId, memberIds);
+      // Check if editing series
+      if (this.seriesId && this.editScope === 'series') {
+        await this.handleUpdateSeries(listId, memberIds);
+        return;
+      }
+
+      // Single task create/update
+      await this.handleSingleTask(listId, memberIds);
+    });
   }
 
   async handleCreateSeries(listId, memberIds) {

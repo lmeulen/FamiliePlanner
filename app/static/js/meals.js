@@ -143,18 +143,23 @@
         recipe_url:     recipeUrl,
         cook_member_id: cookVal ? parseInt(cookVal) : null,
       };
-      try {
-        if (editId) {
-          await API.put(`/api/meals/${editId}`, data);
-          Toast.show('Maaltijd bijgewerkt!');
-        } else {
-          await API.post('/api/meals/', data);
-          Toast.show('Maaltijd toegevoegd!');
-        }
-        Cache.invalidate(/^meals_/);
-        Modal.close();
-        loadMeals();
-      } catch (err) { Toast.show(err.message || 'Fout', 'error'); }
+
+      const saveButton = form.querySelector('button[type="submit"]');
+
+      await API.withButtonLoading(saveButton, async () => {
+        try {
+          if (editId) {
+            await API.put(`/api/meals/${editId}`, data);
+            Toast.show('Maaltijd bijgewerkt!');
+          } else {
+            await API.post('/api/meals/', data);
+            Toast.show('Maaltijd toegevoegd!');
+          }
+          Cache.invalidate(/^meals_/);
+          Modal.close();
+          loadMeals();
+        } catch (err) { Toast.show(err.message || 'Fout', 'error'); }
+      });
     }, { once: true });
 
     delBtn.addEventListener('click', async () => {

@@ -59,11 +59,15 @@ window.API = (() => {
     if (!_SAFE.has(method)) opts.headers['X-CSRF-Token'] = _csrfToken();
     if (data !== undefined) opts.body = isFormData ? data : JSON.stringify(data);
 
+    // Show global loader
+    if (window.GlobalLoader) window.GlobalLoader.show();
+
     let res;
     try {
       res = await fetch(BASE + path, opts);
     } catch (err) {
       // Network error (no internet, CORS, etc.)
+      if (window.GlobalLoader) window.GlobalLoader.hide();
       throw new Error('Geen internetverbinding. Controleer je verbinding en probeer opnieuw.');
     }
 
@@ -81,6 +85,7 @@ window.API = (() => {
 
     // Error response
     if (!res.ok) {
+      if (window.GlobalLoader) window.GlobalLoader.hide();
       const errorMessage = _formatError(json, res.status);
       const error = new Error(errorMessage);
       error.status = res.status;
@@ -90,6 +95,8 @@ window.API = (() => {
       throw error;
     }
 
+    // Hide global loader on success
+    if (window.GlobalLoader) window.GlobalLoader.hide();
     return json;
   }
 
@@ -101,3 +108,27 @@ window.API = (() => {
     delete: (path)        => request('DELETE', path),
   };
 })();
+
+/**
+ * Execute async function with button loading state.
+ * Automatically disables button, shows spinner, and re-enables after completion.
+ *
+ * Usage: await API.withButtonLoading(saveButton, async () => { await API.post(...) });
+ */
+window.API.withButtonLoading = async function(button, asyncFn) {
+  if (!button) return await asyncFn();
+
+  const originalDisabled = button.disabled;
+  const originalText = button.textContent;
+
+  try {
+    button.disabled = true;
+    button.classList.add('btn--loading');
+
+    return await asyncFn();
+  } finally {
+    button.disabled = originalDisabled;
+    button.classList.remove('btn--loading');
+    button.textContent = originalText; // Restore text in case it was changed
+  }
+};

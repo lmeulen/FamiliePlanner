@@ -31,10 +31,23 @@
 </div>
 
 <!-- Calendar grid -->
-<div id="cal-view" class="cal-view"></div>
+<div id="cal-view" class="cal-view">
+  <div id="cal-skeleton" class="skeleton-list hidden">
+    <div class="skeleton" style="height: 80px;"></div>
+    <div class="skeleton" style="height: 60px;"></div>
+    <div class="skeleton" style="height: 70px;"></div>
+    <div class="skeleton" style="height: 50px;"></div>
+  </div>
+</div>
 
 <!-- Events list (list view) -->
-<div id="events-list-view" class="card-list hidden"></div>
+<div id="events-list-view" class="card-list hidden">
+  <div id="list-skeleton" class="skeleton-list hidden">
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+</div>
 
 <!-- FAB: add event -->
 <button class="fab" id="btn-add-event" aria-label="Afspraak toevoegen">＋</button>

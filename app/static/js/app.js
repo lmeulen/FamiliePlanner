@@ -754,3 +754,27 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// ── Global Loader ──────────────────────────────────────────────────
+
+window.GlobalLoader = (() => {
+  let count = 0; // Track concurrent requests
+  const el = document.getElementById('global-loader');
+
+  function show() {
+    count++;
+    if (el) el.classList.remove('hidden');
+  }
+
+  function hide() {
+    count = Math.max(0, count - 1);
+    if (count === 0 && el) {
+      // Small delay for smooth transition
+      setTimeout(() => {
+        if (count === 0) el.classList.add('hidden');
+      }, 200);
+    }
+  }
+
+  return { show, hide };
+})();

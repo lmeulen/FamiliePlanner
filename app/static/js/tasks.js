@@ -118,12 +118,26 @@
     document.querySelectorAll('.task-check').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
+        const taskId = parseInt(btn.dataset.id);
+        const task = tasks.find(t => t.id === taskId);
+
+        if (!task) return;
+
+        // Optimistically update UI
+        const originalDone = task.done;
+        task.done = !task.done;
+        renderTasks(); // Update UI immediately
+
         try {
-          await API.patch(`/api/tasks/${btn.dataset.id}/toggle`);
+          await API.patch(`/api/tasks/${taskId}/toggle`);
           Cache.invalidate(/^tasks_/);
-          Toast.show('Taak bijgewerkt!');
-          loadTasks();
-        } catch { Toast.show('Fout', 'error'); }
+          Toast.show(task.done ? 'Taak afgerond! 🎉' : 'Taak heropend');
+        } catch (err) {
+          // Revert on error
+          task.done = originalDone;
+          renderTasks();
+          Toast.show('Kon taak niet bijwerken', 'error');
+        }
       });
     });
 

@@ -11,6 +11,16 @@
 
   // ── Load & render ─────────────────────────────────────────────
   async function loadEvents(useCache = true) {
+    // Show skeleton at start
+    const skeleton = document.getElementById('cal-skeleton') || document.getElementById('list-skeleton');
+    if (skeleton) skeleton.classList.remove('hidden');
+
+    // Hide actual content during load
+    const calGrid = document.getElementById('cal-grid');
+    const listBody = document.getElementById('events-list-body');
+    if (calGrid) calGrid.classList.add('hidden');
+    if (listBody) listBody.classList.add('hidden');
+
     try {
       const start = new Date(curDate);
       start.setMonth(start.getMonth() - 1);
@@ -26,6 +36,10 @@
         const cached = Cache.get(cacheKey);
         if (cached) {
           events = cached;
+          // Hide skeleton, show content
+          if (skeleton) skeleton.classList.add('hidden');
+          if (calGrid) calGrid.classList.remove('hidden');
+          if (listBody) listBody.classList.remove('hidden');
           render();
           return;
         }
@@ -39,6 +53,11 @@
     } catch {
       events = [];
       Toast.show('Kon agenda niet laden', 'error');
+    } finally {
+      // Hide skeleton after load (success or error)
+      if (skeleton) skeleton.classList.add('hidden');
+      if (calGrid) calGrid.classList.remove('hidden');
+      if (listBody) listBody.classList.remove('hidden');
     }
     render();
   }

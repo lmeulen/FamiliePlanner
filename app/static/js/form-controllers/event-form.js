@@ -281,18 +281,22 @@ class EventFormController {
       member_ids: FP.getSelectedMemberIds(this.getMemberPickerId()),
     };
 
-    try {
-      if (!this.editId) {
-        await this.handleCreate(eventData, startDt, endDt);
-      } else {
-        await this.handleUpdate(eventData, startDt, endDt);
-      }
+    const saveButton = this.form.querySelector('button[type="submit"]');
 
-      Modal.close();
-      this.onSave();
-    } catch (err) {
-      Toast.show(err.message || 'Fout bij opslaan', 'error');
-    }
+    await API.withButtonLoading(saveButton, async () => {
+      try {
+        if (!this.editId) {
+          await this.handleCreate(eventData, startDt, endDt);
+        } else {
+          await this.handleUpdate(eventData, startDt, endDt);
+        }
+
+        Modal.close();
+        this.onSave();
+      } catch (err) {
+        Toast.show(err.message || 'Fout bij opslaan', 'error');
+      }
+    });
   }
 
   async handleCreate(eventData, startDt, endDt) {
