@@ -30,16 +30,6 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 | **📊 Statistieken** | Inzicht in gebruikspatronen, meest actieve leden, populaire maaltijden |
 | **⚙️ Instellingen** | Thema (licht/donker/systeem), fotogrootte dashboard, authenticatie toggle, export/import |
 
-## 🎯 Kernfuncties
-
-### Progressive Web App (PWA)
-- ✅ **Installeerbaar als native app** - Android, iOS, Windows, macOS
-- ✅ **Offline support** - Werkt zonder internetverbinding (cached data)
-- ✅ **App shortcuts** - Snelle toegang tot Agenda, Taken, Maaltijden
-- ✅ **Custom install prompt** - Gebruiksvriendelijke installatie-banner
-- ✅ **Update notificaties** - Automatische meldingen bij nieuwe versies
-- ✅ **Standalone mode** - Geen browser chrome, volledige app-ervaring
-
 ## 📋 Vereisten
 
 - Python 3.11+
@@ -269,79 +259,6 @@ FamiliePlanner/
 
 Interactieve documentatie: **http://\<server\>:8000/api/docs** (Swagger UI)
 
-### Endpoints
-
-| Endpoint | Beschrijving |
-|----------|-------------|
-| **Agenda** ||
-| `GET/POST /api/agenda/` | Lijst/creëer events (met date filtering) |
-| `PUT/DELETE /api/agenda/{id}` | Update/verwijder event |
-| `GET/POST /api/agenda/series` | Lijst/creëer recurring series |
-| `PUT/DELETE /api/agenda/series/{id}` | Update/verwijder series (regenereert voorkomsten) |
-| `GET /api/agenda/{id}/export` | Export event als iCal (.ics) |
-| **Taken** ||
-| `GET/POST /api/tasks/` | Lijst/creëer taken (filters: list_id, member_id, done) |
-| `PUT/DELETE /api/tasks/{id}` | Update/verwijder taak |
-| `PATCH /api/tasks/{id}/toggle` | Toggle done status |
-| `GET/POST /api/tasks/lists` | Lijst/creëer takenlijsten |
-| `PUT /api/tasks/lists/reorder` | Herorder takenlijsten |
-| `GET/POST /api/tasks/series` | Lijst/creëer recurring task series |
-| `GET /api/tasks/overdue-position` | Ophalen positie "Verlopen taken" groep |
-| **Maaltijden** ||
-| `GET/POST /api/meals/` | Lijst/creëer maaltijden (filters: start, end, meal_type) |
-| `GET /api/meals/today` | Maaltijden van vandaag |
-| `GET /api/meals/week` | Maaltijden komende 7 dagen |
-| **Familie** ||
-| `GET/POST /api/family/` | Lijst/creëer gezinsleden |
-| `PUT/DELETE /api/family/{id}` | Update/verwijder gezinslid |
-| **Foto's** ||
-| `GET/POST /api/photos/` | Lijst/upload foto's (multipart/form-data) |
-| `DELETE /api/photos/{id}` | Verwijder foto (inclusief thumbnail) |
-| **Zoeken** ||
-| `GET /api/search/?q={query}` | Zoek in agenda, taken, maaltijden (min 3 chars) |
-| **Statistieken** ||
-| `GET /api/stats/overview` | Usage statistics (events, tasks, meals per member) |
-| `GET /api/stats/meals/popular` | Meest geplande maaltijden |
-| **Instellingen** ||
-| `GET /api/settings/` | Ophalen app settings |
-| `PUT /api/settings/` | Update settings |
-
-### Response Formats
-
-**Success:**
-```json
-{
-  "id": 1,
-  "title": "Voetbaltraining",
-  "start_time": "2026-03-15T14:00:00",
-  "member_ids": [1, 2]
-}
-```
-
-**Error:**
-```json
-{
-  "detail": "Event not found"
-}
-```
-
-## 📊 Monitoring
-
-**Prometheus metrics** beschikbaar op: `http://\<server\>:8000/metrics`
-
-**Getrackte metrics:**
-- `http_requests_total` - HTTP requests per method/endpoint/status
-- `http_request_duration_seconds` - Request latency (histogram)
-- `db_query_duration_seconds` - Database query duration
-- `db_connections_active` - Active DB connections
-- `events_created_total` - Aantal aangemaakte events
-- `tasks_created_total` - Aantal aangemaakte taken
-- `tasks_completed_total` - Aantal afgevinkte taken
-- `meals_created_total` - Aantal geplande maaltijden
-- `photos_uploaded_total` - Aantal geüploade foto's
-
-**Grafana dashboard:** Importeer metrics voor visualisatie
-
 ## Tests
 
 ```bash
@@ -439,63 +356,12 @@ Het databaseschema en relaties staan in: [docs/database.md](docs/database.md)
 ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest tests/ -v
 ```
 
-**Test coverage:**
-- ~150 tests (pytest + pytest-asyncio)
-- Backend API tests (agenda, tasks, meals, family, photos, search, stats)
-- Error handling tests
-- Recurrence logic tests
-- Settings tests
-
 **CI/CD Pipeline (GitHub Actions):**
 - ✅ Ruff linting
 - ✅ Black formatting check
 - ✅ Mypy type checking
 - ✅ Pytest test suite
 - ✅ Commitlint (conventional commits)
-
-## 🏗️ Architectuur
-
-### Request Flow
-```
-Request → SessionMiddleware → CSRFMiddleware → AuthMiddleware →
-SlowAPIMiddleware (rate limiting) → PrometheusMiddleware (metrics) →
-FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
-```
-
-### Database Schema
-- **One-to-Many**: FamilyMember → Events/Tasks/Meals
-- **Many-to-Many**: Events ↔ Members, Tasks ↔ Members (junction tables)
-- **Recurring Series**: Separate tables for rules (RecurrenceSeries, TaskRecurrenceSeries)
-- **Exception Handling**: `is_exception` flag voor individuele series-wijzigingen
-
-Volledige schema documentatie: [docs/database.md](docs/database.md)
-
-### Frontend Architecture
-- **No build tools** - Pure HTML/CSS/JS met Jinja2 templates
-- **Module pattern** - IIFE's per page (agenda.js, tasks.js, etc.)
-- **Shared controllers** - Form controllers in `form-controllers/` directory
-- **Global utilities** - `window.FP` object met helpers (date/time, members, UI)
-- **Service Worker** - Offline-first caching strategy
-
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow code style (ruff, black, mypy)
-4. Write tests for new features
-5. Commit with conventional commits (`feat:`, `fix:`, `docs:`, etc.)
-6. Open a Pull Request
-
-**Before submitting:**
-```bash
-# Run all quality checks
-ruff check . --fix
-black .
-mypy app/ --ignore-missing-imports
-pytest tests/ -v
-```
 
 ## 📄 License
 
