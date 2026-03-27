@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 
-from dateutil.rrule import (  # type: ignore[import-untyped]
+from dateutil.rrule import (
     DAILY,
     FR,
     MO,
