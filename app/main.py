@@ -35,6 +35,7 @@ from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
 from app.routers import agenda, family, grocery, meals, photos, recipes, search, stats, tasks
 from app.routers import settings as settings_router
+from app.security import SecurityHeadersMiddleware
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -115,11 +116,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # ── Middleware (outermost last = SessionMiddleware runs first) ────
-# Execution order: SessionMiddleware → CSRFMiddleware → AuthMiddleware → PrometheusMiddleware → SlowAPI → routes
+# Execution order: SessionMiddleware → SecurityHeadersMiddleware → CSRFMiddleware → AuthMiddleware → PrometheusMiddleware → SlowAPI → routes
 app.add_middleware(AuthMiddleware)
 app.add_middleware(PrometheusMiddleware)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 
 
@@ -329,6 +331,31 @@ async def metrics():
         db_connections.set(0)
 
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.post("/api/csp-report", tags=["security"], include_in_schema=False)
+async def csp_violation_report(request: Request):
+    """
+    Content-Security-Policy violation reporting endpoint.
+
+    Logs CSP violations reported by browsers. This helps identify resources
+    that are blocked by the CSP policy during development and production.
+    """
+    try:
+        violation = await request.json()
+        csp_report = violation.get("csp-report", {})
+
+        logger.warning(
+            "CSP Violation: {} blocked {} from {}",
+            csp_report.get("violated-directive", "unknown"),
+            csp_report.get("blocked-uri", "unknown"),
+            csp_report.get("document-uri", "unknown"),
+        )
+    except Exception:  # noqa: BLE001
+        # Don't break on invalid reports
+        pass
+
+    return {"status": "reported"}
 
 
 # Static files (with cache headers)

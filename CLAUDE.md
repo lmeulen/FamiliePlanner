@@ -261,6 +261,34 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 - `api.js` reads token and adds to all non-GET requests via `X-CSRF-Token` header
 - `/login` endpoint is exempt from CSRF checks (no session exists at first login)
 
+### Security Headers
+
+All responses include security headers via `SecurityHeadersMiddleware`:
+
+**Content-Security-Policy (CSP)**:
+- `default-src 'self'` - Only allow resources from same origin
+- `script-src 'self' 'unsafe-inline'` - Allow inline scripts (needed for vanilla JS)
+- `style-src 'self' 'unsafe-inline'` - Allow inline styles
+- `img-src 'self' data: https:` - Allow images from same origin, data URIs, and HTTPS (for Mealie)
+- `frame-ancestors 'none'` - Prevent clickjacking
+- `form-action 'self'` - Only allow form submissions to same origin
+
+**Other Security Headers**:
+- `X-Frame-Options: DENY` - Prevent clickjacking
+- `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
+- `X-XSS-Protection: 1; mode=block` - Enable XSS filter (legacy browsers)
+- `Referrer-Policy: strict-origin-when-cross-origin` - Control referrer information
+- `Permissions-Policy` - Disable unnecessary browser APIs (geolocation, camera, microphone, etc.)
+- `Strict-Transport-Security` - Force HTTPS (production only, when using HTTPS)
+
+**CSP Violation Reporting**:
+- Endpoint: `/api/csp-report` logs CSP violations
+- Helps identify blocked resources during development
+
+**Configuration**:
+- `ENVIRONMENT=development|production` - Controls HSTS header
+- `ALLOWED_HOSTS=host1,host2` - For TrustedHostMiddleware (production)
+
 ### Error Handling
 
 - Centralized error handling via `app/errors.py` with `ErrorCode` enum and `ErrorResponse` model
