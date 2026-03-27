@@ -42,6 +42,10 @@ def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
+# Security
+ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
+ALLOWED_HOSTS: str = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1")
+
 # Family members – edit names/colours here or expose via API later
 FAMILY_MEMBERS_DEFAULT = [
     {"id": 1, "name": "Leo", "color": "#FF6B6B", "avatar": "👨"},
