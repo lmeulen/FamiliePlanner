@@ -1,10 +1,6 @@
 """Test to reproduce family member update bug."""
 
 import pytest
-from sqlalchemy import select
-from app.models.family import FamilyMember
-from app.database import get_db
-from app.main import app
 
 
 @pytest.mark.asyncio
@@ -18,14 +14,12 @@ async def test_family_member_color_and_avatar_update(client):
     created = response.json()
     member_id = created["id"]
 
-    print(f"\n✓ Created member via API: id={member_id}, name='{created['name']}', color={created['color']}, avatar={created['avatar']}")
+    print(
+        f"\n✓ Created member via API: id={member_id}, name='{created['name']}', color={created['color']}, avatar={created['avatar']}"
+    )
 
     # Update via API
-    update_data = {
-        "name": "Test Person Updated",
-        "color": "#00FF00",
-        "avatar": "🚀"
-    }
+    update_data = {"name": "Test Person Updated", "color": "#00FF00", "avatar": "🚀"}
 
     print(f"→ Sending PUT /api/family/{member_id} with: {update_data}")
     response = await client.put(f"/api/family/{member_id}", json=update_data)
@@ -37,8 +31,12 @@ async def test_family_member_color_and_avatar_update(client):
     print(f"← Response body: {result}")
 
     # Check API response
-    assert result["name"] == "Test Person Updated", f"Name not updated! Expected 'Test Person Updated', got '{result['name']}'"
-    assert result["color"] == "#00FF00", f"❌ Color not updated in API response! Expected '#00FF00', got '{result['color']}'"
+    assert (
+        result["name"] == "Test Person Updated"
+    ), f"Name not updated! Expected 'Test Person Updated', got '{result['name']}'"
+    assert (
+        result["color"] == "#00FF00"
+    ), f"❌ Color not updated in API response! Expected '#00FF00', got '{result['color']}'"
     assert result["avatar"] == "🚀", f"❌ Avatar not updated in API response! Expected '🚀', got '{result['avatar']}'"
 
     # Verify by fetching via API (this tests actual persistence)
