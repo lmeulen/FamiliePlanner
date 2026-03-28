@@ -458,6 +458,18 @@ async def update_event(event_id: int, payload: AgendaEventUpdate, db: AsyncSessi
     return event
 
 
+@router.delete("/all", status_code=204)
+async def clear_all_events(db: AsyncSession = Depends(get_db)):
+    """Delete all agenda events and recurrence series (for database cleanup)."""
+    # Delete all recurrence series (cascade will delete associated events)
+    await db.execute(sa_delete(RecurrenceSeries))
+    # Delete any remaining standalone events
+    await db.execute(sa_delete(AgendaEvent))
+    await db.commit()
+    logger.warning("agenda.all_cleared - All agenda events and series deleted")
+    return Response(status_code=204)
+
+
 @router.delete("/{event_id}", status_code=204)
 async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
     event = await db.get(AgendaEvent, event_id)

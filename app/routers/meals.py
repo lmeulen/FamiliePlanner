@@ -90,6 +90,18 @@ async def update_meal(meal_id: int, payload: MealUpdate, db: AsyncSession = Depe
     return meal
 
 
+@router.delete("/all", status_code=204)
+async def clear_all_meals(db: AsyncSession = Depends(get_db)):
+    """Delete all meals (for database cleanup)."""
+    from sqlalchemy import delete as sa_delete
+    from fastapi.responses import Response as FastAPIResponse
+
+    await db.execute(sa_delete(Meal))
+    await db.commit()
+    logger.warning("meals.all_cleared - All meals deleted")
+    return FastAPIResponse(status_code=204)
+
+
 @router.delete("/{meal_id}", status_code=204)
 async def delete_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
@@ -99,3 +111,5 @@ async def delete_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(meal)
     await db.commit()
     logger.info("meals.meal.deleted id={}", meal_id)
+
+

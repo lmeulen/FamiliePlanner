@@ -45,7 +45,25 @@ async def update_member(member_id: int, payload: FamilyMemberUpdate, db: AsyncSe
     return member
 
 
+@router.delete("/all", status_code=204)
+async def clear_all_members(db: AsyncSession = Depends(get_db)):
+    """Delete all family members (for database cleanup).
+
+    WARNING: This will cascade to remove member associations from events, tasks, and meals.
+    The items themselves are not deleted, only the member associations are cleared.
+    """
+    from sqlalchemy import delete as sa_delete
+    from fastapi.responses import Response as FastAPIResponse
+
+    await db.execute(sa_delete(FamilyMember))
+    await db.commit()
+    logger.warning("family.all_cleared - All family members deleted")
+    return FastAPIResponse(status_code=204)
+
+
 @router.delete("/{member_id}", status_code=204)
 async def delete_member(member_id: int, db: AsyncSession = Depends(get_db)):
     await delete_model(db, FamilyMember, member_id, "Family member not found")
     logger.info("family.member.deleted id={}", member_id)
+
+

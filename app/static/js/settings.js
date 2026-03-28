@@ -493,5 +493,64 @@
   // Load subscription URL on page load
   loadSubscriptionUrl();
 
+  // ── Database Cleanup Handlers ─────────────────────────────────
+
+  async function clearDatabase(type, endpoint, confirmMessage) {
+    if (!confirm(confirmMessage)) return;
+
+    // Double confirmation for destructive action
+    if (!confirm('⚠️ LET OP: Dit kan NIET ongedaan worden! Weet je het zeker?')) return;
+
+    try {
+      await API.delete(endpoint);
+      Toast.show(`✅ ${type} gewist`, 'success');
+
+      // Invalidate relevant caches
+      FP.invalidateCache(type.toLowerCase());
+    } catch (err) {
+      Toast.show(`❌ Fout bij wissen: ${err.message}`, 'error');
+    }
+  }
+
+  document.getElementById('clear-agenda-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Agenda',
+      '/api/agenda/all',
+      '🗑️ Alle agenda-items en series verwijderen?\n\nDit verwijdert ALLE afspraken en herhalingen.'
+    );
+  });
+
+  document.getElementById('clear-tasks-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Taken',
+      '/api/tasks/all',
+      '🗑️ Alle taken, lijsten en series verwijderen?\n\nDit verwijdert ALLE taken en takenlijsten.'
+    );
+  });
+
+  document.getElementById('clear-meals-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Maaltijden',
+      '/api/meals/all',
+      '🗑️ Alle maaltijden verwijderen?\n\nDit verwijdert ALLE geplande maaltijden.'
+    );
+  });
+
+  document.getElementById('clear-grocery-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Boodschappen',
+      '/api/grocery/all',
+      '🗑️ Alle boodschappenlijst items verwijderen?\n\nDit verwijdert ALLE boodschappen en leerdata.'
+    );
+  });
+
+  document.getElementById('clear-family-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Gezinsleden',
+      '/api/family/all',
+      '🗑️ Alle gezinsleden verwijderen?\n\n⚠️ WAARSCHUWING: Dit verwijdert alle gezinsleden en hun koppelingen aan items.\nDe items zelf blijven behouden maar zonder toegewezen personen.'
+    );
+  });
+
   load();
 })();
