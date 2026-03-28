@@ -15,8 +15,9 @@ router = APIRouter(prefix="/api/family", tags=["family"])
 
 @router.get("/", response_model=list[FamilyMemberOut])
 async def list_members(response: Response, db: AsyncSession = Depends(get_db)):
-    # Cache for 1 hour - family members rarely change
-    response.headers["Cache-Control"] = "private, max-age=3600"
+    # No HTTP caching - rely on client-side cache instead
+    # Browser cache can't be invalidated when updates occur
+    response.headers["Cache-Control"] = "no-cache"
     result = await db.execute(select(FamilyMember).order_by(FamilyMember.id))
     return result.scalars().all()
 

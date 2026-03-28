@@ -48,6 +48,7 @@
     } else {
       title.textContent = 'Gezinslid toevoegen';
       delBtn.classList.add('hidden');
+      form.reset();  // Reset form to template defaults for new member
     }
 
     form.addEventListener('submit', async e => {
