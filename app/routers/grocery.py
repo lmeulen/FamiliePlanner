@@ -217,8 +217,8 @@ async def clear_done_items(db: AsyncSession = Depends(get_db)):
 @router.delete("/all", status_code=204)
 async def clear_all_groceries(db: AsyncSession = Depends(get_db)):
     """Delete all grocery items and learning data (for database cleanup)."""
-    from sqlalchemy import delete as sa_delete
     from fastapi.responses import Response as FastAPIResponse
+    from sqlalchemy import delete as sa_delete
 
     # Delete all grocery items
     await db.execute(sa_delete(GroceryItem))
@@ -279,5 +279,3 @@ async def update_learning(db: AsyncSession, product_name: str, category_id: int)
         db.add(learning)
 
     await db.commit()
-
-

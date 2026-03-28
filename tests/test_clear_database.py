@@ -7,18 +7,14 @@ import pytest
 async def test_clear_all_agenda(client):
     """Test clearing all agenda events."""
     # Create some events
-    await client.post("/api/agenda/", json={
-        "title": "Event 1",
-        "start_time": "2026-04-01T10:00",
-        "end_time": "2026-04-01T11:00",
-        "all_day": False
-    })
-    await client.post("/api/agenda/", json={
-        "title": "Event 2",
-        "start_time": "2026-04-02T14:00",
-        "end_time": "2026-04-02T15:00",
-        "all_day": False
-    })
+    await client.post(
+        "/api/agenda/",
+        json={"title": "Event 1", "start_time": "2026-04-01T10:00", "end_time": "2026-04-01T11:00", "all_day": False},
+    )
+    await client.post(
+        "/api/agenda/",
+        json={"title": "Event 2", "start_time": "2026-04-02T14:00", "end_time": "2026-04-02T15:00", "all_day": False},
+    )
 
     # Verify events exist
     response = await client.get("/api/agenda/")
@@ -44,14 +40,8 @@ async def test_clear_all_tasks(client):
     list_id = list_resp.json()["id"]
 
     # Create some tasks
-    await client.post("/api/tasks/", json={
-        "title": "Task 1",
-        "list_id": list_id
-    })
-    await client.post("/api/tasks/", json={
-        "title": "Task 2",
-        "list_id": list_id
-    })
+    await client.post("/api/tasks/", json={"title": "Task 1", "list_id": list_id})
+    await client.post("/api/tasks/", json={"title": "Task 2", "list_id": list_id})
 
     # Verify tasks exist
     response = await client.get("/api/tasks/")
@@ -76,16 +66,8 @@ async def test_clear_all_tasks(client):
 async def test_clear_all_meals(client):
     """Test clearing all meals."""
     # Create some meals
-    await client.post("/api/meals/", json={
-        "name": "Breakfast",
-        "meal_type": "breakfast",
-        "date": "2026-04-01"
-    })
-    await client.post("/api/meals/", json={
-        "name": "Dinner",
-        "meal_type": "dinner",
-        "date": "2026-04-01"
-    })
+    await client.post("/api/meals/", json={"name": "Breakfast", "meal_type": "breakfast", "date": "2026-04-01"})
+    await client.post("/api/meals/", json={"name": "Dinner", "meal_type": "dinner", "date": "2026-04-01"})
 
     # Verify meals exist
     response = await client.get("/api/meals/")
@@ -119,14 +101,8 @@ async def test_clear_all_grocery(client):
         category_id = categories[0]["id"]
 
     # Create some grocery items
-    await client.post("/api/grocery/items", json={
-        "product_name": "Milk",
-        "category_id": category_id
-    })
-    await client.post("/api/grocery/items", json={
-        "product_name": "Bread",
-        "category_id": category_id
-    })
+    await client.post("/api/grocery/items", json={"product_name": "Milk", "category_id": category_id})
+    await client.post("/api/grocery/items", json={"product_name": "Bread", "category_id": category_id})
 
     # Verify items exist
     response = await client.get("/api/grocery/items")
@@ -147,16 +123,8 @@ async def test_clear_all_grocery(client):
 async def test_clear_all_family_members(client):
     """Test clearing all family members."""
     # Create some family members
-    await client.post("/api/family/", json={
-        "name": "John",
-        "color": "#FF0000",
-        "avatar": "👨"
-    })
-    await client.post("/api/family/", json={
-        "name": "Jane",
-        "color": "#00FF00",
-        "avatar": "👩"
-    })
+    await client.post("/api/family/", json={"name": "John", "color": "#FF0000", "avatar": "👨"})
+    await client.post("/api/family/", json={"name": "Jane", "color": "#00FF00", "avatar": "👩"})
 
     # Verify members exist
     response = await client.get("/api/family/")
@@ -184,10 +152,9 @@ async def test_clear_preserves_categories(client):
 
     # Add some items
     if category_count > 0:
-        await client.post("/api/grocery/items", json={
-            "product_name": "Test Item",
-            "category_id": categories_before[0]["id"]
-        })
+        await client.post(
+            "/api/grocery/items", json={"product_name": "Test Item", "category_id": categories_before[0]["id"]}
+        )
 
     # Clear all items
     await client.delete("/api/grocery/all")

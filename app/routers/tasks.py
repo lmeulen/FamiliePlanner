@@ -365,8 +365,8 @@ async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
 @router.delete("/all", status_code=204)
 async def clear_all_tasks(db: AsyncSession = Depends(get_db)):
     """Delete all tasks, task lists, and recurrence series (for database cleanup)."""
-    from sqlalchemy import delete as sa_delete
     from fastapi.responses import Response as FastAPIResponse
+    from sqlalchemy import delete as sa_delete
 
     # Delete all task recurrence series (cascade will delete associated tasks)
     await db.execute(sa_delete(TaskRecurrenceSeries))
@@ -388,5 +388,3 @@ async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(task)
     await db.commit()
     logger.info("tasks.task.deleted id={}", task_id)
-
-
