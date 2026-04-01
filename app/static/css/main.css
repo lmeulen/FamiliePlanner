@@ -764,6 +764,28 @@ img { max-width: 100%; }
 .cal-day--other-month { opacity: .4; }
 .cal-month-events { display: flex; flex-direction: column; gap: 1px; }
 
+/* Month view: smaller, lighter font for better text visibility */
+.cal-month-events .cal-event-chip {
+  font-size: .625rem;      /* 10px - minimum WCAG readable size */
+  font-weight: 500;        /* Medium instead of semi-bold */
+  padding: .12rem .35rem;  /* Slightly tighter padding */
+}
+
+/* Responsive month view event sizing */
+@media (min-width: 769px) and (max-width: 959px) {
+  /* Tablet: slightly larger for better readability */
+  .cal-month-events .cal-event-chip {
+    font-size: .65rem;     /* 10.4px */
+  }
+}
+
+@media (min-width: 960px) {
+  /* Desktop: largest size for comfortable reading */
+  .cal-month-events .cal-event-chip {
+    font-size: .68rem;     /* 10.9px */
+  }
+}
+
 /* ── TASK LIST TABS ──────────────────────────────────────────── */
 .list-tabs-row {
   display: flex;

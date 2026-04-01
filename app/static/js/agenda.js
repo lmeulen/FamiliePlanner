@@ -312,7 +312,7 @@
       html += `<div class="cal-month-day ${FP.isToday(day) ? 'cal-day--today' : ''}" data-date="${dayStr}">
         <div class="cal-month-day-num">${d}</div>
         <div class="cal-month-events">
-          ${dayEvents.slice(0,3).map(ev => `<div class="cal-event-chip" style="background:${FP.agendaEventBackground(ev.member_ids || [])}" data-id="${ev.id}">${recurIcon(ev)}${FP.esc(ev.title)}</div>`).join('')}
+          ${dayEvents.slice(0,3).map(ev => `<div class="cal-event-chip" style="background:${FP.agendaEventBackground(ev.member_ids || [])}" data-id="${ev.id}" title="${FP.esc(ev.title)}">${recurIcon(ev)}${FP.esc(ev.title)}</div>`).join('')}
           ${dayEvents.length > 3 ? `<div style="font-size:.65rem;color:var(--text-muted);padding:.1rem .2rem">+${dayEvents.length-3}</div>` : ''}
         </div></div>`;
     }
