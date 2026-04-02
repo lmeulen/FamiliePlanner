@@ -68,8 +68,7 @@ class RecurrenceUIController {
     this.elements.endCountSection?.classList.toggle('hidden', condition !== 'count');
 
     // Show/hide infinite hint
-    const infiniteHint = this.form?.querySelector('#infinite-hint-section') ||
-                         this.form?.querySelector('#task-infinite-hint-section');
+    const infiniteHint = document.getElementById(`${this.prefix}infinite-hint-section`);
     infiniteHint?.classList.toggle('hidden', condition !== 'infinite');
   }
 
