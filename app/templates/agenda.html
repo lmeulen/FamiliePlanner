@@ -108,14 +108,21 @@
       <!-- Scope selector: only shown when editing an existing series event -->
       <div id="series-scope-selector" class="hidden">
         <div class="form-section-label">🔁 Onderdeel van een reeks</div>
+        <p class="form-hint">Wat wil je bewerken?</p>
         <div class="scope-options">
           <label class="radio-label">
-            <input type="radio" name="edit_scope" value="this" checked />
-            Alleen dit event
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="this" checked />
+              <strong>Alleen deze afspraak</strong>
+            </div>
+            <span class="form-hint-inline">Past alleen dit exemplaar aan</span>
           </label>
           <label class="radio-label">
-            <input type="radio" name="edit_scope" value="series" />
-            Hele reeks bewerken
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="series" />
+              <strong>Hele reeks</strong>
+            </div>
+            <span class="form-hint-inline">Past alle toekomstige afspraken in deze reeks aan</span>
           </label>
         </div>
       </div>

@@ -1,6 +1,6 @@
 """Integration tests for infinite recurrences and expanded monthly patterns (GitHub issue #63)."""
 
-from datetime import date, timedelta
+from datetime import date
 
 import pytest
 from httpx import AsyncClient
@@ -153,9 +153,6 @@ async def test_create_infinite_task_series(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_expanded_monthly_patterns_agenda(client: AsyncClient):
     """Test all 35 monthly pattern combinations work for agenda."""
-    positions = ["first", "second", "third", "fourth", "last"]
-    weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-
     # Test a sample of patterns (testing all 35 would be slow)
     test_patterns = [
         "second_wednesday",  # New pattern

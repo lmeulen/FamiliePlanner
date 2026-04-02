@@ -184,13 +184,24 @@
 
     <!-- Scope selector (edit of series task) -->
     <div id="scope-selector" class="hidden">
-      <p class="form-hint">Dit is een herhalende taak. Wat wil je bewerken?</p>
-      <label class="radio-label">
-        <input type="radio" name="edit_scope" value="this" checked /> Alleen deze taak
-      </label>
-      <label class="radio-label">
-        <input type="radio" name="edit_scope" value="series" /> Hele reeks
-      </label>
+      <div class="form-section-label">🔁 Onderdeel van een reeks</div>
+      <p class="form-hint">Wat wil je bewerken?</p>
+      <div class="scope-options">
+        <label class="radio-label">
+          <div style="display: flex; align-items: center; gap: .5rem;">
+            <input type="radio" name="edit_scope" value="this" checked />
+            <strong>Alleen deze taak</strong>
+          </div>
+          <span class="form-hint-inline">Past alleen dit exemplaar aan</span>
+        </label>
+        <label class="radio-label">
+          <div style="display: flex; align-items: center; gap: .5rem;">
+            <input type="radio" name="edit_scope" value="series" />
+            <strong>Hele reeks</strong>
+          </div>
+          <span class="form-hint-inline">Past alle toekomstige taken in deze reeks aan</span>
+        </label>
+      </div>
     </div>
 
     <div class="form-actions">
