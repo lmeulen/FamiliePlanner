@@ -362,6 +362,23 @@ img { max-width: 100%; }
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
+
+.member-select-mobile {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+.member-select-mobile select {
+  width: 100%;
+  padding: .6rem .8rem;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: .9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
 .chip {
   display: inline-flex;
   align-items: center;
@@ -843,6 +860,92 @@ img { max-width: 100%; }
 }
 .view-btn:hover  { border-color: var(--accent); color: var(--accent); }
 .view-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+/* Multi-day view button group */
+.view-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 99px;
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+}
+
+.view-btn-group .view-btn {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--border);
+  min-width: 80px;
+}
+
+.view-btn-group .view-btn.active {
+  border-right: 1px solid var(--accent);
+}
+
+.view-btn-control {
+  padding: .35rem .6rem;
+  border: none;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  line-height: 1;
+}
+
+.view-btn-control:hover {
+  background: var(--bg-surface-2);
+  color: var(--accent);
+}
+
+.view-btn-control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.view-btn-group .view-btn-control:last-child {
+  border-left: 1px solid var(--border);
+}
+
+/* Dynamic grid columns for variable day counts */
+.cal-week-head[data-day-count] {
+  grid-template-columns: 52px repeat(var(--day-count), minmax(0, 1fr));
+}
+
+.cal-week-timegrid[data-day-count] {
+  grid-template-columns: 52px repeat(var(--day-count), minmax(0, 1fr));
+}
+
+.cal-week-allday[data-day-count] {
+  grid-template-columns: 52px repeat(var(--day-count), minmax(0, 1fr));
+}
+
+/* Hide day and week view buttons on mobile */
+@media (max-width: 768px) {
+  .view-btn--hide-mobile {
+    display: none;
+  }
+
+  /* Show abbreviated multiday label on mobile */
+  #multiday-label {
+    font-size: 0;
+  }
+
+  #multiday-label::after {
+    content: attr(data-short);
+    font-size: .8rem;
+  }
+
+  /* Use dropdown for member filter on mobile */
+  .member-chips {
+    display: none;
+  }
+
+  .member-select-mobile {
+    display: block;
+  }
+}
 
 /* ── FILTER ROW ──────────────────────────────────────────────── */
 .filter-row {

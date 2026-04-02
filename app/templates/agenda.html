@@ -10,8 +10,15 @@
 <!-- View controls -->
 <div class="view-controls">
   <div class="view-controls-left">
-    <button class="view-btn active" data-view="day">Dag</button>
-    <button class="view-btn" data-view="week">Week</button>
+    <button class="view-btn active view-btn--hide-mobile" data-view="day">Dag</button>
+    <div class="view-btn-group">
+      <button class="view-btn" data-view="multiday">
+        <span id="multiday-label" data-count="3" data-full="3 Dagen" data-short="3 dgn">3 Dagen</span>
+      </button>
+      <button class="view-btn-control" id="multiday-decrease" aria-label="Minder dagen" title="Minder dagen">−</button>
+      <button class="view-btn-control" id="multiday-increase" aria-label="Meer dagen" title="Meer dagen">+</button>
+    </div>
+    <button class="view-btn view-btn--hide-mobile" data-view="week">Week</button>
     <button class="view-btn" data-view="month">Maand</button>
     <button class="view-btn" data-view="list">Lijst</button>
   </div>
@@ -28,6 +35,13 @@
 <!-- Member filter -->
 <div class="member-chips" id="agenda-member-chips">
   <button class="chip chip--all chip--active" data-member="all">Allen</button>
+</div>
+
+<!-- Member filter (mobile dropdown) -->
+<div class="member-select-mobile">
+  <select id="agenda-member-select-mobile" aria-label="Filter op gezinslid">
+    <option value="all">Allen</option>
+  </select>
 </div>
 
 <!-- Calendar grid -->

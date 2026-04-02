@@ -5,9 +5,44 @@
 (function () {
   let events        = [];
   let members       = [];
-  let curView       = 'day';
+  let curView       = 'day';  // default to day view
   let curDate       = new Date();    // anchor date for current view
   let activeMember  = null;
+  let multidayCount = 3;  // default 3 days
+  const MULTIDAY_MIN = 2;
+  const MULTIDAY_MAX = 5;
+
+  // ── Multi-day view helpers ────────────────────────────────────
+  function loadMultidayCount() {
+    const stored = localStorage.getItem('fp-agenda-multiday-count');
+    if (stored) {
+      const count = parseInt(stored, 10);
+      if (count >= MULTIDAY_MIN && count <= MULTIDAY_MAX) {
+        multidayCount = count;
+      }
+    }
+    updateMultidayLabel();
+  }
+
+  function saveMultidayCount() {
+    localStorage.setItem('fp-agenda-multiday-count', String(multidayCount));
+    updateMultidayLabel();
+  }
+
+  function updateMultidayLabel() {
+    const label = document.getElementById('multiday-label');
+    if (label) {
+      label.setAttribute('data-count', multidayCount);
+      label.setAttribute('data-full', `${multidayCount} Dagen`);
+      label.setAttribute('data-short', `${multidayCount} dgn`);
+      label.textContent = `${multidayCount} Dagen`;
+    }
+
+    const decreaseBtn = document.getElementById('multiday-decrease');
+    const increaseBtn = document.getElementById('multiday-increase');
+    if (decreaseBtn) decreaseBtn.disabled = (multidayCount <= MULTIDAY_MIN);
+    if (increaseBtn) increaseBtn.disabled = (multidayCount >= MULTIDAY_MAX);
+  }
 
   // ── Load & render ─────────────────────────────────────────────
   async function loadEvents(useCache = true) {
@@ -72,6 +107,7 @@
     updateTitle();
     if (curView === 'day')        renderDayView();
     else if (curView === 'week')  renderWeekView();
+    else if (curView === 'multiday') renderMultidayView();
     else if (curView === 'month') renderMonthView();
     else                          renderListView();
   }
@@ -86,6 +122,9 @@
       const mon = FP.startOfWeek(curDate);
       const sun = FP.addDays(mon, 6);
       el.textContent = `${FP.formatDateShort(mon)} – ${FP.formatDateShort(sun)} ${sun.getFullYear()}`;
+    } else if (curView === 'multiday') {
+      const endDate = FP.addDays(curDate, multidayCount - 1);
+      el.textContent = `${FP.formatDateShort(curDate)} – ${FP.formatDateShort(endDate)} ${endDate.getFullYear()}`;
     } else if (curView === 'month') {
       el.textContent = `${FP.NL_MONTHS[curDate.getMonth()]} ${curDate.getFullYear()}`;
     } else {
@@ -185,20 +224,22 @@
     });
   }
 
-  function renderWeekView() {
+// Shared day-grid rendering for week and multiday views
+  function renderDayGridView(startDate, numDays) {
     const calView  = document.getElementById('cal-view');
     const listView = document.getElementById('events-list-view');
     calView.classList.remove('hidden');
     listView.classList.add('hidden');
 
-    const mon  = FP.startOfWeek(curDate);
-    const days = Array.from({length: 7}, (_, i) => FP.addDays(mon, i));
+    const days = Array.from({length: numDays}, (_, i) => FP.addDays(startDate, i));
     const fe   = filteredEvents();
     const allDayEvents = fe.filter(e => e.all_day);
     const timedEvents  = fe.filter(e => !e.all_day);
 
+    const dayCountStr = String(numDays);
+
     let html = '<div class="cal-week-wrapper">';
-    html += '<div class="cal-week-head">';
+    html += `<div class="cal-week-head" data-day-count="${dayCountStr}" style="--day-count: ${dayCountStr}">`;
     html += '<div class="cal-corner"></div>';
     days.forEach(d => {
       const isTod = FP.isToday(d);
@@ -209,7 +250,7 @@
     });
     html += '</div>';
 
-    html += '<div class="cal-week-allday">';
+    html += `<div class="cal-week-allday" data-day-count="${dayCountStr}" style="--day-count: ${dayCountStr}">`;
     html += '<div class="cal-allday-label">Hele<br>dag</div>';
     days.forEach(d => {
       const chips = allDayEvents.filter(e => FP.isSameDay(new Date(e.start_time), d));
@@ -222,7 +263,7 @@
     });
     html += '</div>';
 
-    html += '<div class="cal-week-scroll"><div class="cal-week-timegrid">';
+    html += '<div class="cal-week-scroll"><div class="cal-week-timegrid" data-day-count="' + dayCountStr + '" style="--day-count: ' + dayCountStr + '">';
     html += '<div class="cal-time-labels">';
     for (let h = START_HOUR; h <= END_HOUR; h++) {
       html += `<div class="cal-time-slot">${FP.pad(h)}:00</div>`;
@@ -285,6 +326,15 @@
 
     const scroll = calView.querySelector('.cal-week-scroll');
     if (scroll) scroll.scrollTop = Math.max(0, (new Date().getHours() - START_HOUR - 1)) * HOUR_HEIGHT;
+  }
+
+  function renderMultidayView() {
+    renderDayGridView(curDate, multidayCount);
+  }
+
+  function renderWeekView() {
+    const mon = FP.startOfWeek(curDate);
+    renderDayGridView(mon, 7);
   }
 
   function renderMonthView() {
@@ -389,6 +439,7 @@
   function navigate(dir) {
     if (curView === 'day') curDate = FP.addDays(curDate, dir);
     else if (curView === 'week') curDate = FP.addDays(curDate, dir * 7);
+    else if (curView === 'multiday') curDate = FP.addDays(curDate, dir * multidayCount);
     else if (curView === 'month') curDate = new Date(curDate.getFullYear(), curDate.getMonth() + dir, 1);
     loadEvents();
   }
@@ -416,6 +467,16 @@
   async function init() {
     await FP.loadMembers();
 
+    // Load multiday count from localStorage
+    loadMultidayCount();
+
+    // On mobile, default to multiday view since day/week are hidden
+    if (window.innerWidth <= 768) {
+      curView = 'multiday';
+      document.querySelectorAll('.view-btn[data-view]').forEach(b => b.classList.remove('active'));
+      document.querySelector('.view-btn[data-view="multiday"]')?.classList.add('active');
+    }
+
     document.querySelectorAll('.view-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.view-btn[data-view]').forEach(b => b.classList.remove('active'));
@@ -423,6 +484,25 @@
         curView = btn.dataset.view;
         render();
       });
+    });
+
+    // Multi-day count controls
+    document.getElementById('multiday-decrease')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (multidayCount > MULTIDAY_MIN) {
+        multidayCount--;
+        saveMultidayCount();
+        if (curView === 'multiday') render();
+      }
+    });
+
+    document.getElementById('multiday-increase')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (multidayCount < MULTIDAY_MAX) {
+        multidayCount++;
+        saveMultidayCount();
+        if (curView === 'multiday') render();
+      }
     });
 
     document.getElementById('cal-prev')?.addEventListener('click', () => navigate(-1));
@@ -434,6 +514,25 @@
     document.getElementById('btn-add-event')?.addEventListener('click', () => openEventForm());
 
     await FP.buildMemberChips('agenda-member-chips', m => { activeMember = m; render(); });
+
+    // Populate mobile dropdown with members
+    const mobileSelect = document.getElementById('agenda-member-select-mobile');
+    if (mobileSelect) {
+      // Add member options
+      FP.getMembers().forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.id;
+        option.textContent = `${m.avatar} ${m.name}`;
+        mobileSelect.appendChild(option);
+      });
+
+      // Handle dropdown change
+      mobileSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        activeMember = val === 'all' ? null : parseInt(val);
+        render();
+      });
+    }
 
     // Check for URL parameter to jump to specific date (from search)
     const params = new URLSearchParams(window.location.search);
