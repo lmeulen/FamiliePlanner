@@ -267,11 +267,16 @@ async def test_validation_count_and_series_end_exclusive(client: AsyncClient):
 
 
 async def test_validation_neither_count_nor_series_end(client: AsyncClient):
-    """Test that either count or series_end is required."""
+    """Test that infinite series is created when neither count nor series_end is provided."""
     payload = {**SERIES_BASE, "recurrence_type": "weekly", "series_start": "2026-06-01"}
-    payload.pop("series_end")  # Remove series_end
+    payload.pop("series_end")  # Remove series_end - creates infinite series
     r = await client.post("/api/agenda/series", json=payload)
-    assert r.status_code == 422  # Validation error
+    assert r.status_code == 201  # Infinite series should be created successfully
+    data = r.json()
+    assert data["series_end"] is None
+    assert data["count"] is None
+    # Cleanup
+    await client.delete(f"/api/agenda/series/{data['id']}")
 
 
 async def test_daily_allday_series_correct_end_date(client: AsyncClient):
