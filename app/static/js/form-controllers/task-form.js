@@ -101,7 +101,12 @@ class TaskFormController {
 
   async populateEditForm(taskId) {
     const task = this.taskCache.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+      console.warn('TaskFormController: Task not found in cache, id=', taskId);
+      return;
+    }
+
+    console.log('TaskFormController: Editing task', {id: task.id, series_id: task.series_id, is_exception: task.is_exception});
 
     this.form.title.value = task.title;
     this.form.description.value = task.description || '';
@@ -115,8 +120,11 @@ class TaskFormController {
     FP.buildMemberPicker(this.getMemberPickerId(), task.member_ids || []);
 
     if (task.series_id) {
+      console.log('TaskFormController: Task is part of series, showing scope selector');
       this.seriesId = task.series_id;
       this.setupSeriesEditMode();
+    } else {
+      console.log('TaskFormController: Task is NOT part of series (series_id is null/undefined)');
     }
   }
 
@@ -125,14 +133,27 @@ class TaskFormController {
     const recurFields = this.form.querySelector('#recurrence-fields');
     const scopeSel = this.form.querySelector('#scope-selector');
 
+    console.log('TaskFormController: setupSeriesEditMode', {
+      recurRow: !!recurRow,
+      recurFields: !!recurFields,
+      scopeSel: !!scopeSel,
+      seriesId: this.seriesId
+    });
+
     recurRow?.classList.add('hidden');
     recurFields?.classList.add('hidden');
     scopeSel?.classList.remove('hidden');
+
+    if (!scopeSel) {
+      console.error('TaskFormController: #scope-selector element not found in form!');
+      return;
+    }
 
     // Scope radio handler
     this.form.querySelectorAll('input[name="edit_scope"]')?.forEach(radio => {
       radio.addEventListener('change', () => {
         this.editScope = radio.value;
+        console.log('TaskFormController: Edit scope changed to', this.editScope);
         recurFields?.classList.toggle('hidden', this.editScope !== 'series');
 
         if (this.editScope === 'series' && this.seriesId) {
