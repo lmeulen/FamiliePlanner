@@ -1,7 +1,7 @@
 """Shared recurrence utilities using RFC 5545 RRULE standard."""
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from dateutil.rrule import (  # type: ignore[import-untyped]
     DAILY,
@@ -18,6 +18,7 @@ from dateutil.rrule import (  # type: ignore[import-untyped]
     rrule,
     rrulestr,
 )
+from loguru import logger
 
 from app.enums import RecurrenceType
 
@@ -48,6 +49,14 @@ def generate_occurrence_dates(
     Returns:
         List of occurrence dates (max MAX_OCCURRENCES)
     """
+    # Handle infinite series with rolling window
+    if series_end is None and count is None:
+        today = date.today()
+        # Generate 1 year ahead from today (not from series_start!)
+        effective_end = today + timedelta(days=365)
+        series_end = effective_end
+        logger.debug("recurrence.rolling_window window_end={}", effective_end)
+
     # Use custom RRULE string if provided (advanced patterns)
     if rrule_string:
         try:

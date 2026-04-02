@@ -33,6 +33,7 @@ from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
 from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
+from app.recurrence_scheduler import run_recurrence_scheduler
 from app.routers import agenda, birthdays, family, grocery, meals, photos, recipes, search, stats, tasks
 from app.routers import settings as settings_router
 from app.security import SecurityHeadersMiddleware
@@ -88,6 +89,8 @@ async def lifespan(app: FastAPI):
     logger.info("Database ready")
     backup_stop_event = asyncio.Event()
     backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
+    recurrence_stop_event = asyncio.Event()
+    recurrence_task = asyncio.create_task(run_recurrence_scheduler(recurrence_stop_event))
     # Load persisted auth_required setting from DB
     from app.auth import set_auth_required
     from app.database import AsyncSessionLocal
@@ -101,7 +104,9 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         backup_stop_event.set()
+        recurrence_stop_event.set()
         await backup_task
+        await recurrence_task
         logger.info("Shutting down {}", APP_TITLE)
 
 

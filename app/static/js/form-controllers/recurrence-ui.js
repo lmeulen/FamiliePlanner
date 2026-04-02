@@ -66,6 +66,11 @@ class RecurrenceUIController {
     const condition = checked?.value;
     this.elements.endDateSection?.classList.toggle('hidden', condition !== 'date');
     this.elements.endCountSection?.classList.toggle('hidden', condition !== 'count');
+
+    // Show/hide infinite hint
+    const infiniteHint = this.form?.querySelector('#infinite-hint-section') ||
+                         this.form?.querySelector('#task-infinite-hint-section');
+    infiniteHint?.classList.toggle('hidden', condition !== 'infinite');
   }
 
   updateUI() {
@@ -90,16 +95,21 @@ class RecurrenceUIController {
       if (monthlySelect) monthlySelect.value = seriesData.monthly_pattern;
     }
 
+    // Determine end condition
     if (seriesData.count) {
       const countRadio = this.form.querySelector('input[name="end_condition"][value="count"]');
       if (countRadio) countRadio.checked = true;
       const countInput = this.form.querySelector('[name="count"]');
       if (countInput) countInput.value = seriesData.count;
-    } else {
+    } else if (seriesData.series_end) {
       const dateRadio = this.form.querySelector('input[name="end_condition"][value="date"]');
       if (dateRadio) dateRadio.checked = true;
       const endInput = this.form.querySelector('[name="series_end"]');
       if (endInput) endInput.value = seriesData.series_end;
+    } else {
+      // Infinite series (both null)
+      const infiniteRadio = this.form.querySelector('input[name="end_condition"][value="infinite"]');
+      if (infiniteRadio) infiniteRadio.checked = true;
     }
 
     this.updateUI();
@@ -126,9 +136,10 @@ class RecurrenceUIController {
     // End condition
     if (endCondition === 'date') {
       payload.series_end = this.form.querySelector('[name="series_end"]')?.value;
-    } else {
+    } else if (endCondition === 'count') {
       payload.count = parseInt(this.form.querySelector('[name="count"]')?.value || '0');
     }
+    // If infinite: both series_end and count remain undefined (null sent to API)
 
     return payload;
   }
@@ -150,7 +161,7 @@ class RecurrenceUIController {
           errorElementId: `${this.prefix}series-end-error`
         };
       }
-    } else {
+    } else if (endCondition === 'count') {
       const count = parseInt(this.form?.querySelector('[name="count"]')?.value || '0');
       if (count < 1) {
         return {
@@ -159,6 +170,7 @@ class RecurrenceUIController {
         };
       }
     }
+    // Infinite is always valid
 
     return { valid: true };
   }

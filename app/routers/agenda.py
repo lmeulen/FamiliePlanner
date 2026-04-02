@@ -99,24 +99,7 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
 async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
     data = payload.model_dump(exclude={"member_ids"})
 
-    # Calculate series_end if count is provided
-    if payload.count and not payload.series_end:
-        # Generate occurrence dates to determine actual end date
-        temp_dates = generate_occurrence_dates(
-            recurrence_type=payload.recurrence_type,
-            series_start=payload.series_start,
-            series_end=None,
-            interval=payload.interval,
-            count=payload.count,
-            monthly_pattern=payload.monthly_pattern,
-            rrule_string=payload.rrule,
-        )
-        if temp_dates:
-            data["series_end"] = temp_dates[-1]
-        else:
-            # Fallback: use series_start + 1 year
-            data["series_end"] = payload.series_start + timedelta(days=365)
-
+    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
     series = RecurrenceSeries(**data)
     db.add(series)
     await db.flush()

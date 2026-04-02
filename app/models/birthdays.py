@@ -1,7 +1,8 @@
 """Birthday model."""
 
 from datetime import date, datetime
-from sqlalchemy import Boolean, DateTime, Integer, String, func, ForeignKey
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base

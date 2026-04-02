@@ -1,6 +1,6 @@
 """CRUD router for TaskList, TaskRecurrenceSeries and Task."""
 
-from datetime import date, timedelta
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
@@ -141,24 +141,7 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
     data = payload.model_dump(exclude={"member_ids"})
 
-    # Calculate series_end if count is provided
-    if payload.count and not payload.series_end:
-        # Generate occurrence dates to determine actual end date
-        temp_dates = generate_occurrence_dates(
-            recurrence_type=payload.recurrence_type,
-            series_start=payload.series_start,
-            series_end=None,
-            interval=payload.interval,
-            count=payload.count,
-            monthly_pattern=payload.monthly_pattern,
-            rrule_string=payload.rrule,
-        )
-        if temp_dates:
-            data["series_end"] = temp_dates[-1]
-        else:
-            # Fallback: use series_start + 1 year
-            data["series_end"] = payload.series_start + timedelta(days=365)
-
+    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
     series = TaskRecurrenceSeries(**data)
     db.add(series)
     await db.flush()
@@ -194,24 +177,8 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
         logger.warning("tasks.series.not_found id={}", series_id)
         raise HTTPException(404, "Reeks niet gevonden")
 
-    # Calculate series_end if count is provided
+    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
     update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
-    if payload.count and not payload.series_end:
-        # Generate occurrence dates to determine actual end date
-        temp_dates = generate_occurrence_dates(
-            recurrence_type=payload.recurrence_type,
-            series_start=series.series_start,
-            series_end=None,
-            interval=payload.interval,
-            count=payload.count,
-            monthly_pattern=payload.monthly_pattern,
-            rrule_string=payload.rrule,
-        )
-        if temp_dates:
-            update_data["series_end"] = temp_dates[-1]
-        else:
-            # Fallback: use series_start + 1 year
-            update_data["series_end"] = series.series_start + timedelta(days=365)
 
     for k, v in update_data.items():
         setattr(series, k, v)

@@ -38,7 +38,7 @@ class RecurrenceSeries(Base):
     all_day: Mapped[bool] = mapped_column(Boolean, default=False)
     recurrence_type: Mapped[RecurrenceType] = mapped_column(SAEnum(RecurrenceType), nullable=False)
     series_start: Mapped[datetime] = mapped_column(Date, nullable=False)
-    series_end: Mapped[datetime] = mapped_column(Date, nullable=False)
+    series_end: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     start_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
     end_time_of_day: Mapped[time] = mapped_column(Time, nullable=False)
     interval: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
