@@ -5,7 +5,7 @@
 (function () {
   let events        = [];
   let members       = [];
-  let curView       = 'day';  // default to day view
+  let curView       = 'list';  // default to list view
   let curDate       = new Date();    // anchor date for current view
   let activeMember  = null;
   let multidayCount = 3;  // default 3 days
@@ -469,13 +469,6 @@
 
     // Load multiday count from localStorage
     loadMultidayCount();
-
-    // On mobile, default to multiday view since day/week are hidden
-    if (window.innerWidth <= 768) {
-      curView = 'multiday';
-      document.querySelectorAll('.view-btn[data-view]').forEach(b => b.classList.remove('active'));
-      document.querySelector('.view-btn[data-view="multiday"]')?.classList.add('active');
-    }
 
     document.querySelectorAll('.view-btn[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
