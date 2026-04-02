@@ -33,7 +33,7 @@ from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
 from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
-from app.routers import agenda, family, grocery, meals, photos, recipes, search, stats, tasks
+from app.routers import agenda, birthdays, family, grocery, meals, photos, recipes, search, stats, tasks
 from app.routers import settings as settings_router
 from app.security import SecurityHeadersMiddleware
 
@@ -376,6 +376,7 @@ app.include_router(search.router)
 app.include_router(stats.router)
 app.include_router(grocery.router)
 app.include_router(recipes.router)
+app.include_router(birthdays.router)
 
 # Auth routes – login POST is rate-limited to 5 attempts per minute per IP
 app.get("/login", response_class=HTMLResponse, response_model=None)(login_get)
@@ -430,6 +431,11 @@ async def page_photos(request: Request):
 @app.get("/gezin", response_class=HTMLResponse)
 async def page_family(request: Request):
     return templates.TemplateResponse(request, "family.html", {"request": request})
+
+
+@app.get("/verjaardagen", response_class=HTMLResponse, response_model=None)
+async def page_birthdays(request: Request):
+    return templates.TemplateResponse(request, "birthdays.html", {"request": request})
 
 
 @app.get("/zoeken", response_class=HTMLResponse)

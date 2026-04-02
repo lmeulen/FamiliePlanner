@@ -2884,3 +2884,124 @@ img { max-width: 100%; }
 [data-theme="dark"] .swipeable-item > *:not(.swipe-action-left):not(.swipe-action-right) {
   background: var(--card-bg);
 }
+/* ══════════════════════════════════════════════════════════════
+   BIRTHDAYS
+   ══════════════════════════════════════════════════════════════ */
+
+.birthdays-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 5rem;
+}
+
+.birthday-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+}
+
+.birthday-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.birthday-card--memorial {
+  border-color: #9ca3af;
+  opacity: 0.9;
+}
+
+.birthday-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.birthday-info {
+  flex: 1;
+}
+
+.birthday-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: .25rem;
+}
+
+.birthday-date {
+  font-size: .9rem;
+  color: var(--text-secondary);
+  margin-bottom: .25rem;
+}
+
+.birthday-age {
+  font-size: .85rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.birthday-memorial {
+  font-size: .85rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.birthday-countdown {
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-top: .25rem;
+}
+
+.birthday-today {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.birthday-agenda-badge {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+/* Birthday form date row */
+.birthday-date-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.birthday-date-row input,
+.birthday-date-row select {
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.birthday-day-field,
+.birthday-year-field {
+  flex-shrink: 0;
+}
+
+.birthday-month-field {
+  flex-grow: 1;
+}
+
+@media (max-width: 768px) {
+  .birthdays-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .birthday-date-row {
+    grid-template-columns: 70px 1fr 90px;
+    gap: 0.5rem;
+  }
+}
