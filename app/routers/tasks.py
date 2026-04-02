@@ -139,24 +139,47 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/series", response_model=TaskRecurrenceSeriesOut, status_code=201)
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
-    data = payload.model_dump(exclude={"member_ids"})
+    try:
+        logger.info(
+            "tasks.series.creating title='{}' type={} start={} end={} count={}",
+            payload.title,
+            payload.recurrence_type,
+            payload.series_start,
+            payload.series_end,
+            payload.count,
+        )
+        data = payload.model_dump(exclude={"member_ids"})
 
-    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
-    series = TaskRecurrenceSeries(**data)
-    db.add(series)
-    await db.flush()
-    await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
-    occurrences = _make_tasks_for_series(series)
-    db.add_all(occurrences)
-    await db.flush()
-    if payload.member_ids:
-        for t in occurrences:
-            await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
-    await db.commit()
-    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series.id))
-    series = result.scalar_one()
-    logger.info("tasks.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
-    return series
+        # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
+        series = TaskRecurrenceSeries(**data)
+        db.add(series)
+        await db.flush()
+        logger.debug("tasks.series.created_entity id={}", series.id)
+
+        await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
+        logger.debug("tasks.series.members_set id={} members={}", series.id, payload.member_ids)
+
+        occurrences = _make_tasks_for_series(series)
+        logger.debug("tasks.series.generated_occurrences id={} count={}", series.id, len(occurrences))
+
+        db.add_all(occurrences)
+        await db.flush()
+
+        if payload.member_ids:
+            for t in occurrences:
+                await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
+
+        await db.commit()
+        result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series.id))
+        series = result.scalar_one()
+        logger.info("tasks.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
+        return series
+    except Exception as exc:
+        await db.rollback()
+        logger.exception(
+            "tasks.series.create_failed title='{}' type={} error={}", payload.title, payload.recurrence_type, exc
+        )
+        raise
 
 
 @router.get("/series/{series_id}", response_model=TaskRecurrenceSeriesOut)
@@ -171,32 +194,50 @@ async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.put("/series/{series_id}", response_model=TaskRecurrenceSeriesOut)
 async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
-    series = result.scalar_one_or_none()
-    if not series:
-        logger.warning("tasks.series.not_found id={}", series_id)
-        raise HTTPException(404, "Reeks niet gevonden")
+    try:
+        result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+        series = result.scalar_one_or_none()
+        if not series:
+            logger.warning("tasks.series.not_found id={}", series_id)
+            raise HTTPException(404, "Reeks niet gevonden")
 
-    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
-    update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
+        logger.info(
+            "tasks.series.updating id={} title='{}' type={} end={} count={}",
+            series_id,
+            payload.title,
+            payload.recurrence_type,
+            payload.series_end,
+            payload.count,
+        )
 
-    for k, v in update_data.items():
-        setattr(series, k, v)
-    await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
-    # Regenerate all non-exception occurrences
-    await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, Task.is_exception == False)))  # noqa: E712
-    new_tasks = _make_tasks_for_series(series)
-    db.add_all(new_tasks)
-    await db.flush()
-    if payload.member_ids:
-        for t in new_tasks:
-            await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
-    await db.commit()
-    db.expire(series)
-    result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
-    series = result.scalar_one()
-    logger.info("tasks.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_tasks))
-    return series
+        # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
+        update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
+
+        for k, v in update_data.items():
+            setattr(series, k, v)
+        await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
+        # Regenerate all non-exception occurrences
+        await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, Task.is_exception == False)))  # noqa: E712
+        new_tasks = _make_tasks_for_series(series)
+        logger.debug("tasks.series.regenerated id={} count={}", series_id, len(new_tasks))
+
+        db.add_all(new_tasks)
+        await db.flush()
+        if payload.member_ids:
+            for t in new_tasks:
+                await set_junction_members(db, task_members, "task_id", t.id, payload.member_ids)
+        await db.commit()
+        db.expire(series)
+        result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
+        series = result.scalar_one()
+        logger.info("tasks.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_tasks))
+        return series
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("tasks.series.update_failed id={} error={}", series_id, exc)
+        raise
 
 
 @router.delete("/series/{series_id}", status_code=204)

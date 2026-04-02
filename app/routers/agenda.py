@@ -97,25 +97,47 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
 
 @router.post("/series", response_model=RecurrenceSeriesOut, status_code=201)
 async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
-    data = payload.model_dump(exclude={"member_ids"})
+    try:
+        logger.info(
+            "agenda.series.creating title='{}' type={} start={} end={} count={}",
+            payload.title,
+            payload.recurrence_type,
+            payload.series_start,
+            payload.series_end,
+            payload.count,
+        )
+        data = payload.model_dump(exclude={"member_ids"})
 
-    # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
-    series = RecurrenceSeries(**data)
-    db.add(series)
-    await db.flush()
-    await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
-    occurrences = _make_events_for_series(series)
-    db.add_all(occurrences)
-    await db.flush()
-    # Set same members on all generated occurrences
-    if payload.member_ids:
-        for ev in occurrences:
-            await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
-    await db.commit()
-    result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series.id))
-    series = result.scalar_one()
-    logger.info("agenda.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
-    return series
+        # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
+        series = RecurrenceSeries(**data)
+        db.add(series)
+        await db.flush()
+        logger.debug("agenda.series.created_entity id={}", series.id)
+
+        await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
+        logger.debug("agenda.series.members_set id={} members={}", series.id, payload.member_ids)
+
+        occurrences = _make_events_for_series(series)
+        logger.debug("agenda.series.generated_occurrences id={} count={}", series.id, len(occurrences))
+
+        db.add_all(occurrences)
+        await db.flush()
+        # Set same members on all generated occurrences
+        if payload.member_ids:
+            for ev in occurrences:
+                await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
+
+        await db.commit()
+        result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series.id))
+        series = result.scalar_one()
+        logger.info("agenda.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
+        return series
+    except Exception as exc:
+        await db.rollback()
+        logger.exception(
+            "agenda.series.create_failed title='{}' type={} error={}", payload.title, payload.recurrence_type, exc
+        )
+        raise
 
 
 @router.get("/series/{series_id}", response_model=RecurrenceSeriesOut)
@@ -130,53 +152,55 @@ async def get_series(series_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.put("/series/{series_id}", response_model=RecurrenceSeriesOut)
 async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
-    series = result.scalar_one_or_none()
-    if not series:
-        logger.warning("agenda.series.not_found id={}", series_id)
-        raise HTTPException(404, "Reeks niet gevonden")
+    try:
+        result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
+        series = result.scalar_one_or_none()
+        if not series:
+            logger.warning("agenda.series.not_found id={}", series_id)
+            raise HTTPException(404, "Reeks niet gevonden")
 
-    # Calculate series_end if count is provided
-    update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
-    if payload.count and not payload.series_end:
-        # Generate occurrence dates to determine actual end date
-        temp_dates = generate_occurrence_dates(
-            recurrence_type=payload.recurrence_type,
-            series_start=series.series_start,
-            series_end=None,
-            interval=payload.interval,
-            count=payload.count,
-            monthly_pattern=payload.monthly_pattern,
-            rrule_string=payload.rrule,
+        logger.info(
+            "agenda.series.updating id={} title='{}' type={} end={} count={}",
+            series_id,
+            payload.title,
+            payload.recurrence_type,
+            payload.series_end,
+            payload.count,
         )
-        if temp_dates:
-            update_data["series_end"] = temp_dates[-1]
-        else:
-            # Fallback: use series_start + 1 year
-            update_data["series_end"] = series.series_start + timedelta(days=365)
 
-    for k, v in update_data.items():
-        setattr(series, k, v)
-    await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
+        # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
+        update_data = payload.model_dump(exclude={"member_ids"}, exclude_unset=True)
 
-    # Regenerate all non-exception occurrences
-    await db.execute(
-        sa_delete(AgendaEvent).where(
-            and_(AgendaEvent.series_id == series_id, AgendaEvent.is_exception == False)  # noqa: E712
+        for k, v in update_data.items():
+            setattr(series, k, v)
+        await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
+
+        # Regenerate all non-exception occurrences
+        await db.execute(
+            sa_delete(AgendaEvent).where(
+                and_(AgendaEvent.series_id == series_id, AgendaEvent.is_exception == False)  # noqa: E712
+            )
         )
-    )
-    new_events = _make_events_for_series(series)
-    db.add_all(new_events)
-    await db.flush()
-    if payload.member_ids:
-        for ev in new_events:
-            await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
-    await db.commit()
-    db.expire(series)
-    result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
-    series = result.scalar_one()
-    logger.info("agenda.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_events))
-    return series
+        new_events = _make_events_for_series(series)
+        logger.debug("agenda.series.regenerated id={} count={}", series_id, len(new_events))
+
+        db.add_all(new_events)
+        await db.flush()
+        if payload.member_ids:
+            for ev in new_events:
+                await set_junction_members(db, agenda_event_members, "event_id", ev.id, payload.member_ids)
+        await db.commit()
+        db.expire(series)
+        result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
+        series = result.scalar_one()
+        logger.info("agenda.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_events))
+        return series
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("agenda.series.update_failed id={} error={}", series_id, exc)
+        raise
 
 
 @router.delete("/series/{series_id}", status_code=204)
