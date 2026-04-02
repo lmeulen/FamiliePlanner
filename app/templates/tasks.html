@@ -70,8 +70,33 @@
       </label>
     </div>
 
-    <!-- Recurrence fields -->
-    <div id="recurrence-fields" class="hidden">
+    <!-- Recurrence section: shown when toggle is on OR when editing a series task -->
+    <div id="recurrence-section" class="hidden">
+
+      <!-- Scope selector (edit of series task) -->
+      <div id="scope-selector" class="hidden">
+        <div class="form-section-label">🔁 Onderdeel van een reeks</div>
+        <p class="form-hint">Wat wil je bewerken?</p>
+        <div class="scope-options">
+          <label class="radio-label">
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="this" checked />
+              <strong>Alleen deze taak</strong>
+            </div>
+            <span class="form-hint-inline">Past alleen dit exemplaar aan</span>
+          </label>
+          <label class="radio-label">
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="series" />
+              <strong>Hele reeks</strong>
+            </div>
+            <span class="form-hint-inline">Past alle toekomstige taken in deze reeks aan</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Recurrence fields -->
+      <div id="recurrence-fields" class="hidden">
       <label>Herhaling
         <select name="recurrence_type" id="task-recurrence-type-select">
           <option value="daily">Dagelijks</option>
@@ -180,29 +205,9 @@
           ℹ️ Deze reeks blijft oneindig herhalen. Er worden taken tot 1 jaar vooruit aangemaakt.
         </p>
       </div>
-    </div>
+    </div><!-- end recurrence-fields -->
 
-    <!-- Scope selector (edit of series task) -->
-    <div id="scope-selector" class="hidden">
-      <div class="form-section-label">🔁 Onderdeel van een reeks</div>
-      <p class="form-hint">Wat wil je bewerken?</p>
-      <div class="scope-options">
-        <label class="radio-label">
-          <div style="display: flex; align-items: center; gap: .5rem;">
-            <input type="radio" name="edit_scope" value="this" checked />
-            <strong>Alleen deze taak</strong>
-          </div>
-          <span class="form-hint-inline">Past alleen dit exemplaar aan</span>
-        </label>
-        <label class="radio-label">
-          <div style="display: flex; align-items: center; gap: .5rem;">
-            <input type="radio" name="edit_scope" value="series" />
-            <strong>Hele reeks</strong>
-          </div>
-          <span class="form-hint-inline">Past alle toekomstige taken in deze reeks aan</span>
-        </label>
-      </div>
-    </div>
+    </div><!-- end recurrence-section -->
 
     <div class="form-actions">
       <button type="submit" class="btn btn--primary">Opslaan</button>

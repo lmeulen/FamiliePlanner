@@ -39,6 +39,7 @@ class TaskFormController {
     const titleEl = this.form.querySelector('.modal-title');
     const delBtn = this.form.querySelector('[id*="delete-task"]');
     const recurToggle = this.form.querySelector('#recurrence-toggle');
+    const recurSection = this.form.querySelector('#recurrence-section');
     const recurFields = this.form.querySelector('#recurrence-fields');
     const recurRow = this.form.querySelector('#recurrence-toggle-row');
     const scopeSel = this.form.querySelector('#scope-selector');
@@ -58,6 +59,7 @@ class TaskFormController {
 
     // Recurrence toggle behavior
     recurToggle?.addEventListener('change', () => {
+      recurSection?.classList.toggle('hidden', !recurToggle.checked);
       recurFields?.classList.toggle('hidden', !recurToggle.checked);
       if (recurToggle.checked) {
         this.form.querySelector('[name="series_end"]').value = '';
@@ -69,12 +71,14 @@ class TaskFormController {
       titleEl.textContent = 'Taak bewerken';
       delBtn?.classList.remove('hidden');
       recurRow?.classList.add('hidden');
+      recurSection?.classList.add('hidden');
       scopeSel?.classList.add('hidden');
     } else {
       this.setupCreateForm();
       titleEl.textContent = 'Taak toevoegen';
       delBtn?.classList.add('hidden');
       recurRow?.classList.remove('hidden');
+      recurSection?.classList.add('hidden');
       scopeSel?.classList.add('hidden');
       recurFields?.classList.add('hidden');
     }
@@ -130,24 +134,36 @@ class TaskFormController {
 
   setupSeriesEditMode() {
     const recurRow = this.form.querySelector('#recurrence-toggle-row');
+    const recurSection = this.form.querySelector('#recurrence-section');
     const recurFields = this.form.querySelector('#recurrence-fields');
     const scopeSel = this.form.querySelector('#scope-selector');
 
     console.log('TaskFormController: setupSeriesEditMode', {
       recurRow: !!recurRow,
+      recurSection: !!recurSection,
       recurFields: !!recurFields,
       scopeSel: !!scopeSel,
       seriesId: this.seriesId
     });
 
     recurRow?.classList.add('hidden');
-    recurFields?.classList.add('hidden');
-    scopeSel?.classList.remove('hidden');
+    recurSection?.classList.remove('hidden');  // Show wrapper
+    scopeSel?.classList.remove('hidden');       // Show scope selector
+    recurFields?.classList.add('hidden');       // Hide fields initially
 
     if (!scopeSel) {
       console.error('TaskFormController: #scope-selector element not found in form!');
       return;
     }
+
+    // Debug: check if hidden was actually removed
+    setTimeout(() => {
+      console.log('TaskFormController: After classList changes', {
+        scopeHasHidden: scopeSel.classList.contains('hidden'),
+        scopeStyle: window.getComputedStyle(scopeSel).display,
+        scopeClasses: Array.from(scopeSel.classList)
+      });
+    }, 100);
 
     // Scope radio handler
     this.form.querySelectorAll('input[name="edit_scope"]')?.forEach(radio => {
