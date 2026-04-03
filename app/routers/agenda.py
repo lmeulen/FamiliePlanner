@@ -382,8 +382,10 @@ def _build_rrule(series: RecurrenceSeries) -> dict:
     # Set end condition (count or until)
     if series.count:
         rrule["COUNT"] = series.count
-    else:
-        rrule["UNTIL"] = datetime.combine(series.series_end, datetime.max.time())
+    elif series.series_end:
+        # series_end is a date object (SQLAlchemy Date column)
+        end_date = series.series_end.date() if isinstance(series.series_end, datetime) else series.series_end
+        rrule["UNTIL"] = datetime.combine(end_date, datetime.max.time())
 
     # Base recurrence patterns
     recurrence_map: dict[RecurrenceType, dict] = {

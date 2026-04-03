@@ -217,7 +217,7 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
             setattr(series, k, v)
         await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
         # Regenerate all non-exception occurrences
-        await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, Task.is_exception == False)))  # noqa: E712
+        await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, ~Task.is_exception)))
         new_tasks = _make_tasks_for_series(series)
         logger.debug("tasks.series.regenerated id={} count={}", series_id, len(new_tasks))
 
