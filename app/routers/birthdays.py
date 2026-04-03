@@ -103,13 +103,12 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
 
 @router.get("/", response_model=list[BirthdayOut])
 async def list_birthdays(
+    response: Response,
     show_in_agenda: bool | None = Query(None),
-    response: Response | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all birthdays, optionally filtered by show_in_agenda."""
-    if response:
-        response.headers["Cache-Control"] = "no-cache"
+    response.headers["Cache-Control"] = "no-cache"
     stmt = select(Birthday).order_by(Birthday.month, Birthday.day)
     if show_in_agenda is not None:
         stmt = stmt.where(Birthday.show_in_agenda == show_in_agenda)
