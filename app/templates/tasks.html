@@ -5,10 +5,16 @@
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">✅ Taken</h1>
-  <div class="page-header-actions">
-    <button class="icon-btn" id="btn-add-list" aria-label="Nieuwe lijst" title="Nieuwe lijst">＋</button>
-    <button class="icon-btn" id="btn-manage-lists" aria-label="Lijsten beheren" title="Lijsten beheren">⚙</button>
+</div>
+
+<!-- List tabs -->
+<div class="list-tabs-row">
+  <div class="list-tabs" id="list-tabs" role="tablist">
+    <button class="list-tab active" data-list="all" role="tab" aria-selected="true">Alle</button>
+    <!-- Dynamic list tabs added by JS -->
   </div>
+  <button class="icon-btn" id="btn-add-list" aria-label="Nieuwe lijst" title="Nieuwe lijst">＋</button>
+  <button class="icon-btn" id="btn-manage-lists" aria-label="Lijsten beheren" title="Lijsten beheren">⚙</button>
 </div>
 
 <!-- Member filter -->

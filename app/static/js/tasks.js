@@ -4,6 +4,7 @@
 (function () {
   let tasks        = [];
   let lists        = [];
+  let activeList   = 'all';   // list_id or 'all'
   let activeMember = null;
   let showDone     = false;
 
@@ -15,15 +16,39 @@
 
   async function loadTasks() {
     let url = '/api/tasks/?';
+    if (activeList !== 'all') url += `list_id=${activeList}&`;
     if (activeMember)         url += `member_id=${activeMember}&`;
     if (!showDone)            url += `done=false&`;
     tasks = await API.get(url).catch(() => []);
     renderTasks();
   }
 
-  // ── Render list tabs (no longer needed - using chronological view) ──
+  // ── Render list tabs ──────────────────────────────────────────
   function renderListTabs() {
-    // List tabs removed - now using chronological view
+    const tabs = document.getElementById('list-tabs');
+    if (!tabs) return;
+
+    const allTab = tabs.querySelector('[data-list="all"]');
+    tabs.innerHTML = '';
+    tabs.appendChild(allTab);
+
+    lists.forEach(l => {
+      const btn = document.createElement('button');
+      btn.className = `list-tab${activeList == l.id ? ' active' : ''}`;
+      btn.dataset.list = l.id;
+      btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${l.color};margin-right:.3rem;vertical-align:middle"></span>${FP.esc(l.name)}`;
+      tabs.appendChild(btn);
+    });
+
+    allTab.classList.toggle('active', activeList === 'all');
+    tabs.querySelectorAll('.list-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.querySelectorAll('.list-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeList = btn.dataset.list;
+        loadTasks();
+      });
+    });
   }
 
   // ── Render tasks (chronological view per day) ─────────────────

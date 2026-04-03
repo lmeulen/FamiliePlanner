@@ -97,18 +97,9 @@ img { max-width: 100%; }
 }
 
 /* ── PAGE HEADER ─────────────────────────────────────────────── */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
+.page-header { margin-bottom: 1.25rem; }
 .page-title  { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }
 .page-subtitle { font-size: .9rem; color: var(--text-secondary); margin-top: .2rem; }
-.page-header-actions {
-  display: flex;
-  gap: .5rem;
-}
 
 /* ── SECTION ─────────────────────────────────────────────────── */
 .section { margin-bottom: 1.75rem; }
