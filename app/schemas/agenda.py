@@ -27,15 +27,14 @@ class RecurrenceSeriesCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_recurrence(self) -> "RecurrenceSeriesCreate":
-        # Validate end condition: either count or series_end required
-        if not self.count and not self.series_end:
-            raise ValueError("Either count or series_end required")
-        if self.count and self.series_end:
-            raise ValueError("Cannot specify both count and series_end")
-
-        # Validate series_end is after series_start when provided
+        # Allow infinite series: both count and series_end can be None
+        # Validate only if series_end is provided
         if self.series_end and self.series_end <= self.series_start:
-            raise ValueError("series_end must be after series_start")
+            raise ValueError("series_end moet na series_start liggen")
+
+        # Cannot specify both (mutually exclusive)
+        if self.count and self.series_end:
+            raise ValueError("Kan niet zowel count als series_end opgeven")
 
         return self
 
@@ -59,11 +58,10 @@ class RecurrenceSeriesUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_end_condition(self) -> "RecurrenceSeriesUpdate":
-        # Validate end condition: either count or series_end required
-        if not self.count and not self.series_end:
-            raise ValueError("Either count or series_end required")
+        # Allow infinite series: both count and series_end can be None
+        # Cannot specify both (mutually exclusive)
         if self.count and self.series_end:
-            raise ValueError("Cannot specify both count and series_end")
+            raise ValueError("Kan niet zowel count als series_end opgeven")
         return self
 
 
@@ -76,7 +74,7 @@ class RecurrenceSeriesOut(BaseModel):
     member_ids: list[int] = Field(default_factory=list)
     recurrence_type: RecurrenceType
     series_start: date
-    series_end: date
+    series_end: date | None
     start_time_of_day: time
     end_time_of_day: time
     interval: int = 1

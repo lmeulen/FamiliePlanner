@@ -108,14 +108,21 @@
       <!-- Scope selector: only shown when editing an existing series event -->
       <div id="series-scope-selector" class="hidden">
         <div class="form-section-label">🔁 Onderdeel van een reeks</div>
+        <p class="form-hint">Wat wil je bewerken?</p>
         <div class="scope-options">
           <label class="radio-label">
-            <input type="radio" name="edit_scope" value="this" checked />
-            Alleen dit event
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="this" checked />
+              <strong>Alleen deze afspraak</strong>
+            </div>
+            <span class="form-hint-inline">Past alleen dit exemplaar aan</span>
           </label>
           <label class="radio-label">
-            <input type="radio" name="edit_scope" value="series" />
-            Hele reeks bewerken
+            <div style="display: flex; align-items: center; gap: .5rem;">
+              <input type="radio" name="edit_scope" value="series" />
+              <strong>Hele reeks</strong>
+            </div>
+            <span class="form-hint-inline">Past alle toekomstige afspraken in deze reeks aan</span>
           </label>
         </div>
       </div>
@@ -147,16 +154,51 @@
           <label>Maandelijks op
             <select name="monthly_pattern" id="monthly-pattern-select">
               <option value="day_of_month">Dag van de maand</option>
-              <option value="first_monday">Eerste maandag</option>
-              <option value="first_tuesday">Eerste dinsdag</option>
-              <option value="first_wednesday">Eerste woensdag</option>
-              <option value="first_thursday">Eerste donderdag</option>
-              <option value="first_friday">Eerste vrijdag</option>
-              <option value="last_monday">Laatste maandag</option>
-              <option value="last_tuesday">Laatste dinsdag</option>
-              <option value="last_wednesday">Laatste woensdag</option>
-              <option value="last_thursday">Laatste donderdag</option>
-              <option value="last_friday">Laatste vrijdag</option>
+              <optgroup label="Eerste">
+                <option value="first_monday">Maandag</option>
+                <option value="first_tuesday">Dinsdag</option>
+                <option value="first_wednesday">Woensdag</option>
+                <option value="first_thursday">Donderdag</option>
+                <option value="first_friday">Vrijdag</option>
+                <option value="first_saturday">Zaterdag</option>
+                <option value="first_sunday">Zondag</option>
+              </optgroup>
+              <optgroup label="Tweede">
+                <option value="second_monday">Maandag</option>
+                <option value="second_tuesday">Dinsdag</option>
+                <option value="second_wednesday">Woensdag</option>
+                <option value="second_thursday">Donderdag</option>
+                <option value="second_friday">Vrijdag</option>
+                <option value="second_saturday">Zaterdag</option>
+                <option value="second_sunday">Zondag</option>
+              </optgroup>
+              <optgroup label="Derde">
+                <option value="third_monday">Maandag</option>
+                <option value="third_tuesday">Dinsdag</option>
+                <option value="third_wednesday">Woensdag</option>
+                <option value="third_thursday">Donderdag</option>
+                <option value="third_friday">Vrijdag</option>
+                <option value="third_saturday">Zaterdag</option>
+                <option value="third_sunday">Zondag</option>
+              </optgroup>
+              <optgroup label="Vierde">
+                <option value="fourth_monday">Maandag</option>
+                <option value="fourth_tuesday">Dinsdag</option>
+                <option value="fourth_wednesday">Woensdag</option>
+                <option value="fourth_thursday">Donderdag</option>
+                <option value="fourth_friday">Vrijdag</option>
+                <option value="fourth_saturday">Zaterdag</option>
+                <option value="fourth_sunday">Zondag</option>
+              </optgroup>
+              <optgroup label="Laatste">
+                <option value="last_monday">Maandag</option>
+                <option value="last_tuesday">Dinsdag</option>
+                <option value="last_wednesday">Woensdag</option>
+                <option value="last_thursday">Donderdag</option>
+                <option value="last_friday">Vrijdag</option>
+                <option value="last_saturday">Zaterdag</option>
+                <option value="last_sunday">Zondag</option>
+              </optgroup>
             </select>
           </label>
         </div>
@@ -171,10 +213,14 @@
             <input type="radio" name="end_condition" value="count" />
             Na aantal keren
           </label>
+          <label class="radio-label">
+            <input type="radio" name="end_condition" value="infinite" />
+            Geen einddatum
+          </label>
         </div>
 
         <div id="end-date-section">
-          <label>Herhaling t/m *
+          <label>Einddatum reeks *
             <input type="date" name="series_end" />
             <span class="field-error hidden" id="series-end-error">Einddatum moet na startdatum liggen</span>
           </label>
@@ -184,6 +230,12 @@
           <label>Aantal herhalingen *
             <input type="number" name="count" min="1" max="365" placeholder="Bijv. 10" />
           </label>
+        </div>
+
+        <div id="infinite-hint-section" class="hidden">
+          <p class="form-hint">
+            ℹ️ Deze reeks blijft oneindig herhalen. Er worden afspraken tot 1 jaar vooruit aangemaakt.
+          </p>
         </div>
       </div>
     </div>

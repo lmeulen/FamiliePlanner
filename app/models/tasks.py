@@ -49,7 +49,7 @@ class TaskRecurrenceSeries(Base):
     )
     recurrence_type: Mapped[RecurrenceType] = mapped_column(SAEnum(RecurrenceType), nullable=False)
     series_start: Mapped[date] = mapped_column(Date, nullable=False)
-    series_end: Mapped[date] = mapped_column(Date, nullable=False)
+    series_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     interval: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     monthly_pattern: Mapped[str | None] = mapped_column(String(50), nullable=True)

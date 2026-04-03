@@ -49,7 +49,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
         # Regenerate occurrences (delete non-exception events)
         await db.execute(
             sql_delete(AgendaEvent).where(
-                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception == False  # noqa: E712
+                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception == False
             )
         )
     else:
