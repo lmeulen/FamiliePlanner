@@ -1,6 +1,7 @@
 """Pydantic schemas for Birthday."""
 
 from datetime import datetime
+
 from pydantic import BaseModel, Field, model_validator
 
 
