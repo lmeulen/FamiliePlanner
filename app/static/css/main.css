@@ -97,9 +97,18 @@ img { max-width: 100%; }
 }
 
 /* ── PAGE HEADER ─────────────────────────────────────────────── */
-.page-header { margin-bottom: 1.25rem; }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
 .page-title  { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }
 .page-subtitle { font-size: .9rem; color: var(--text-secondary); margin-top: .2rem; }
+.page-header-actions {
+  display: flex;
+  gap: .5rem;
+}
 
 /* ── SECTION ─────────────────────────────────────────────────── */
 .section { margin-bottom: 1.75rem; }
@@ -249,6 +258,24 @@ img { max-width: 100%; }
   width: 10px; height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+.task-list-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.task-card.task-done {
+  opacity: 0.7;
+}
+
+/* Overdue section styling (voor verlopen taken) */
+.overdue-section .agenda-day-section-header {
+  border-left: 3px solid var(--color-danger);
+  padding-left: .5rem;
+}
+.overdue-badge {
+  background: rgba(214, 48, 49, 0.15) !important;
+  color: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
 }
 
 /* ── MEAL GRID ───────────────────────────────────────────────── */

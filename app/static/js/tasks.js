@@ -1,10 +1,9 @@
 /* ================================================================
-   tasks.js – Task lists & task management page
+   tasks.js – Task lists & task management page (chronological view)
    ================================================================ */
 (function () {
   let tasks        = [];
   let lists        = [];
-  let activeList   = 'all';   // list_id or 'all'
   let activeMember = null;
   let showDone     = false;
 
@@ -16,45 +15,22 @@
 
   async function loadTasks() {
     let url = '/api/tasks/?';
-    if (activeList !== 'all') url += `list_id=${activeList}&`;
     if (activeMember)         url += `member_id=${activeMember}&`;
     if (!showDone)            url += `done=false&`;
     tasks = await API.get(url).catch(() => []);
     renderTasks();
   }
 
-  // ── Render list tabs ──────────────────────────────────────────
+  // ── Render list tabs (no longer needed - using chronological view) ──
   function renderListTabs() {
-    const tabs = document.getElementById('list-tabs');
-    const allTab = tabs.querySelector('[data-list="all"]');
-    tabs.innerHTML = '';
-    tabs.appendChild(allTab);
-
-    lists.forEach(l => {
-      const btn = document.createElement('button');
-      btn.className = `list-tab${activeList == l.id ? ' active' : ''}`;
-      btn.dataset.list = l.id;
-      btn.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${l.color};margin-right:.3rem;vertical-align:middle"></span>${FP.esc(l.name)}`;
-      tabs.appendChild(btn);
-    });
-
-    allTab.classList.toggle('active', activeList === 'all');
-    tabs.querySelectorAll('.list-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabs.querySelectorAll('.list-tab').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeList = btn.dataset.list;
-        loadTasks();
-      });
-    });
+    // List tabs removed - now using chronological view
   }
 
-  // ── Render tasks ──────────────────────────────────────────────
+  // ── Render tasks (chronological view per day) ─────────────────
   function renderTasks() {
     const body  = document.getElementById('tasks-body');
     const empty = document.getElementById('tasks-empty');
 
-    const grouped = groupByList(tasks);
     if (!tasks.length) {
       body.innerHTML = '';
       empty.classList.remove('hidden');
@@ -62,54 +38,84 @@
     }
     empty.classList.add('hidden');
 
-    let html = '';
-    const isMultiList = activeList === 'all';
+    // Group tasks by date
+    const tasksByDate = groupTasksByDate(tasks);
 
-    if (isMultiList) {
-      grouped.forEach((group, listId) => {
-        const list = lists.find(l => l.id === parseInt(listId)) || { name: 'Geen lijst', color: '#9EA7C4' };
-        html += `<div class="task-group-header">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${list.color};margin-right:.4rem;vertical-align:middle"></span>
-          ${FP.esc(list.name)}
-        </div>`;
-        html += group.map(renderTaskRow).join('');
+    // Render day sections
+    const sectionsHtml = Array.from(tasksByDate.values()).map(({ date, tasks: dayTasks }) => {
+      const dayLabel = date ? `${FP.dayNameFull(date)} ${FP.formatDate(date)}` : 'Geen vervaldatum';
+      const daySub = date && FP.isToday(date) ? 'Vandaag' : '';
+      const isOverdue = date && date < new Date() && !FP.isToday(date);
+
+      // Sort tasks within day by list (category)
+      const sortedTasks = dayTasks.sort((a, b) => {
+        const listA = lists.find(l => l.id === a.list_id);
+        const listB = lists.find(l => l.id === b.list_id);
+        return (listA?.sort_order || 999) - (listB?.sort_order || 999);
       });
-    } else {
-      html = tasks.map(renderTaskRow).join('');
-    }
 
-    body.innerHTML = html;
+      return `<section class="agenda-day-section${isOverdue ? ' overdue-section' : ''}">
+        <div class="agenda-day-section-header">
+          <div class="agenda-day-section-title">${FP.esc(dayLabel)}</div>
+          ${daySub ? `<div class="agenda-day-section-badge">${daySub}</div>` : ''}
+          ${isOverdue ? `<div class="agenda-day-section-badge overdue-badge">Verlopen</div>` : ''}
+        </div>
+        <div class="agenda-day-section-list">
+          ${sortedTasks.map(renderTaskRow).join('')}
+        </div>
+      </section>`;
+    }).join('');
+
+    body.innerHTML = `<div class="agenda-day-list">${sectionsHtml}</div>`;
     bindTaskEvents();
     initSwipeGestures();
   }
 
-  function groupByList(tasks) {
+  function groupTasksByDate(tasks) {
     const map = new Map();
-    tasks.forEach(t => {
-      const key = t.list_id ?? 'none';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(t);
+
+    tasks.forEach(task => {
+      let dateKey, dateObj;
+
+      if (task.due_date) {
+        dateObj = new Date(task.due_date + 'T00:00:00');
+        dateKey = dateObj.toDateString();
+      } else {
+        dateKey = 'no-date';
+        dateObj = null;
+      }
+
+      if (!map.has(dateKey)) {
+        map.set(dateKey, { date: dateObj, tasks: [] });
+      }
+      map.get(dateKey).tasks.push(task);
     });
-    return map;
+
+    // Sort by date (null dates at end)
+    return new Map([...map.entries()].sort((a, b) => {
+      if (a[0] === 'no-date') return 1;
+      if (b[0] === 'no-date') return -1;
+      return a[1].date - b[1].date;
+    }));
   }
 
   function renderTaskRow(task) {
     const members = (task.member_ids || []).map(id => FP.getMember(id)).filter(Boolean);
-    const list   = lists.find(l => l.id === task.list_id);
-    const isOverdue = task.due_date && !task.done && new Date(task.due_date) < new Date();
+    const list = lists.find(l => l.id === task.list_id) || { name: 'Geen lijst', color: '#9EA7C4' };
     const recurIcon = task.series_id ? ' <span class="recur-icon" title="Herhalende taak">↻</span>' : '';
     const badges = members.map(m => `<div class="event-member-badge" style="background:${m.color}" title="${FP.esc(m.name)}">${m.avatar}</div>`).join('');
+
     return `
-      <div class="card task-card swipeable-item${isOverdue ? ' task-overdue' : ''}" data-id="${task.id}">
+      <div class="card task-card swipeable-item${task.done ? ' task-done' : ''}" data-id="${task.id}">
+        <div class="event-color-bar" style="background:${list.color}"></div>
         <button class="task-check ${task.done ? 'done' : ''}" data-id="${task.id}" aria-label="Afvinken"></button>
         <div class="task-body" style="cursor:pointer" data-edit="${task.id}">
           <div class="task-title ${task.done ? 'done' : ''}">${FP.esc(task.title)}${recurIcon}</div>
           <div class="task-meta">
-            ${task.due_date ? FP.formatDate(task.due_date) : ''}
+            ${list.name ? `<span class="task-list-label">${FP.esc(list.name)}</span>` : ''}
+            ${task.description ? ` · ${FP.esc(task.description)}` : ''}
           </div>
         </div>
-        ${task.due_date ? `<span class="task-due-badge ${isOverdue ? 'overdue' : ''}">${FP.formatDateShort(task.due_date)}</span>` : ''}
-        ${list ? `<span class="task-list-dot" style="background:${list.color}"></span>` : ''}
         ${badges ? `<div class="event-member-badges">${badges}</div>` : ''}
       </div>`;
   }
