@@ -1,9 +1,11 @@
 """CRUD router for Birthdays with agenda integration."""
 
 from datetime import date, datetime, time
+
 from fastapi import APIRouter, Depends, Query, Response
 from loguru import logger
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -22,9 +24,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
     if not birthday.show_in_agenda:
         # Remove series if exists
         if birthday.series_id:
-            await db.execute(
-                sql_delete(RecurrenceSeries).where(RecurrenceSeries.id == birthday.series_id)
-            )
+            await db.execute(sql_delete(RecurrenceSeries).where(RecurrenceSeries.id == birthday.series_id))
             birthday.series_id = None
         return
 
@@ -34,8 +34,10 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
 
     # Calculate series start/end (50 years of occurrences)
     current_year = date.today().year
-    series_start = date(current_year, birthday.month, birthday.day)
-    series_end = date(current_year + 50, birthday.month, birthday.day)
+    series_start_date = date(current_year, birthday.month, birthday.day)
+    series_end_date = date(current_year + 50, birthday.month, birthday.day)
+    series_start = datetime.combine(series_start_date, time(0, 0))
+    series_end = datetime.combine(series_end_date, time(23, 59))
 
     if birthday.series_id:
         # Update existing series
@@ -47,7 +49,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
         # Regenerate occurrences (delete non-exception events)
         await db.execute(
             sql_delete(AgendaEvent).where(
-                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception == False
+                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception == False  # noqa: E712
             )
         )
     else:
@@ -71,8 +73,8 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
     # Generate yearly occurrences
     occurrence_dates = generate_occurrence_dates(
         recurrence_type=RecurrenceType.yearly,
-        series_start=series_start,
-        series_end=series_end,
+        series_start=series_start_date,
+        series_end=series_end_date,
         interval=1,
     )
 
@@ -102,7 +104,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
 @router.get("/", response_model=list[BirthdayOut])
 async def list_birthdays(
     show_in_agenda: bool | None = Query(None),
-    response: Response = None,
+    response: Response | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List all birthdays, optionally filtered by show_in_agenda."""
@@ -127,9 +129,7 @@ async def create_birthday(payload: BirthdayCreate, db: AsyncSession = Depends(ge
 
     await db.commit()
     await db.refresh(birthday)
-    logger.info(
-        "birthdays.created id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type
-    )
+    logger.info("birthdays.created id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type)
     return birthday
 
 
@@ -140,9 +140,7 @@ async def get_birthday(birthday_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{birthday_id}", response_model=BirthdayOut)
-async def update_birthday(
-    birthday_id: int, payload: BirthdayUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_birthday(birthday_id: int, payload: BirthdayUpdate, db: AsyncSession = Depends(get_db)):
     """Update a birthday."""
     birthday = await get_or_404(db, Birthday, birthday_id, "Birthday not found")
     await update_model(db, birthday, payload.model_dump(exclude_unset=True, exclude={"series_id"}))
@@ -152,9 +150,7 @@ async def update_birthday(
 
     await db.commit()
     await db.refresh(birthday)
-    logger.info(
-        "birthdays.updated id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type
-    )
+    logger.info("birthdays.updated id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type)
     return birthday
 
 
