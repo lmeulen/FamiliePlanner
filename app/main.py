@@ -295,7 +295,55 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+# ── No-cache middleware for HTML responses ────────────────────────
+
+
+@app.middleware("http")
+async def no_cache_html(request: Request, call_next):
+    """
+    Add no-cache headers to HTML responses to prevent browser caching.
+
+    This ensures that after a server restart, browsers always fetch fresh HTML
+    with the new static_v parameter, which in turn loads fresh CSS/JS files.
+    """
+    response = await call_next(request)
+
+    # Add no-cache headers to HTML responses
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+    return response
+
+
 # ── Health check ─────────────────────────────────────────────────
+
+
+@app.get("/sw.js", tags=["pwa"], include_in_schema=False)
+async def service_worker():
+    """
+    Serve service worker with embedded cache version.
+
+    The service worker file is served with the current cache version embedded
+    to ensure it always uses the latest cache strategy. This forces browsers
+    to update the service worker when the app is redeployed.
+    """
+    sw_path = BASE_DIR / "static" / "sw.js"
+    sw_content = sw_path.read_text(encoding="utf-8")
+
+    # Replace placeholder with actual cache version
+    sw_content = sw_content.replace("__CACHE_VERSION__", CACHE_VERSION)
+
+    return Response(
+        content=sw_content,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/health", tags=["health"], include_in_schema=True)
@@ -363,12 +411,15 @@ async def csp_violation_report(request: Request):
     return {"status": "reported"}
 
 
+# Generate cache version once at startup for consistent versioning
+CACHE_VERSION = str(int(time.time()))
+
 # Static files (with cache headers)
 app.mount("/static", CachedStaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.globals["static_v"] = str(int(time.time()))
+templates.env.globals["static_v"] = CACHE_VERSION
 
 # API routers
 app.include_router(family.router)

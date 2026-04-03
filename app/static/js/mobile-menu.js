@@ -1,5 +1,5 @@
 /* ================================================================
-   mobile-menu.js – Mobile hamburger menu toggle
+   mobile-menu.js – Mobile hamburger menu toggle + active states
    ================================================================ */
 (function() {
   const toggle = document.getElementById('mobile-menu-toggle');
@@ -31,5 +31,24 @@
   // Close on menu item click
   overlay.querySelectorAll('.mobile-menu-item').forEach(item => {
     item.addEventListener('click', closeMenu);
+  });
+
+  // Set active state based on current URL
+  const currentPath = window.location.pathname;
+
+  // Mobile top nav items
+  document.querySelectorAll('.mobile-nav-item').forEach(item => {
+    const href = item.getAttribute('href');
+    if (href && currentPath === href) {
+      item.classList.add('active');
+    }
+  });
+
+  // Mobile menu items
+  overlay.querySelectorAll('.mobile-menu-item').forEach(item => {
+    const href = item.getAttribute('href');
+    if (href && currentPath === href) {
+      item.classList.add('active');
+    }
   });
 })();

@@ -18,7 +18,7 @@
   </script>
 
   <!-- PWA Manifest -->
-  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="manifest" href="/static/manifest.json?v={{ static_v }}" />
 
   <!-- Favicon (emoji) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>"/>
@@ -106,6 +106,12 @@
     <a href="/maaltijden" class="mobile-nav-item {% block mobile_nav_meals %}{% endblock %}" aria-label="Maaltijden">
       <span class="nav-icon">🍽️</span>
     </a>
+    <a href="/boodschappen" class="mobile-nav-item {% block mobile_nav_grocery %}{% endblock %}" aria-label="Winkel">
+      <span class="nav-icon">🛒</span>
+    </a>
+    <a href="/recepten" class="mobile-nav-item {% block mobile_nav_recipes %}{% endblock %}" aria-label="Recepten">
+      <span class="nav-icon">📖</span>
+    </a>
     <button class="mobile-nav-item mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
       <span class="nav-icon">☰</span>
     </button>
@@ -119,13 +125,9 @@
         <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Sluiten">✕</button>
       </div>
       <div class="mobile-menu-items">
-        <a href="/boodschappen" class="mobile-menu-item {% block mobile_menu_grocery %}{% endblock %}">
-          <span class="nav-icon">🛒</span>
-          <span class="nav-label">Winkel</span>
-        </a>
-        <a href="/recepten" class="mobile-menu-item {% block mobile_menu_recipes %}{% endblock %}">
-          <span class="nav-icon">📖</span>
-          <span class="nav-label">Recepten</span>
+        <a href="/fotos" class="mobile-menu-item {% block mobile_menu_photos %}{% endblock %}">
+          <span class="nav-icon">🖼️</span>
+          <span class="nav-label">Foto's</span>
         </a>
         <a href="/gezin" class="mobile-menu-item {% block mobile_menu_family %}{% endblock %}">
           <span class="nav-icon">👨‍👩‍👧‍👦</span>
@@ -134,10 +136,6 @@
         <a href="/verjaardagen" class="mobile-menu-item {% block mobile_menu_birthdays %}{% endblock %}">
           <span class="nav-icon">🎂</span>
           <span class="nav-label">Verjaardagen</span>
-        </a>
-        <a href="/fotos" class="mobile-menu-item {% block mobile_menu_photos %}{% endblock %}">
-          <span class="nav-icon">🖼️</span>
-          <span class="nav-label">Foto's</span>
         </a>
         <a href="/zoeken" class="mobile-menu-item {% block mobile_menu_search %}{% endblock %}">
           <span class="nav-icon">🔍</span>
@@ -206,7 +204,7 @@
     // Register service worker for PWA functionality
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
+        navigator.serviceWorker.register('/sw.js?v={{ static_v }}')
           .then(registration => {
             console.log('[PWA] Service Worker registered:', registration.scope);
 

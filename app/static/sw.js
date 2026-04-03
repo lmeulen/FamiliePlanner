@@ -3,7 +3,9 @@
    Provides offline support and caching for improved performance
    ================================================================ */
 
-const CACHE_VERSION = 'v1';
+// Cache version is updated on each deployment to force cache refresh
+// The version is embedded during build/startup
+const CACHE_VERSION = 'v__CACHE_VERSION__';
 const STATIC_CACHE = `familieplanner-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `familieplanner-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `familieplanner-api-${CACHE_VERSION}`;
@@ -204,9 +206,38 @@ async function networkFirstStrategy(request, cacheName) {
 /**
  * Cache First: Try cache, fallback to network
  * Used for: Static assets (CSS, JS, images)
+ * Checks for ?v= parameter to bust cache on new versions
  */
 async function cacheFirstStrategy(request, cacheName) {
+  const url = new URL(request.url);
+
+  // If URL has ?v= parameter, check if it's different from cached version
+  // This ensures new versions are fetched even if old version is cached
+  const versionParam = url.searchParams.get('v');
+
   const cachedResponse = await caches.match(request);
+
+  if (cachedResponse && versionParam) {
+    // Check if cached version matches current version
+    const cachedUrl = new URL(cachedResponse.url);
+    const cachedVersion = cachedUrl.searchParams.get('v');
+
+    if (cachedVersion !== versionParam) {
+      // Version changed, fetch new version
+      console.log('[SW] Version changed, fetching new:', request.url);
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+          const cache = await caches.open(cacheName);
+          cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (error) {
+        // Network failed, use cached version as fallback
+        return cachedResponse;
+      }
+    }
+  }
 
   if (cachedResponse) {
     return cachedResponse;

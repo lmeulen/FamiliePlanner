@@ -939,63 +939,6 @@ img { max-width: 100%; }
   grid-template-columns: 52px repeat(var(--day-count), minmax(0, 1fr));
 }
 
-/* Hide day and week view buttons on mobile */
-@media (max-width: 768px) {
-  /* Hide desktop side nav */
-  .side-nav {
-    display: none;
-  }
-
-  /* Show mobile top nav */
-  .mobile-top-nav {
-    display: flex;
-  }
-
-  /* Show mobile menu overlay (hidden by default, shown when active) */
-  .mobile-menu-overlay {
-    display: block;
-  }
-
-  /* Adjust body layout for top nav */
-  body {
-    flex-direction: column;
-    padding-top: 56px;  /* Height of mobile-top-nav */
-  }
-
-  /* App content takes full width */
-  .app-content {
-    width: 100%;
-  }
-
-  /* Adjust FAB position for mobile nav */
-  .fab {
-    bottom: 1.5rem;
-  }
-
-  .view-btn--hide-mobile {
-    display: none;
-  }
-
-  /* Show abbreviated multiday label on mobile */
-  #multiday-label {
-    font-size: 0;
-  }
-
-  #multiday-label::after {
-    content: attr(data-short);
-    font-size: .8rem;
-  }
-
-  /* Use dropdown for member filter on mobile */
-  .member-chips {
-    display: none;
-  }
-
-  .member-select-mobile {
-    display: block;
-  }
-}
-
 /* ── FILTER ROW ──────────────────────────────────────────────── */
 .filter-row {
   margin-bottom: .75rem;
@@ -1225,6 +1168,17 @@ img { max-width: 100%; }
 .mobile-menu-toggle .nav-icon {
   font-size: 1.4rem;
   font-weight: 300;
+}
+
+/* Smaller icons on very narrow screens to fit 7 items comfortably */
+@media (max-width: 400px) {
+  .mobile-nav-item .nav-icon {
+    font-size: 1.35rem;
+  }
+
+  .mobile-menu-toggle .nav-icon {
+    font-size: 1.25rem;
+  }
 }
 
 /* ── MOBILE MENU OVERLAY ─────────────────────────────────────── */
@@ -3226,7 +3180,63 @@ img { max-width: 100%; }
   flex-grow: 1;
 }
 
+/* ── RESPONSIVE: MOBILE ──────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* Hide desktop side nav */
+  .side-nav {
+    display: none;
+  }
+
+  /* Show mobile top nav */
+  .mobile-top-nav {
+    display: flex;
+  }
+
+  /* Show mobile menu overlay (hidden by default, shown when active) */
+  .mobile-menu-overlay {
+    display: block;
+  }
+
+  /* Adjust body layout for top nav */
+  body {
+    flex-direction: column;
+    padding-top: 56px;  /* Height of mobile-top-nav */
+  }
+
+  /* App content takes full width */
+  .app-content {
+    width: 100%;
+  }
+
+  /* Adjust FAB position for mobile nav */
+  .fab {
+    bottom: 1.5rem;
+  }
+
+  .view-btn--hide-mobile {
+    display: none;
+  }
+
+  /* Show abbreviated multiday label on mobile */
+  #multiday-label {
+    font-size: 0;
+  }
+
+  #multiday-label::after {
+    content: attr(data-short);
+    font-size: .8rem;
+  }
+
+  /* Use dropdown for member filter on mobile */
+  .member-chips {
+    display: none;
+  }
+
+  .member-select-mobile {
+    display: block;
+  }
+
+  /* Birthday grid responsive */
   .birthdays-grid {
     grid-template-columns: 1fr;
   }

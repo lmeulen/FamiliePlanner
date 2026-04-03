@@ -322,7 +322,15 @@ test: Add tests for series deletion cascade
 
 5. **Authentication bypass** - Set `AUTH_REQUIRED=false` in .env OR `os.environ["AUTH_DISABLED"]="1"` for tests. Middleware checks both.
 
-6. **Static file versioning & caching** - `base.html` appends `?v={{ static_v }}` to CSS/JS to bust cache. `static_v` is unix timestamp from app startup. The app uses `CachedStaticFiles` with custom Cache-Control headers: thumbnails cached 1 year (immutable), photos 1 day, CSS/JS 1 hour, images/fonts 1 week.
+6. **Static file versioning & caching** - Complete cache-busting system ensures no stale files after server restart:
+   - `CACHE_VERSION` generated at startup (unix timestamp)
+   - HTML responses get `no-cache` headers via middleware - always fetched fresh
+   - All CSS/JS loaded with `?v={{ static_v }}` parameter
+   - Service Worker served dynamically at `/sw.js` with embedded version - forces SW update on restart
+   - Service Worker checks `?v=` parameters and fetches new versions when changed
+   - Manifest.json loaded with versioning
+   - Static files cached via `CachedStaticFiles`: thumbnails 1 year (immutable), photos 1 day, CSS/JS 1 hour, images/fonts 1 week
+   - PWA service worker uses smart caching: HTML/API network-first, static assets cache-first with version checking
 
 7. **Alembic in async context** - `init_db()` runs Alembic upgrade in thread executor to avoid blocking event loop.
 
