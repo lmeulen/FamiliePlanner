@@ -36,7 +36,7 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
 
-  <!-- ──────────── SIDE NAVIGATION ──────────── -->
+  <!-- ──────────── SIDE NAVIGATION (DESKTOP) ──────────── -->
   <nav class="side-nav" role="navigation" aria-label="Hoofdnavigatie" data-i18n-aria-label="nav.mainAria">
     <a href="/"          class="nav-item {% block nav_dashboard %}{% endblock %}" aria-label="Dashboard" data-i18n-aria-label="nav.dashboard">
       <span class="nav-icon">🏠</span>
@@ -78,6 +78,10 @@
       <span class="nav-icon">🔍</span>
       <span class="nav-label" data-i18n="nav.search">Zoeken</span>
     </a>
+    <a href="/statistieken" class="nav-item {% block nav_stats %}{% endblock %}" aria-label="Statistieken">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Statistieken</span>
+    </a>
     <a href="/instellingen" class="nav-item {% block nav_settings %}{% endblock %}" aria-label="Instellingen" data-i18n-aria-label="nav.settings">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label" data-i18n="nav.settings">Instellingen</span>
@@ -87,6 +91,73 @@
       <span class="nav-label" data-i18n="nav.logout">Uitloggen</span>
     </a>
   </nav>
+
+  <!-- ──────────── MOBILE TOP NAVIGATION ──────────── -->
+  <div class="mobile-top-nav">
+    <a href="/" class="mobile-nav-item {% block mobile_nav_dashboard %}{% endblock %}" aria-label="Dashboard">
+      <span class="nav-icon">🏠</span>
+    </a>
+    <a href="/agenda" class="mobile-nav-item {% block mobile_nav_agenda %}{% endblock %}" aria-label="Agenda">
+      <span class="nav-icon">📅</span>
+    </a>
+    <a href="/taken" class="mobile-nav-item {% block mobile_nav_tasks %}{% endblock %}" aria-label="Taken">
+      <span class="nav-icon">✅</span>
+    </a>
+    <a href="/maaltijden" class="mobile-nav-item {% block mobile_nav_meals %}{% endblock %}" aria-label="Maaltijden">
+      <span class="nav-icon">🍽️</span>
+    </a>
+    <button class="mobile-nav-item mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu">
+      <span class="nav-icon">☰</span>
+    </button>
+  </div>
+
+  <!-- ──────────── MOBILE MENU OVERLAY ──────────── -->
+  <div class="mobile-menu-overlay" id="mobile-menu-overlay">
+    <div class="mobile-menu">
+      <div class="mobile-menu-header">
+        <h2>Menu</h2>
+        <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Sluiten">✕</button>
+      </div>
+      <div class="mobile-menu-items">
+        <a href="/boodschappen" class="mobile-menu-item {% block mobile_menu_grocery %}{% endblock %}">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-label">Winkel</span>
+        </a>
+        <a href="/recepten" class="mobile-menu-item {% block mobile_menu_recipes %}{% endblock %}">
+          <span class="nav-icon">📖</span>
+          <span class="nav-label">Recepten</span>
+        </a>
+        <a href="/gezin" class="mobile-menu-item {% block mobile_menu_family %}{% endblock %}">
+          <span class="nav-icon">👨‍👩‍👧‍👦</span>
+          <span class="nav-label">Gezin</span>
+        </a>
+        <a href="/verjaardagen" class="mobile-menu-item {% block mobile_menu_birthdays %}{% endblock %}">
+          <span class="nav-icon">🎂</span>
+          <span class="nav-label">Verjaardagen</span>
+        </a>
+        <a href="/fotos" class="mobile-menu-item {% block mobile_menu_photos %}{% endblock %}">
+          <span class="nav-icon">🖼️</span>
+          <span class="nav-label">Foto's</span>
+        </a>
+        <a href="/zoeken" class="mobile-menu-item {% block mobile_menu_search %}{% endblock %}">
+          <span class="nav-icon">🔍</span>
+          <span class="nav-label">Zoeken</span>
+        </a>
+        <a href="/statistieken" class="mobile-menu-item {% block mobile_menu_stats %}{% endblock %}">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Statistieken</span>
+        </a>
+        <a href="/instellingen" class="mobile-menu-item {% block mobile_menu_settings %}{% endblock %}">
+          <span class="nav-icon">⚙️</span>
+          <span class="nav-label">Instellingen</span>
+        </a>
+        <a href="/logout" class="mobile-menu-item mobile-menu-item--logout">
+          <span class="nav-icon">🚪</span>
+          <span class="nav-label">Uitloggen</span>
+        </a>
+      </div>
+    </div>
+  </div>
 
   <!-- ──────────── APP CONTENT ──────────── -->
   <div class="app-content">
@@ -122,6 +193,7 @@
   <script src="/static/js/utils/api-helpers.js?v={{ static_v }}"></script>
   <script src="/static/js/theme.js?v={{ static_v }}"></script>
   <script src="/static/js/app.js?v={{ static_v }}"></script>
+  <script src="/static/js/mobile-menu.js?v={{ static_v }}"></script>
   <script src="/static/js/swipe-handler.js?v={{ static_v }}"></script>
   <script src="/static/js/form-controllers/recurrence-ui.js?v={{ static_v }}"></script>
   <script src="/static/js/form-controllers/event-form.js?v={{ static_v }}"></script>
