@@ -1,9 +1,11 @@
 """CRUD router for Birthdays with agenda integration."""
 
 from datetime import date, datetime, time
+
 from fastapi import APIRouter, Depends, Query, Response
 from loguru import logger
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -22,9 +24,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
     if not birthday.show_in_agenda:
         # Remove series if exists
         if birthday.series_id:
-            await db.execute(
-                sql_delete(RecurrenceSeries).where(RecurrenceSeries.id == birthday.series_id)
-            )
+            await db.execute(sql_delete(RecurrenceSeries).where(RecurrenceSeries.id == birthday.series_id))
             birthday.series_id = None
         return
 
@@ -47,7 +47,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
         # Regenerate occurrences (delete non-exception events)
         await db.execute(
             sql_delete(AgendaEvent).where(
-                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception == False
+                AgendaEvent.series_id == birthday.series_id, AgendaEvent.is_exception.is_(False)
             )
         )
     else:
@@ -127,9 +127,7 @@ async def create_birthday(payload: BirthdayCreate, db: AsyncSession = Depends(ge
 
     await db.commit()
     await db.refresh(birthday)
-    logger.info(
-        "birthdays.created id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type
-    )
+    logger.info("birthdays.created id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type)
     return birthday
 
 
@@ -140,9 +138,7 @@ async def get_birthday(birthday_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{birthday_id}", response_model=BirthdayOut)
-async def update_birthday(
-    birthday_id: int, payload: BirthdayUpdate, db: AsyncSession = Depends(get_db)
-):
+async def update_birthday(birthday_id: int, payload: BirthdayUpdate, db: AsyncSession = Depends(get_db)):
     """Update a birthday."""
     birthday = await get_or_404(db, Birthday, birthday_id, "Birthday not found")
     await update_model(db, birthday, payload.model_dump(exclude_unset=True, exclude={"series_id"}))
@@ -152,9 +148,7 @@ async def update_birthday(
 
     await db.commit()
     await db.refresh(birthday)
-    logger.info(
-        "birthdays.updated id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type
-    )
+    logger.info("birthdays.updated id={} name='{}' year_type={}", birthday.id, birthday.name, birthday.year_type)
     return birthday
 
 

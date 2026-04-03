@@ -33,6 +33,7 @@ from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
 from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
+from app.recurrence_scheduler import run_recurrence_scheduler
 from app.routers import agenda, birthdays, family, grocery, meals, photos, recipes, search, stats, tasks
 from app.routers import settings as settings_router
 from app.security import SecurityHeadersMiddleware
@@ -88,6 +89,8 @@ async def lifespan(app: FastAPI):
     logger.info("Database ready")
     backup_stop_event = asyncio.Event()
     backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
+    recurrence_stop_event = asyncio.Event()
+    recurrence_task = asyncio.create_task(run_recurrence_scheduler(recurrence_stop_event))
     # Load persisted auth_required setting from DB
     from app.auth import set_auth_required
     from app.database import AsyncSessionLocal
@@ -101,7 +104,9 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         backup_stop_event.set()
+        recurrence_stop_event.set()
         await backup_task
+        await recurrence_task
         logger.info("Shutting down {}", APP_TITLE)
 
 
@@ -290,7 +295,55 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+# ── No-cache middleware for HTML responses ────────────────────────
+
+
+@app.middleware("http")
+async def no_cache_html(request: Request, call_next):
+    """
+    Add no-cache headers to HTML responses to prevent browser caching.
+
+    This ensures that after a server restart, browsers always fetch fresh HTML
+    with the new static_v parameter, which in turn loads fresh CSS/JS files.
+    """
+    response = await call_next(request)
+
+    # Add no-cache headers to HTML responses
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+
+    return response
+
+
 # ── Health check ─────────────────────────────────────────────────
+
+
+@app.get("/sw.js", tags=["pwa"], include_in_schema=False)
+async def service_worker():
+    """
+    Serve service worker with embedded cache version.
+
+    The service worker file is served with the current cache version embedded
+    to ensure it always uses the latest cache strategy. This forces browsers
+    to update the service worker when the app is redeployed.
+    """
+    sw_path = BASE_DIR / "static" / "sw.js"
+    sw_content = sw_path.read_text(encoding="utf-8")
+
+    # Replace placeholder with actual cache version
+    sw_content = sw_content.replace("__CACHE_VERSION__", CACHE_VERSION)
+
+    return Response(
+        content=sw_content,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/health", tags=["health"], include_in_schema=True)
@@ -358,12 +411,15 @@ async def csp_violation_report(request: Request):
     return {"status": "reported"}
 
 
+# Generate cache version once at startup for consistent versioning
+CACHE_VERSION = str(int(time.time()))
+
 # Static files (with cache headers)
 app.mount("/static", CachedStaticFiles(directory=BASE_DIR / "static"), name="static")
 
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
-templates.env.globals["static_v"] = str(int(time.time()))
+templates.env.globals["static_v"] = CACHE_VERSION
 
 # API routers
 app.include_router(family.router)
