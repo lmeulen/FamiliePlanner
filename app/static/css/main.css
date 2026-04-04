@@ -1788,6 +1788,30 @@ img { max-width: 100%; }
   position: sticky;
   top: 1rem;
 }
+/* Make meal cards on dashboard same width as event cards */
+.dashboard-main .meal-grid {
+  grid-template-columns: 1fr;
+}
+/* Make meal cards compact on dashboard - all elements on one line */
+.dashboard-main .meal-card {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .6rem .75rem;
+}
+.dashboard-main .meal-type-badge {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+.dashboard-main .meal-name-row {
+  flex: 1;
+  min-width: 0;
+}
+.dashboard-main .meal-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* Remove page-container horizontal constraints on dashboard */
 .page-dashboard .page-container {
   max-width: none;
@@ -2054,17 +2078,22 @@ img { max-width: 100%; }
 
 /* Phone-specific styles (does not affect tablets at 768px+) */
 @media (max-width: 640px) {
+  .settings-section {
+    gap: .4rem;
+  }
+
   .settings-row,
   .settings-row--col {
     flex-direction: column;
     align-items: stretch;
-    gap: .5rem;
+    gap: .25rem;
   }
 
   .settings-control {
     flex-basis: auto;
     width: 100%;
     max-width: 100%;
+    gap: .2rem;
   }
 
   .settings-row--col:has(.settings-number-input) .settings-control {
@@ -2075,6 +2104,7 @@ img { max-width: 100%; }
 
   .settings-label {
     flex: 1 1 auto;
+    gap: .08rem;
   }
 
   .settings-row .toggle-wrap {

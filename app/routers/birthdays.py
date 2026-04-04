@@ -130,6 +130,29 @@ async def create_birthday(payload: BirthdayCreate, db: AsyncSession = Depends(ge
     return birthday
 
 
+@router.delete("/all", status_code=204)
+async def clear_all_birthdays(db: AsyncSession = Depends(get_db)):
+    """Delete all birthdays and their associated agenda series (for database cleanup)."""
+    # Get all birthday series IDs
+    result = await db.execute(select(Birthday.series_id).where(Birthday.series_id.is_not(None)))
+    series_ids = [row[0] for row in result.all()]
+
+    # Delete linked agenda events first
+    if series_ids:
+        await db.execute(sql_delete(AgendaEvent).where(AgendaEvent.series_id.in_(series_ids)))
+
+    # Delete linked RecurrenceSeries
+    if series_ids:
+        await db.execute(sql_delete(RecurrenceSeries).where(RecurrenceSeries.id.in_(series_ids)))
+
+    # Delete all birthdays
+    await db.execute(sql_delete(Birthday))
+    await db.commit()
+
+    logger.warning("birthdays.all_cleared - All birthdays and linked agenda series deleted")
+    return Response(status_code=204)
+
+
 @router.get("/{birthday_id}", response_model=BirthdayOut)
 async def get_birthday(birthday_id: int, db: AsyncSession = Depends(get_db)):
     """Get a single birthday by ID."""

@@ -142,6 +142,64 @@ async def test_clear_all_family_members(client):
 
 
 @pytest.mark.asyncio
+async def test_clear_all_birthdays(client):
+    """Test clearing all birthdays and their agenda series."""
+    # Create some birthdays
+    await client.post(
+        "/api/birthdays/",
+        json={
+            "name": "John Doe",
+            "day": 15,
+            "month": 3,
+            "year": 1990,
+            "year_type": "birth_year",
+            "show_in_agenda": True,
+        },
+    )
+    await client.post(
+        "/api/birthdays/",
+        json={
+            "name": "Jane Smith",
+            "day": 20,
+            "month": 5,
+            "year": 1985,
+            "year_type": "birth_year",
+            "show_in_agenda": False,
+        },
+    )
+
+    # Verify birthdays exist
+    response = await client.get("/api/birthdays/")
+    assert response.status_code == 200
+    birthdays = response.json()
+    assert len(birthdays) == 2
+
+    # Verify agenda series was created for the first birthday
+    agenda_response = await client.get("/api/agenda/")
+    assert agenda_response.status_code == 200
+    agenda_events = agenda_response.json()
+    # Should have agenda events for the first birthday (show_in_agenda=True)
+    assert len(agenda_events) > 0
+
+    # Clear all birthdays
+    response = await client.delete("/api/birthdays/all")
+    assert response.status_code == 204
+
+    # Verify all birthdays are deleted
+    response = await client.get("/api/birthdays/")
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+
+    # Verify linked agenda events are also deleted
+    agenda_response = await client.get("/api/agenda/")
+    assert agenda_response.status_code == 200
+    # All birthday agenda events should be removed
+    agenda_events_after = agenda_response.json()
+    # Count should be 0 or less than before (in case other tests created events)
+    assert len(agenda_events_after) == 0
+
+
+@pytest.mark.asyncio
 async def test_clear_preserves_categories(client):
     """Test that clearing grocery items preserves categories."""
     # Get categories before

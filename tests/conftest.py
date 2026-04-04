@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 # Register all models at module level so they're available when Base.metadata is accessed
 import app.models.agenda  # noqa: F401
+import app.models.birthdays  # noqa: F401
 import app.models.family  # noqa: F401
 import app.models.grocery  # noqa: F401
 import app.models.meals  # noqa: F401

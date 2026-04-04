@@ -544,6 +544,14 @@
     );
   });
 
+  document.getElementById('clear-birthdays-btn')?.addEventListener('click', () => {
+    clearDatabase(
+      'Verjaardagen',
+      '/api/birthdays/all',
+      '🗑️ Alle verjaardagen verwijderen?\n\nDit verwijdert ALLE verjaardagen en hun gekoppelde agenda-items.'
+    );
+  });
+
   document.getElementById('clear-family-btn')?.addEventListener('click', () => {
     clearDatabase(
       'Gezinsleden',
