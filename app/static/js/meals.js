@@ -1,21 +1,100 @@
 /* ================================================================
-   meals.js – Weekly meal planner page
+   meals.js – Weekly meal planner page with offline support
    ================================================================ */
 (function () {
   let meals    = [];
   let curMonday = FP ? FP.startOfWeek(new Date()) : new Date();
   let editId   = null;
   let typeFilter = 'all';
+  let isOnline = navigator.onLine;
+  let db = window.MealsDB;
+
+  // ── Offline/Online detection ──────────────────────────────────
+  function updateOnlineStatus() {
+    isOnline = navigator.onLine;
+    const indicator = document.getElementById('meals-offline-indicator');
+
+    if (isOnline) {
+      if (indicator) indicator.remove();
+      syncPendingChanges();
+    } else {
+      if (!indicator) {
+        const banner = document.createElement('div');
+        banner.id = 'meals-offline-indicator';
+        banner.className = 'offline-indicator';
+        banner.textContent = '📡 Offline modus - wijzigingen worden gesynchroniseerd wanneer je weer online bent';
+        document.body.prepend(banner);
+      }
+    }
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  // ── Sync pending changes ──────────────────────────────────────
+  async function syncPendingChanges() {
+    if (!isOnline) return;
+
+    try {
+      const pending = await db.getPendingSync();
+      if (!pending || !pending.length) return;
+
+      console.log(`[Meals] Syncing ${pending.length} pending changes...`);
+
+      for (const action of pending) {
+        try {
+          switch (action.type) {
+            case 'add':
+              await API.post('/api/meals/', action.payload);
+              break;
+            case 'update':
+              await API.put(`/api/meals/${action.mealId}`, action.payload);
+              break;
+            case 'delete':
+              await API.delete(`/api/meals/${action.mealId}`);
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to sync action:', action, err);
+        }
+      }
+
+      // Clear sync queue after successful sync
+      await db.clearSyncQueue();
+
+      // Reload from server
+      await loadMeals();
+
+      Toast.show('Wijzigingen gesynchroniseerd!', 'success');
+    } catch (err) {
+      console.error('Sync failed:', err);
+    }
+  }
 
   // ── Load ──────────────────────────────────────────────────────
   async function loadMeals() {
     const start = FP.dateToStr(curMonday);
     const end   = FP.dateToStr(FP.addDays(curMonday, 6));
     try {
-      meals = await API.get(`/api/meals/?start=${start}&end=${end}`);
-    } catch {
-      meals = [];
-      Toast.show('Kon maaltijden niet laden', 'error');
+      if (isOnline) {
+        meals = await API.get(`/api/meals/?start=${start}&end=${end}`);
+        // Save to IndexedDB for offline use
+        await db.saveMeals(meals);
+      } else {
+        // Load from IndexedDB when offline
+        meals = await db.getMealsByDateRange(start, end);
+      }
+    } catch (err) {
+      console.error('Failed to load meals:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        meals = await db.getMealsByDateRange(start, end);
+      } catch {
+        meals = [];
+      }
+      if (!meals.length && isOnline) {
+        Toast.show('Kon maaltijden niet laden', 'error');
+      }
     }
     render();
   }
@@ -149,10 +228,29 @@
       await API.withButtonLoading(saveButton, async () => {
         try {
           if (editId) {
-            await API.put(`/api/meals/${editId}`, data);
+            if (isOnline) {
+              await API.put(`/api/meals/${editId}`, data);
+            } else {
+              // Update locally and queue sync
+              await db.updateMealOffline(editId, data);
+              await db.queueSync({
+                type: 'update',
+                mealId: editId,
+                payload: data
+              });
+            }
             Toast.show('Maaltijd bijgewerkt!');
           } else {
-            await API.post('/api/meals/', data);
+            if (isOnline) {
+              await API.post('/api/meals/', data);
+            } else {
+              // Add locally and queue sync
+              const meal = await db.addMealOffline(data);
+              await db.queueSync({
+                type: 'add',
+                payload: data
+              });
+            }
             Toast.show('Maaltijd toegevoegd!');
           }
           Cache.invalidate(/^meals_/);
@@ -165,7 +263,16 @@
     delBtn.addEventListener('click', async () => {
       if (!confirm('Maaltijd verwijderen?')) return;
       try {
-        await API.delete(`/api/meals/${editId}`);
+        if (isOnline) {
+          await API.delete(`/api/meals/${editId}`);
+        } else {
+          // Delete locally and queue sync
+          await db.deleteMealOffline(editId);
+          await db.queueSync({
+            type: 'delete',
+            mealId: editId
+          });
+        }
         Cache.invalidate(/^meals_/);
         Toast.show('Maaltijd verwijderd', 'warning');
         Modal.close();
@@ -178,6 +285,10 @@
   async function init() {
     // Wait for FP to initialise startOfWeek
     curMonday = FP.startOfWeek(new Date());
+
+    // Initialize database and check online status
+    await db.open();
+    updateOnlineStatus();
 
     document.getElementById('meals-prev')?.addEventListener('click', () => {
       curMonday = FP.addDays(curMonday, -7);
