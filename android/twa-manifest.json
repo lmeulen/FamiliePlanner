@@ -1,62 +1,47 @@
 {
   "packageId": "com.familieplanner.app",
-  "host": "familieplanner.yourdomain.com",
-  "name": "FamiliePlanner",
-  "launcherName": "FamiliePlanner",
+  "host": "familieplanner.duckdns.org",
+  "name": "Familieplanner",
+  "launcherName": "Planner",
   "display": "standalone",
-  "orientation": "default",
   "themeColor": "#6C5CE7",
-  "navigationColor": "#6C5CE7",
-  "navigationColorDark": "#1a1a2e",
-  "navigationDividerColor": "#FFFFFF",
+  "themeColorDark": "#1a1a2e",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
   "navigationDividerColorDark": "#000000",
   "backgroundColor": "#FFFFFF",
-  "enableNotifications": false,
+  "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://familieplanner.yourdomain.com/static/icon-512.png",
-  "maskableIconUrl": "https://familieplanner.yourdomain.com/static/icon-maskable-512.png",
-  "monochromeIconUrl": "https://familieplanner.yourdomain.com/static/icon-monochrome-512.png",
+  "iconUrl": "https://familieplanner.duckdns.org/static/icon-512.png",
+  "maskableIconUrl": "https://familieplanner.duckdns.org/static/icon-maskable-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
-    "path": "./familieplanner.keystore",
+    "path": "/mnt/c/Code/FamiliePlanner/android/familieplanner.keystore",
     "alias": "familieplanner"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
-  "shortcuts": [
-    {
-      "name": "Agenda",
-      "short_name": "Agenda",
-      "url": "/agenda",
-      "icon": "https://familieplanner.yourdomain.com/static/shortcut-agenda.png"
-    },
-    {
-      "name": "Taken",
-      "short_name": "Taken",
-      "url": "/taken",
-      "icon": "https://familieplanner.yourdomain.com/static/shortcut-tasks.png"
-    },
-    {
-      "name": "Boodschappen",
-      "short_name": "Winkel",
-      "url": "/boodschappen",
-      "icon": "https://familieplanner.yourdomain.com/static/shortcut-grocery.png"
-    }
-  ],
+  "appVersionName": "2",
+  "appVersionCode": 2,
+  "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://familieplanner.yourdomain.com/static/manifest.json",
+  "webManifestUrl": "https://familieplanner.duckdns.org/static/manifest.json",
   "fallbackType": "customtabs",
-  "features": {
-    "locationDelegation": {
-      "enabled": false
-    },
-    "playBilling": {
-      "enabled": false
-    }
-  },
+  "features": {},
   "alphaDependencies": {
     "enabled": false
   },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://familieplanner.duckdns.org",
   "minSdkVersion": 21,
-  "targetSdkVersion": 34
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "2"
 }
