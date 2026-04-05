@@ -18,7 +18,7 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 ## ✨ Functionaliteiten
 
 | Module | Beschrijving |
-|--------|-------------|
+| -------- | ------------- |
 | **🏠 Overzicht** | Dashboard met fotodiashow, agenda van vandaag, maaltijden en taken met snelle toevoeg-opties |
 | **📅 Agenda** | Dag / week / maand / lijstweergave, herhaalde afspraken, multi-day support, filter op gezinslid, iCal export |
 | **✅ Taken** | Meerdere takenlijsten met custom volgorde, herhaalde taken, toewijzen aan gezinsleden, vervaldatum, verlopen-taken groepering |
@@ -68,12 +68,14 @@ Open in de browser: **http://\<server-ip\>:8000**
 ### Mobiel (Android/iOS)
 
 **Android (Chrome/Edge):**
+
 1. Open de app in Chrome of Edge
 2. Zie install banner onderaan → tap "Installeren"
 3. Of: Menu (⋮) → "App installeren" / "Add to Home Screen"
 4. App verschijnt op home screen met 🏠 icoon
 
 **iOS (Safari):**
+
 1. Open de app in Safari
 2. Tap Share-knop (vierkant met pijl omhoog)
 3. Scroll en tap "Add to Home Screen"
@@ -91,11 +93,13 @@ Open in de browser: **http://\<server-ip\>:8000**
 📖 Volledige PWA test guide: [PWA_TESTING.md](PWA_TESTING.md)
 
 ### Ontwikkelmodus
+
 ```bash
 python run.py --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Productie (systemd)
+
 ```ini
 [Unit]
 Description=FamiliePlanner
@@ -109,7 +113,6 @@ Restart=always
 
 [Install]
 WantedBy=multi-user.target
-```
 ```bash
 sudo systemctl enable --now familieplanner
 ```
@@ -119,7 +122,7 @@ sudo systemctl enable --now familieplanner
 Kopieer `.env.example` naar `.env`:
 
 | Variabele | Standaard | Beschrijving |
-|-----------|-----------|-------------|
+| ----------- | ----------- | ------------- |
 | `SECRET_KEY` | _(willekeurig)_ | Sleutel voor sessiecookies |
 | `APP_USERNAME` | `admin` | Inlognaam |
 | `APP_PASSWORD` | `familieplanner` | Wachtwoord |
@@ -130,7 +133,7 @@ Kopieer `.env.example` naar `.env`:
 
 ## 📁 Projectstructuur
 
-```
+```code
 FamiliePlanner/
 ├── app/
 │   ├── main.py                      # FastAPI app, middleware, routes, exception handlers
@@ -232,6 +235,7 @@ FamiliePlanner/
 ## 🔧 Tech Stack
 
 ### Backend
+
 - **FastAPI 0.115+** - Modern async web framework
 - **SQLAlchemy 2.0** - Async ORM met type hints
 - **Uvicorn** - ASGI server met hot reload
@@ -242,6 +246,7 @@ FamiliePlanner/
 - **Prometheus Client** - Metrics export
 
 ### Frontend
+
 - **Vanilla JavaScript** - No build tools, no frameworks
 - **Jinja2** - Server-side templating
 - **CSS Custom Properties** - Theming (light/dark/system)
@@ -249,6 +254,7 @@ FamiliePlanner/
 - **Cache API** - Client-side caching
 
 ### Development
+
 - **Pytest** - Testing framework (~106 tests)
 - **Ruff** - Fast Python linter
 - **Black** - Code formatter
@@ -272,17 +278,20 @@ De `tools/` directory bevat standalone scripts voor onderhoud en data-operaties.
 ### Database
 
 **clean_database.py** - Verwijder alle agenda-items, taken en maaltijden
+
 ```bash
 python -m tools.clean_database          # Voer cleanup uit
 python -m tools.clean_database --dry-run  # Preview zonder wijzigingen
 ```
 
 **seed.py** - Vul database met voorbeelddata
+
 ```bash
 python -m tools.seed                    # Maakt testdata aan (wist eerst alles!)
 ```
 
 **breakup_multiday_appointments.py** - Converteer meerdaagse afspraken naar dagelijkse reeksen
+
 ```bash
 python -m tools.breakup_multiday_appointments  # Voer conversie uit
 python -m tools.breakup_multiday_appointments --dry-run  # Preview conversie
@@ -291,14 +300,17 @@ python -m tools.breakup_multiday_appointments --dry-run  # Preview conversie
 ### Backup
 
 **run_nightly_backup_once.py** - Maak handmatig een backup
+
 ```bash
 python -m tools.run_nightly_backup_once  # Creëert backups/DDMMYYYY.json
 ```
+
 > De app maakt automatisch elke nacht om 00:00 een backup via `app/backup_scheduler.py`.
 
 ### Foto's
 
 **generate_missing_thumbnails.py** - Genereer ontbrekende thumbnails
+
 ```bash
 python -m tools.generate_missing_thumbnails  # Maakt thumbnails (200px) voor bestaande foto's
 ```
@@ -308,6 +320,7 @@ python -m tools.generate_missing_thumbnails  # Maakt thumbnails (200px) voor bes
 > **Configuratie**: Stel `COZI_ICS_URL` in `.env` in met je private Cozi ICS feed URL, of gebruik `--url` argument.
 
 **cozi_import_advisor.py** - Analyseer Cozi ICS feed zonder te importeren
+
 ```bash
 python -m tools.cozi_import_advisor           # Gebruik COZI_ICS_URL uit .env
 python -m tools.cozi_import_advisor --url "https://..."  # Gebruik aangepaste ICS URL
@@ -315,20 +328,24 @@ python -m tools.cozi_import_advisor --today   # Filter alleen vandaag
 ```
 
 **cozi_importer.py** - Importeer events vanuit Cozi ICS feed
+
 ```bash
 python -m tools.cozi_importer                 # Gebruik COZI_ICS_URL uit .env
 python -m tools.cozi_importer --dry-run       # Preview zonder wijzigingen
 python -m tools.cozi_importer --today         # Importeer alleen vandaag
 ```
+
 > Detecteert automatisch maaltijden (18:00-20:00) en gezinsleden in event-titels. Meerdaagse all-day events worden automatisch omgezet naar dagelijkse series.
 
 ### Beveiliging
 
 **hash_password.py** - Genereer bcrypt hash voor wachtwoord
+
 ```bash
 python -m tools.hash_password                 # Interactief (vraagt wachtwoord)
 python -m tools.hash_password mijnwachtwoord  # Direct als argument
 ```
+
 > Gebruik de output in `APP_PASSWORD` in `.env`.
 
 ## Docker
@@ -336,27 +353,30 @@ python -m tools.hash_password mijnwachtwoord  # Direct als argument
 FamiliePlanner draait ook via Docker en Docker Compose.
 
 Snelle start:
+
 ```bash
 cp .env.example .env
 docker-compose up -d
 ```
 
-Standaard URL: **http://localhost:8000**
+Standaard URL: **<http://localhost:8000>**
 
 Zie volledige handleiding: [docs/README.docker.md](docs/README.docker.md)
 
-## Database
+## Databaseschema
 
 Het databaseschema en relaties staan in: [docs/database.md](docs/database.md)
 
 ## 🧪 Kwaliteit & Testing
 
 **Pre-commit checks:**
+
 ```bash
 ruff check . --fix && black . && mypy app/ --ignore-missing-imports && pytest tests/ -v
 ```
 
 **CI/CD Pipeline (GitHub Actions):**
+
 - ✅ Ruff linting
 - ✅ Black formatting check
 - ✅ Mypy type checking

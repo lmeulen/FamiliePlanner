@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 FamiliePlanner is a family organization webapp with FastAPI backend and vanilla HTML/CSS/JS frontend. No build tools required for frontend. Uses SQLite with SQLAlchemy async ORM, session-based authentication, and comprehensive recurring event/task system.
 
 **Tech Stack:**
+
 - Backend: FastAPI 0.115+, SQLAlchemy 2.0 (async), Uvicorn, Pydantic, Loguru
 - Frontend: Vanilla JS (no frameworks), Jinja2 templates
 - Database: SQLite with async (aiosqlite)
@@ -16,6 +17,7 @@ FamiliePlanner is a family organization webapp with FastAPI backend and vanilla 
 ## Development Commands
 
 ### Setup
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # or .venv\Scripts\activate on Windows
@@ -24,12 +26,14 @@ cp .env.example .env       # Edit SECRET_KEY, APP_USERNAME, APP_PASSWORD
 ```
 
 ### Running
+
 ```bash
 python run.py --host 0.0.0.0 --port 8000 --reload  # Development
 python -m tools.seed                                # Populate test data
 ```
 
 ### Testing & Linting
+
 ```bash
 # Run all tests
 pytest tests/ -v
@@ -49,6 +53,7 @@ pytest tests/ -v                  # Tests
 ```
 
 ### Database Migrations
+
 ```bash
 alembic revision --autogenerate -m "Description"
 alembic upgrade head
@@ -111,13 +116,15 @@ python -m tools.list_mealie_recipes --configure           # Configure Mealie set
 ### Backend Structure
 
 **Request Flow:**
-```
+
+```bash
 Request → SessionMiddleware → CSRFMiddleware → AuthMiddleware →
 SlowAPIMiddleware (rate limiting) → PrometheusMiddleware (metrics) →
 FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 ```
 
 **Module Organization:**
+
 - `app/main.py` - FastAPI app, middleware stack, page routes, exception handlers
 - `app/routers/*.py` - REST API endpoints (agenda, tasks, meals, family, photos, grocery, settings, search, stats)
 - `app/models/*.py` - SQLAlchemy ORM models (Base from database.py)
@@ -138,6 +145,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 ### Frontend Architecture
 
 **No build step.** Vanilla JavaScript with manual module organization:
+
 - `app/static/js/app.js` - Global utilities (`FP` object) for date/time formatting, member utilities, UI helpers
 - `app/static/js/api.js` - Fetch wrapper with CSRF token handling
 - `app/static/js/toast.js` - Toast notification system
@@ -154,6 +162,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - `app/templates/*.html` - Jinja2 templates extending `base.html`
 
 **PWA Features:**
+
 - Installable as native app (Android, iOS, Windows, macOS)
 - Service Worker with offline-first caching strategy (`app/static/sw.js`)
 - App shortcuts for quick access (Agenda, Taken, Maaltijden)
@@ -161,6 +170,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - Update notifications when new versions are available
 
 **Global Objects:**
+
 - `window.FP` - Date/time formatting, member utilities, UI helpers
 - `window.API` - GET/POST/PUT/DELETE wrappers with error handling
 - `window.Toast` - Notification system
@@ -172,21 +182,25 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 **Critical Pattern:** Both agenda events and tasks support recurring series with individual exception handling.
 
 **Two-entity model:**
+
 1. **Series table** (`recurrence_series`, `task_recurrence_series`) - Stores recurrence rule
 2. **Instance table** (`agenda_events`, `tasks`) - Individual occurrences with `series_id` FK
 
 **Workflow:**
+
 - Creating series → generates all occurrences (max 365) via `utils/recurrence.py`
 - Updating single instance → sets `is_exception=True`, detaches from series updates
 - Updating series → regenerates all non-exception occurrences
 - Deleting series → cascades to all instances
 
 **Recurrence types** (`app/enums.py`):
+
 - `daily`, `every_other_day`, `weekly`, `biweekly`, `weekdays`, `monthly`, `yearly`
 
 ### Database Patterns
 
 **Async Session Management:**
+
 ```python
 # Router dependency injection
 async def endpoint(db: AsyncSession = Depends(get_db)):
@@ -195,6 +209,7 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 ```
 
 **Many-to-many relationships:**
+
 - Use junction tables: `agenda_event_members`, `task_members`, etc.
 - Helper: `app/utils/db.py::set_junction_members()` for atomic updates
 - Always use `selectin` loading strategy: `.options(selectinload(Model.members))`
@@ -204,6 +219,7 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 ## Configuration
 
 **pyproject.toml** centralizes tool configurations:
+
 - **Ruff**: Line length 120, Python 3.11+, excludes `.venv`, `alembic/versions`
 - **Black**: Line length 120, Python 3.11 target
 - **Mypy**: Ignores `tools/` and `alembic/`, requires imports to be silent, ignores test errors
@@ -214,6 +230,7 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 ### Type Safety (mypy)
 
 - **Union return types in FastAPI routes need `response_model=None`**
+
   ```python
   @app.get("/route", response_model=None)  # Required for Union[HTMLResponse, RedirectResponse]
   async def handler() -> HTMLResponse | RedirectResponse:
@@ -248,6 +265,7 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 ### Frontend Patterns
 
 **Form Controllers (DRY Principle):**
+
 - Shared form controllers in `app/static/js/form-controllers/` to avoid code duplication
 - `event-form.js` handles event CRUD across both agenda page and dashboard quick-add
 - `task-form.js` handles task CRUD across tasks page and dashboard quick-add
@@ -266,6 +284,7 @@ async def endpoint(db: AsyncSession = Depends(get_db)):
 All responses include security headers via `SecurityHeadersMiddleware`:
 
 **Content-Security-Policy (CSP)**:
+
 - `default-src 'self'` - Only allow resources from same origin
 - `script-src 'self' 'unsafe-inline'` - Allow inline scripts (needed for vanilla JS)
 - `style-src 'self' 'unsafe-inline'` - Allow inline styles
@@ -274,6 +293,7 @@ All responses include security headers via `SecurityHeadersMiddleware`:
 - `form-action 'self'` - Only allow form submissions to same origin
 
 **Other Security Headers**:
+
 - `X-Frame-Options: DENY` - Prevent clickjacking
 - `X-Content-Type-Options: nosniff` - Prevent MIME sniffing
 - `X-XSS-Protection: 1; mode=block` - Enable XSS filter (legacy browsers)
@@ -282,10 +302,12 @@ All responses include security headers via `SecurityHeadersMiddleware`:
 - `Strict-Transport-Security` - Force HTTPS (production only, when using HTTPS)
 
 **CSP Violation Reporting**:
+
 - Endpoint: `/api/csp-report` logs CSP violations
 - Helps identify blocked resources during development
 
 **Configuration**:
+
 - `ENVIRONMENT=development|production` - Controls HSTS header
 - `ALLOWED_HOSTS=host1,host2` - For TrustedHostMiddleware (production)
 
@@ -302,7 +324,8 @@ All responses include security headers via `SecurityHeadersMiddleware`:
 ### Commit Messages
 
 Follow conventional commits (enforced by commitlint in CI):
-```
+
+```bash
 feat: Add calendar export functionality
 fix: Resolve timezone issue in event display
 docs: Update API documentation
@@ -353,6 +376,7 @@ test: Add tests for series deletion cascade
 **Smart grocery list** with offline PWA support, category learning, and intelligent parsing.
 
 **Key Features:**
+
 - **Smart parser** - Parses "2 kg tomaten" → quantity: 2, unit: "kg", product: "tomaten"
 - **Category learning** - Remembers product-category associations, auto-suggests on next use
 - **Offline-first** - IndexedDB storage, works without internet, auto-syncs when online
@@ -361,6 +385,7 @@ test: Add tests for series deletion cascade
 - **Bilingual parsing** - Dutch and English units (lb → kg, pieces → stuks)
 
 **Architecture:**
+
 - **Three-table model** - `grocery_categories`, `grocery_items`, `grocery_product_learning`
 - **Smart parsing** - Regex-based parser extracts quantity/unit/product from freeform text
 - **Learning table** - Tracks product→category mappings with usage count for confidence
@@ -372,6 +397,7 @@ test: Add tests for series deletion cascade
 Interactive docs available at: `http://localhost:8000/api/docs` (Swagger UI)
 
 All API routes return JSON. Common responses:
+
 - `200` - Success
 - `201` - Created
 - `204` - Deleted (no content)
@@ -384,6 +410,7 @@ All API routes return JSON. Common responses:
 **Prometheus metrics** available at: `http://localhost:8000/metrics`
 
 Tracked metrics include:
+
 - `http_requests_total` - Total HTTP requests by method/endpoint/status
 - `http_request_duration_seconds` - Request latency histogram
 - `db_query_duration_seconds` - Database query duration
@@ -395,7 +422,7 @@ Metrics configured in `app/metrics.py`, middleware in `PrometheusMiddleware`
 ### Grocery API
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+| ---------- | -------- | ------------- |
 | `/api/grocery/categories` | GET | List all categories (ordered by sort_order) |
 | `/api/grocery/categories/reorder` | PUT | Update category sort order |
 | `/api/grocery/items` | GET | List all items (unchecked first, then by category) |
@@ -408,17 +435,20 @@ Metrics configured in `app/metrics.py`, middleware in `PrometheusMiddleware`
 ## Useful Queries
 
 **Find all recurring series:**
+
 ```sql
 SELECT * FROM recurrence_series;
 SELECT * FROM task_recurrence_series;
 ```
 
 **Find exceptions in a series:**
+
 ```sql
 SELECT * FROM agenda_events WHERE series_id = ? AND is_exception = 1;
 ```
 
 **Today's events:**
+
 ```sql
 SELECT * FROM agenda_events
 WHERE date(start_time) = date('now');
