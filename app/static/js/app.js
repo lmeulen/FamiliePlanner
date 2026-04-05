@@ -778,3 +778,11 @@ window.GlobalLoader = (() => {
 
   return { show, hide };
 })();
+
+// ── Authentication State Initialization ────────────────────────────
+// If user can access this page (authenticated pages), mark as authenticated for offline access
+if (window.AuthState && !window.location.pathname.startsWith('/login')) {
+  // User is viewing an authenticated page, so they must be logged in
+  window.AuthState.setAuthenticated();
+  window.AuthState.init();
+}

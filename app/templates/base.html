@@ -86,7 +86,7 @@
       <span class="nav-icon">⚙️</span>
       <span class="nav-label" data-i18n="nav.settings">Instellingen</span>
     </a>
-    <a href="/logout" class="nav-item nav-item--logout" aria-label="Uitloggen" title="Uitloggen" data-i18n-aria-label="nav.logout" data-i18n-title="nav.logout">
+    <a href="/logout" class="nav-item nav-item--logout" aria-label="Uitloggen" title="Uitloggen" data-i18n-aria-label="nav.logout" data-i18n-title="nav.logout" onclick="if(window.AuthState) window.AuthState.clearAuthenticated()">
       <span class="nav-icon">🚪</span>
       <span class="nav-label" data-i18n="nav.logout">Uitloggen</span>
     </a>
@@ -190,6 +190,7 @@
   <script src="/static/js/toast.js?v={{ static_v }}"></script>
   <script src="/static/js/utils/api-helpers.js?v={{ static_v }}"></script>
   <script src="/static/js/theme.js?v={{ static_v }}"></script>
+  <script src="/static/js/auth-state.js?v={{ static_v }}"></script>
   <script src="/static/js/app.js?v={{ static_v }}"></script>
   <script src="/static/js/mobile-menu.js?v={{ static_v }}"></script>
   <script src="/static/js/swipe-handler.js?v={{ static_v }}"></script>
