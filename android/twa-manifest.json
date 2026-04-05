@@ -1,0 +1,62 @@
+{
+  "packageId": "com.familieplanner.app",
+  "host": "familieplanner.yourdomain.com",
+  "name": "FamiliePlanner",
+  "launcherName": "FamiliePlanner",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#6C5CE7",
+  "navigationColor": "#6C5CE7",
+  "navigationColorDark": "#1a1a2e",
+  "navigationDividerColor": "#FFFFFF",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://familieplanner.yourdomain.com/static/icon-512.png",
+  "maskableIconUrl": "https://familieplanner.yourdomain.com/static/icon-maskable-512.png",
+  "monochromeIconUrl": "https://familieplanner.yourdomain.com/static/icon-monochrome-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./familieplanner.keystore",
+    "alias": "familieplanner"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "url": "/agenda",
+      "icon": "https://familieplanner.yourdomain.com/static/shortcut-agenda.png"
+    },
+    {
+      "name": "Taken",
+      "short_name": "Taken",
+      "url": "/taken",
+      "icon": "https://familieplanner.yourdomain.com/static/shortcut-tasks.png"
+    },
+    {
+      "name": "Boodschappen",
+      "short_name": "Winkel",
+      "url": "/boodschappen",
+      "icon": "https://familieplanner.yourdomain.com/static/shortcut-grocery.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://familieplanner.yourdomain.com/static/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "minSdkVersion": 21,
+  "targetSdkVersion": 34
+}

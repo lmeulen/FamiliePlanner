@@ -1,0 +1,19 @@
+# Android build artifacts
+app/
+build/
+.gradle/
+local.properties
+
+# Bubblewrap cache
+.bubblewrap/
+
+# Sensitive files (already in root .gitignore, but being explicit)
+*.keystore
+*-credentials.txt
+
+# Node modules (if bubblewrap dependencies are local)
+node_modules/
+
+# IDE files
+.idea/
+*.iml
