@@ -1,5 +1,5 @@
 /* ================================================================
-   agenda.js – Full agenda page: week/month/list views + CRUD
+   agenda.js – Full agenda page: week/month/list views + CRUD with offline support
    Supports standalone events and recurring series.
    ================================================================ */
 (function () {
@@ -11,6 +11,79 @@
   let multidayCount = 3;  // default 3 days
   const MULTIDAY_MIN = 2;
   const MULTIDAY_MAX = 5;
+  let isOnline      = navigator.onLine;
+  let db            = window.AgendaDB;
+
+  // ── Offline/Online detection ──────────────────────────────────
+  function updateOnlineStatus() {
+    isOnline = navigator.onLine;
+    const indicator = document.getElementById('agenda-offline-indicator');
+
+    if (isOnline) {
+      if (indicator) indicator.remove();
+      syncPendingChanges();
+    } else {
+      if (!indicator) {
+        const banner = document.createElement('div');
+        banner.id = 'agenda-offline-indicator';
+        banner.className = 'offline-indicator';
+        banner.textContent = '📡 Offline modus - wijzigingen worden gesynchroniseerd wanneer je weer online bent';
+        document.body.prepend(banner);
+      }
+    }
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  // ── Sync pending changes ──────────────────────────────────────
+  async function syncPendingChanges() {
+    if (!isOnline) return;
+
+    try {
+      const pending = await db.getPendingSync();
+      if (!pending || !pending.length) return;
+
+      console.log(`[Agenda] Syncing ${pending.length} pending changes...`);
+
+      for (const action of pending) {
+        try {
+          switch (action.type) {
+            case 'add_event':
+              await API.post('/api/agenda/', action.payload);
+              break;
+            case 'update_event':
+              await API.put(`/api/agenda/${action.eventId}`, action.payload);
+              break;
+            case 'delete_event':
+              await API.delete(`/api/agenda/${action.eventId}`);
+              break;
+            case 'add_series':
+              await API.post('/api/agenda/series', action.payload);
+              break;
+            case 'update_series':
+              await API.put(`/api/agenda/series/${action.seriesId}`, action.payload);
+              break;
+            case 'delete_series':
+              await API.delete(`/api/agenda/series/${action.seriesId}`);
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to sync action:', action, err);
+        }
+      }
+
+      // Clear sync queue after successful sync
+      await db.clearSyncQueue();
+
+      // Reload from server
+      await loadEvents(false);
+
+      Toast.show('Wijzigingen gesynchroniseerd!', 'success');
+    } catch (err) {
+      console.error('Sync failed:', err);
+    }
+  }
 
   // ── Multi-day view helpers ────────────────────────────────────
   function loadMultidayCount() {
@@ -67,7 +140,7 @@
       const cacheKey = `agenda_events_${fmt(start)}_${fmt(end)}`;
 
       // Try cache first
-      if (useCache) {
+      if (useCache && isOnline) {
         const cached = Cache.get(cacheKey);
         if (cached) {
           events = cached;
@@ -80,14 +153,35 @@
         }
       }
 
-      // Fetch from API
-      events = await API.get(`/api/agenda/?start=${fmt(start)}&end=${fmt(end)}`);
+      if (isOnline) {
+        // Fetch from API
+        events = await API.get(`/api/agenda/?start=${fmt(start)}&end=${fmt(end)}`);
 
-      // Cache for 1 minute (events change frequently)
-      Cache.set(cacheKey, events, 60000);
-    } catch {
-      events = [];
-      Toast.show('Kon agenda niet laden', 'error');
+        // Cache for 1 minute (events change frequently)
+        Cache.set(cacheKey, events, 60000);
+
+        // Save to IndexedDB for offline use
+        await db.saveEvents(events);
+      } else {
+        // Load from IndexedDB when offline
+        events = await db.getEventsOverlapping(fmt(start), fmt(end));
+      }
+    } catch (err) {
+      console.error('Failed to load events:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        const start = new Date(curDate);
+        start.setMonth(start.getMonth() - 1);
+        const end = new Date(curDate);
+        end.setMonth(end.getMonth() + 2);
+        const fmt = d => `${d.getFullYear()}-${FP.pad(d.getMonth()+1)}-${FP.pad(d.getDate())}`;
+        events = await db.getEventsOverlapping(fmt(start), fmt(end));
+      } catch {
+        events = [];
+      }
+      if (!events.length && isOnline) {
+        Toast.show('Kon agenda niet laden', 'error');
+      }
     } finally {
       // Hide skeleton after load (success or error)
       if (skeleton) skeleton.classList.add('hidden');
@@ -465,6 +559,10 @@
 
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
+    // Initialize database and check online status
+    await db.open();
+    updateOnlineStatus();
+
     await FP.loadMembers();
 
     // Load multiday count from localStorage

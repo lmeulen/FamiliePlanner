@@ -303,8 +303,16 @@ class EventFormController {
     const recurToggle = this.form.querySelector('#recurrence-toggle');
     const isMultiDayAllDay = this.form.all_day.checked &&
       Math.floor((endDt - startDt) / (1000 * 60 * 60 * 24)) > 0;
+    const isOnline = navigator.onLine;
+    const db = window.AgendaDB;
 
     if ((recurToggle?.checked || isMultiDayAllDay) && !this.simplified) {
+      // Series creation requires online connection
+      if (!isOnline) {
+        Toast.show('Herhalende afspraken aanmaken vereist online verbinding', 'error');
+        return;
+      }
+
       // Create series
       const recurrencePayload = this.recurrenceUI.getRecurrencePayload();
       const seriesPayload = {
@@ -335,13 +343,31 @@ class EventFormController {
       Toast.show(isMultiDayAllDay && !recurToggle?.checked ? 'Meerdaagse afspraak aangemaakt!' : 'Herhalende reeks aangemaakt!');
     } else {
       // Create single event
-      await API.post('/api/agenda/', eventData);
+      if (isOnline) {
+        await API.post('/api/agenda/', eventData);
+      } else {
+        // Add locally and queue sync
+        await db.addEventOffline(eventData);
+        await db.queueSync({
+          type: 'add_event',
+          payload: eventData
+        });
+      }
       Toast.show('Afspraak toegevoegd!');
     }
   }
 
   async handleUpdate(eventData, startDt, endDt) {
+    const isOnline = navigator.onLine;
+    const db = window.AgendaDB;
+
     if (this.seriesId && this.editScope === 'series' && !this.simplified) {
+      // Series update requires online connection
+      if (!isOnline) {
+        Toast.show('Herhalende afspraken bijwerken vereist online verbinding', 'error');
+        return;
+      }
+
       // Update series
       const recurrencePayload = this.recurrenceUI.getRecurrencePayload();
       const seriesPayload = {
@@ -362,21 +388,48 @@ class EventFormController {
         Toast.show('Let op: meerdaagse afspraken worden alleen op de eerste dag getoond. Maak een nieuwe herhalende afspraak aan voor alle dagen.', 'warning');
       }
 
-      await API.put(`/api/agenda/${this.editId}`, eventData);
+      if (isOnline) {
+        await API.put(`/api/agenda/${this.editId}`, eventData);
+      } else {
+        // Update locally and queue sync
+        await db.updateEventOffline(this.editId, eventData);
+        await db.queueSync({
+          type: 'update_event',
+          eventId: this.editId,
+          payload: eventData
+        });
+      }
       Toast.show('Afspraak bijgewerkt!');
     }
   }
 
   async handleDelete() {
     const isSeries = this.seriesId && this.editScope === 'series';
+    const isOnline = navigator.onLine;
+    const db = window.AgendaDB;
+
     if (!confirm(isSeries ? 'Hele reeks verwijderen?' : 'Afspraak verwijderen?')) return;
 
     try {
       if (isSeries) {
+        // Series deletion requires online connection
+        if (!isOnline) {
+          Toast.show('Herhalende reeks verwijderen vereist online verbinding', 'error');
+          return;
+        }
         await API.delete(`/api/agenda/series/${this.seriesId}`);
         Toast.show('Reeks verwijderd', 'warning');
       } else {
-        await API.delete(`/api/agenda/${this.editId}`);
+        if (isOnline) {
+          await API.delete(`/api/agenda/${this.editId}`);
+        } else {
+          // Delete locally and queue sync
+          await db.deleteEventOffline(this.editId);
+          await db.queueSync({
+            type: 'delete_event',
+            eventId: this.editId
+          });
+        }
         Toast.show('Afspraak verwijderd', 'warning');
       }
       Modal.close();
