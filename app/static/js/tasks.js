@@ -1,5 +1,5 @@
 /* ================================================================
-   tasks.js – Task lists & task management page (chronological view)
+   tasks.js – Task lists & task management page (chronological view) with offline support
    ================================================================ */
 (function () {
   let tasks        = [];
@@ -7,19 +7,138 @@
   let activeList   = 'all';   // list_id or 'all'
   let activeMember = null;
   let showDone     = false;
+  let isOnline     = navigator.onLine;
+  let db           = window.TasksDB;
+
+  // ── Offline/Online detection ──────────────────────────────────
+  function updateOnlineStatus() {
+    isOnline = navigator.onLine;
+    const indicator = document.getElementById('tasks-offline-indicator');
+
+    if (isOnline) {
+      if (indicator) indicator.remove();
+      syncPendingChanges();
+    } else {
+      if (!indicator) {
+        const banner = document.createElement('div');
+        banner.id = 'tasks-offline-indicator';
+        banner.className = 'offline-indicator';
+        banner.textContent = '📡 Offline modus - wijzigingen worden gesynchroniseerd wanneer je weer online bent';
+        document.body.prepend(banner);
+      }
+    }
+  }
+
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  // ── Sync pending changes ──────────────────────────────────────
+  async function syncPendingChanges() {
+    if (!isOnline) return;
+
+    try {
+      const pending = await db.getPendingSync();
+      if (!pending || !pending.length) return;
+
+      console.log(`[Tasks] Syncing ${pending.length} pending changes...`);
+
+      for (const action of pending) {
+        try {
+          switch (action.type) {
+            case 'add_task':
+              await API.post('/api/tasks/', action.payload);
+              break;
+            case 'update_task':
+              await API.put(`/api/tasks/${action.taskId}`, action.payload);
+              break;
+            case 'delete_task':
+              await API.delete(`/api/tasks/${action.taskId}`);
+              break;
+            case 'toggle_task':
+              await API.patch(`/api/tasks/${action.taskId}/toggle`);
+              break;
+            case 'add_list':
+              await API.post('/api/tasks/lists', action.payload);
+              break;
+            case 'update_list':
+              await API.put(`/api/tasks/lists/${action.listId}`, action.payload);
+              break;
+            case 'delete_list':
+              await API.delete(`/api/tasks/lists/${action.listId}`);
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to sync action:', action, err);
+        }
+      }
+
+      // Clear sync queue after successful sync
+      await db.clearSyncQueue();
+
+      // Reload from server
+      await loadLists();
+      await loadTasks();
+
+      Toast.show('Wijzigingen gesynchroniseerd!', 'success');
+    } catch (err) {
+      console.error('Sync failed:', err);
+    }
+  }
 
   // ── Loaders ───────────────────────────────────────────────────
   async function loadLists() {
-    lists = await API.get('/api/tasks/lists').catch(() => []);
+    try {
+      if (isOnline) {
+        lists = await API.get('/api/tasks/lists');
+        // Save to IndexedDB for offline use
+        await db.saveLists(lists);
+      } else {
+        // Load from IndexedDB when offline
+        lists = await db.getLists();
+      }
+    } catch (err) {
+      console.error('Failed to load lists:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        lists = await db.getLists();
+      } catch {
+        lists = [];
+      }
+    }
     renderListTabs();
   }
 
   async function loadTasks() {
-    let url = '/api/tasks/?';
-    if (activeList !== 'all') url += `list_id=${activeList}&`;
-    if (activeMember)         url += `member_id=${activeMember}&`;
-    if (!showDone)            url += `done=false&`;
-    tasks = await API.get(url).catch(() => []);
+    try {
+      if (isOnline) {
+        let url = '/api/tasks/?';
+        if (activeList !== 'all') url += `list_id=${activeList}&`;
+        if (activeMember)         url += `member_id=${activeMember}&`;
+        if (!showDone)            url += `done=false&`;
+        tasks = await API.get(url);
+        // Save to IndexedDB for offline use
+        await db.saveTasks(tasks);
+      } else {
+        // Load from IndexedDB when offline with client-side filtering
+        tasks = await db.getTasksFiltered({
+          list_id: activeList,
+          member_id: activeMember,
+          done: showDone ? undefined : false
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load tasks:', err);
+      // Try loading from IndexedDB as fallback
+      try {
+        tasks = await db.getTasksFiltered({
+          list_id: activeList,
+          member_id: activeMember,
+          done: showDone ? undefined : false
+        });
+      } catch {
+        tasks = [];
+      }
+    }
     renderTasks();
   }
 
@@ -160,7 +279,16 @@
         renderTasks(); // Update UI immediately
 
         try {
-          await API.patch(`/api/tasks/${taskId}/toggle`);
+          if (isOnline) {
+            await API.patch(`/api/tasks/${taskId}/toggle`);
+          } else {
+            // Update locally and queue sync
+            await db.updateTaskOffline(taskId, { done: task.done });
+            await db.queueSync({
+              type: 'toggle_task',
+              taskId: taskId
+            });
+          }
           Cache.invalidate(/^tasks_/);
           Toast.show(task.done ? 'Taak afgerond! 🎉' : 'Taak heropend');
         } catch (err) {
@@ -205,7 +333,19 @@
       onSwipeRight: async (element) => {
         const taskId = parseInt(element.dataset.id);
         try {
-          await API.patch(`/api/tasks/${taskId}/toggle`);
+          if (isOnline) {
+            await API.patch(`/api/tasks/${taskId}/toggle`);
+          } else {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+              task.done = !task.done;
+              await db.updateTaskOffline(taskId, { done: task.done });
+              await db.queueSync({
+                type: 'toggle_task',
+                taskId: taskId
+              });
+            }
+          }
           Cache.invalidate(/^tasks_/);
           const task = tasks.find(t => t.id === taskId);
           if (task) {
@@ -228,7 +368,15 @@
         }
 
         try {
-          await API.delete(`/api/tasks/${taskId}`);
+          if (isOnline) {
+            await API.delete(`/api/tasks/${taskId}`);
+          } else {
+            await db.deleteTaskOffline(taskId);
+            await db.queueSync({
+              type: 'delete_task',
+              taskId: taskId
+            });
+          }
           Cache.invalidate(/^tasks_/);
           Toast.show('Taak verwijderd', 'warning');
           await loadTasks();
@@ -347,6 +495,10 @@
 
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
+    // Initialize database and check online status
+    await db.open();
+    updateOnlineStatus();
+
     await FP.loadMembers();
     await loadLists();
     await loadTasks();

@@ -238,6 +238,12 @@ class TaskFormController {
   }
 
   async handleCreateSeries(listId, memberIds) {
+    // Recurring series creation requires online connection
+    if (!navigator.onLine) {
+      Toast.show('Herhalende taken aanmaken vereist online verbinding', 'error');
+      return;
+    }
+
     const dueDate = this.form.due_date.value;
     const validation = this.recurrenceUI.validate(dueDate);
     if (!validation.valid) {
@@ -270,6 +276,12 @@ class TaskFormController {
   }
 
   async handleUpdateSeries(listId, memberIds) {
+    // Recurring series update requires online connection
+    if (!navigator.onLine) {
+      Toast.show('Herhalende taken bijwerken vereist online verbinding', 'error');
+      return;
+    }
+
     const recurrencePayload = this.recurrenceUI.getRecurrencePayload();
     const payload = {
       title: this.form.title.value,
@@ -299,13 +311,37 @@ class TaskFormController {
       done: false,
     };
 
+    const isOnline = navigator.onLine;
+    const db = window.TasksDB;
+
     try {
       if (this.editId) {
         const current = this.taskCache.find(t => t.id === this.editId);
-        await API.put(`/api/tasks/${this.editId}`, { ...data, done: current?.done ?? false });
+        const payload = { ...data, done: current?.done ?? false };
+
+        if (isOnline) {
+          await API.put(`/api/tasks/${this.editId}`, payload);
+        } else {
+          // Update locally and queue sync
+          await db.updateTaskOffline(this.editId, payload);
+          await db.queueSync({
+            type: 'update_task',
+            taskId: this.editId,
+            payload: payload
+          });
+        }
         Toast.show('Taak bijgewerkt!');
       } else {
-        await API.post('/api/tasks/', data);
+        if (isOnline) {
+          await API.post('/api/tasks/', data);
+        } else {
+          // Add locally and queue sync
+          await db.addTaskOffline(data);
+          await db.queueSync({
+            type: 'add_task',
+            payload: data
+          });
+        }
         Toast.show('Taak toegevoegd!');
       }
       Modal.close();
@@ -316,9 +352,16 @@ class TaskFormController {
   }
 
   async handleDelete() {
+    const isOnline = navigator.onLine;
+    const db = window.TasksDB;
+
     if (this.seriesId) {
       const scope = this.form.querySelector('[name="edit_scope"]:checked')?.value || 'this';
       if (scope === 'series') {
+        if (!isOnline) {
+          Toast.show('Reeks verwijderen vereist online verbinding', 'error');
+          return;
+        }
         if (!confirm('Hele reeks verwijderen?')) return;
         try {
           await API.delete(`/api/tasks/series/${this.seriesId}`);
@@ -334,7 +377,16 @@ class TaskFormController {
 
     if (!confirm('Taak verwijderen?')) return;
     try {
-      await API.delete(`/api/tasks/${this.editId}`);
+      if (isOnline) {
+        await API.delete(`/api/tasks/${this.editId}`);
+      } else {
+        // Delete locally and queue sync
+        await db.deleteTaskOffline(this.editId);
+        await db.queueSync({
+          type: 'delete_task',
+          taskId: this.editId
+        });
+      }
       Toast.show('Taak verwijderd', 'warning');
       Modal.close();
       this.onSave();
