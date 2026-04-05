@@ -105,3 +105,9 @@ yarn-error.log*
 
 # Backup directory
 backups/
+
+# Android TWA / APK
+android/*.keystore
+android/*-credentials.txt
+android/app/
+certbot/

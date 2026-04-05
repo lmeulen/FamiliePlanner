@@ -346,6 +346,26 @@ async def service_worker():
     )
 
 
+@app.get("/.well-known/assetlinks.json", tags=["pwa"], include_in_schema=False)
+async def assetlinks():
+    """
+    Digital Asset Links for Android TWA verification.
+
+    This file is used by Android to verify that the app is associated with
+    this domain, enabling Trusted Web Activities (TWA) to run without browser chrome.
+    """
+    assetlinks_path = BASE_DIR / "static" / ".well-known" / "assetlinks.json"
+    assetlinks_content = assetlinks_path.read_text(encoding="utf-8")
+
+    return Response(
+        content=assetlinks_content,
+        media_type="application/json",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
+
 @app.get("/health", tags=["health"], include_in_schema=True)
 async def health():
     """Liveness + readiness probe. Returns 200 when the DB is reachable."""
