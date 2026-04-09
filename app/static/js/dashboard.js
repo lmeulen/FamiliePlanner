@@ -274,11 +274,14 @@
   function renderMealCard(meal) {
     const cook = meal.cook_member_id ? FP.getMember(meal.cook_member_id) : null;
     const badge = cook ? `<div class="event-member-badge" style="background:${cook.color}" title="${FP.esc(cook.name)}">${cook.avatar}</div>` : '';
+    const recipeLink = meal.recipe_url
+      ? `<a href="${FP.esc(meal.recipe_url)}" target="_blank" rel="noopener" class="meal-recipe-link" style="font-size:.8rem;color:var(--accent);text-decoration:none;white-space:nowrap;" onclick="event.stopPropagation()">🔗 Recept</a>`
+      : '';
     return `
       <div class="meal-card" data-id="${meal.id}">
         <span class="meal-type-badge ${meal.meal_type}">${FP.mealTypeLabel(meal.meal_type)}</span>
         <div class="meal-name-row">
-          <div class="meal-name">${FP.esc(meal.name)}</div>
+          <div class="meal-name">${FP.esc(meal.name)}${recipeLink ? ` ${recipeLink}` : ''}</div>
           ${badge ? `<div class="event-member-badges">${badge}</div>` : ''}
         </div>
         ${meal.description ? `<div class="text-muted" style="font-size:.78rem;margin-top:.2rem">${FP.esc(meal.description)}</div>` : ''}

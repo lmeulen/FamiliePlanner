@@ -125,6 +125,7 @@ class RecipeListItem(BaseModel):
     recipeCategory: list[str | dict] = Field(default_factory=list)  # Mealie returns dicts
     tags: list[str | dict] = Field(default_factory=list)  # Mealie returns dicts
     rating: int | float | None = None  # Mealie returns float
+    orgURL: str | None = None
     dateAdded: datetime | None = None
 
     @field_validator("recipeCategory", "tags", mode="before")

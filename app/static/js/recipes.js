@@ -131,6 +131,10 @@
 
       const rating = recipe.rating ? '⭐'.repeat(Math.round(recipe.rating)) : '';
 
+      const orgLink = recipe.orgURL
+        ? `<a href="${FP.esc(recipe.orgURL)}" target="_blank" rel="noopener" class="btn btn--secondary" style="font-size: 0.8rem; padding: 0.3rem 0.65rem; white-space: nowrap; flex-shrink: 0;" onclick="event.stopPropagation();">🔗 Origineel</a>`
+        : '';
+
       return `<div class="card recipe-card" data-slug="${FP.esc(recipe.slug)}" style="cursor: pointer; display: flex; flex-direction: row; align-items: center; padding: 1rem 1.25rem; margin-bottom: 0.75rem; border-radius: 8px; transition: background 0.15s;">
         <div style="flex: 1; min-width: 0;">
           <h4 style="font-size: 1.1rem; margin: 0 0 0.4rem 0; font-weight: 600;">${FP.esc(recipe.name)} ${rating ? `<span style="margin-left: 0.5rem; font-size: 0.9rem;">${rating}</span>` : ''}</h4>
@@ -140,6 +144,7 @@
             ${tags}
           </div>
         </div>
+        ${orgLink ? `<div style="margin-left: 1rem;">${orgLink}</div>` : ''}
       </div>`;
     }).join('');
 
