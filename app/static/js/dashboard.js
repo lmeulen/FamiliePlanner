@@ -281,10 +281,13 @@
       <div class="meal-card" data-id="${meal.id}">
         <span class="meal-type-badge ${meal.meal_type}">${FP.mealTypeLabel(meal.meal_type)}</span>
         <div class="meal-name-row">
-          <div class="meal-name">${FP.esc(meal.name)}${recipeLink ? ` ${recipeLink}` : ''}</div>
+          <div style="display:flex;flex-direction:column;min-width:0;flex:1;overflow:hidden">
+            <div class="meal-name">${FP.esc(meal.name)}</div>
+            ${recipeLink ? recipeLink : ''}
+            ${meal.description ? `<div class="text-muted" style="font-size:.78rem;margin-top:.1rem">${FP.esc(meal.description)}</div>` : ''}
+          </div>
           ${badge ? `<div class="event-member-badges">${badge}</div>` : ''}
         </div>
-        ${meal.description ? `<div class="text-muted" style="font-size:.78rem;margin-top:.2rem">${FP.esc(meal.description)}</div>` : ''}
       </div>`;
   }
 
