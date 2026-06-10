@@ -122,6 +122,14 @@
       if (prefillDate) form.date.value = prefillDate;
     }
 
+    if (window.DateTimePicker) {
+      const dateInput = form.querySelector('[name="date"]');
+      if (dateInput) {
+        DateTimePicker.destroy(dateInput);
+        DateTimePicker.initDate(dateInput);
+      }
+    }
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const cookVal  = cookSel ? cookSel.value : '';

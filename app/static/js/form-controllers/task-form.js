@@ -62,7 +62,13 @@ class TaskFormController {
       recurSection?.classList.toggle('hidden', !recurToggle.checked);
       recurFields?.classList.toggle('hidden', !recurToggle.checked);
       if (recurToggle.checked) {
-        this.form.querySelector('[name="series_end"]').value = '';
+        const seriesEndInput = this.form.querySelector('[name="series_end"]');
+        if (seriesEndInput) {
+          seriesEndInput.value = '';
+          if (window.DateTimePicker && !seriesEndInput._flatpickr_instance) {
+            DateTimePicker.initDate(seriesEndInput);
+          }
+        }
       }
     });
 
@@ -115,6 +121,7 @@ class TaskFormController {
     this.form.title.value = task.title;
     this.form.description.value = task.description || '';
     this.form.due_date.value = task.due_date || '';
+    if (window.DateTimePicker) DateTimePicker.initDate(this.form.due_date);
 
     const listSel = this.form.querySelector('select[name="list_id"]');
     if (listSel) {
@@ -184,6 +191,7 @@ class TaskFormController {
   setupCreateForm() {
     // Default due date to today
     this.form.due_date.value = FP.todayStr();
+    if (window.DateTimePicker) DateTimePicker.initDate(this.form.due_date);
 
     // Default to first list if available
     const listSel = this.form.querySelector('select[name="list_id"]');

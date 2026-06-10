@@ -120,11 +120,25 @@ class EventFormController {
         recurFields?.classList.toggle('hidden', this.editScope !== 'series');
 
         if (this.editScope === 'series' && this.currentSeries) {
-          this.form.start_time.value = `${this.currentSeries.series_start}T${this.currentSeries.start_time_of_day.slice(0,5)}`;
-          this.form.end_time.value = `${this.currentSeries.series_start}T${this.currentSeries.end_time_of_day.slice(0,5)}`;
+          const startVal = `${this.currentSeries.series_start}T${this.currentSeries.start_time_of_day.slice(0,5)}`;
+          const endVal   = `${this.currentSeries.series_start}T${this.currentSeries.end_time_of_day.slice(0,5)}`;
+          if (window.DateTimePicker) {
+            DateTimePicker.setValue(this.form.start_time, startVal);
+            DateTimePicker.setValue(this.form.end_time, endVal);
+          } else {
+            this.form.start_time.value = startVal;
+            this.form.end_time.value   = endVal;
+          }
         } else {
-          this.form.start_time.value = FP.toLocalDatetimeInput(new Date(event.start_time));
-          this.form.end_time.value = FP.toLocalDatetimeInput(new Date(event.end_time));
+          const startVal = FP.toLocalDatetimeInput(new Date(event.start_time));
+          const endVal   = FP.toLocalDatetimeInput(new Date(event.end_time));
+          if (window.DateTimePicker) {
+            DateTimePicker.setValue(this.form.start_time, startVal);
+            DateTimePicker.setValue(this.form.end_time, endVal);
+          } else {
+            this.form.start_time.value = startVal;
+            this.form.end_time.value   = endVal;
+          }
         }
         this.updateAllDayInputMode(this.form.all_day.checked, anchorDateStr);
       });
@@ -192,20 +206,38 @@ class EventFormController {
     const endInput = this.form.end_time;
     if (!startInput || !endInput) return;
 
+    // Capture current values before destroying pickers
+    const startVal = startInput.value;
+    const endVal   = endInput.value;
+
+    // Destroy existing pickers
+    if (window.DateTimePicker) {
+      DateTimePicker.destroy(startInput);
+      DateTimePicker.destroy(endInput);
+    }
+
     if (isAllDay) {
-      const startDate = startInput.value?.split('T')[0] || anchorDateStr;
-      const endDate = endInput.value?.split('T')[0] || startDate;
-      startInput.type = 'date';
-      endInput.type = 'date';
+      const startDate = startVal?.split('T')[0] || anchorDateStr;
+      const endDate   = endVal?.split('T')[0]   || startDate;
+      startInput.type  = 'date';
+      endInput.type    = 'date';
       startInput.value = startDate;
-      endInput.value = endDate;
+      endInput.value   = endDate;
+      if (window.DateTimePicker) {
+        DateTimePicker.initDate(startInput);
+        DateTimePicker.initDate(endInput);
+      }
     } else {
-      const startDate = startInput.value?.split('T')[0] || anchorDateStr;
-      const endDate = endInput.value?.split('T')[0] || startDate;
-      startInput.type = 'datetime-local';
-      endInput.type = 'datetime-local';
-      if (!startInput.value.includes('T')) startInput.value = `${startDate}T09:00`;
-      if (!endInput.value.includes('T')) endInput.value = `${endDate}T10:00`;
+      const startDate = startVal?.split('T')[0] || anchorDateStr;
+      const endDate   = endVal?.split('T')[0]   || startDate;
+      startInput.type  = 'datetime-local';
+      endInput.type    = 'datetime-local';
+      if (!startVal || !startVal.includes('T')) startInput.value = `${startDate}T09:00`;
+      if (!endVal   || !endVal.includes('T'))   endInput.value   = `${endDate}T10:00`;
+      if (window.DateTimePicker) {
+        DateTimePicker.initDateTime(startInput);
+        DateTimePicker.initDateTime(endInput);
+      }
     }
   }
 

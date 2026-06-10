@@ -1,0 +1,170 @@
+/* ================================================================
+   clock-picker.css – Android Material Design circular clock picker
+   ================================================================ */
+
+/* Overlay backdrop */
+.cp-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  z-index: 9998;
+}
+
+/* Dialog */
+.cp-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-surface);
+  border-radius: 28px;
+  padding: 24px;
+  z-index: 9999;
+  box-shadow: 0 11px 15px -7px rgba(0,0,0,.2), 0 24px 38px 3px rgba(0,0,0,.14), 0 9px 46px 8px rgba(0,0,0,.12);
+  min-width: 280px;
+  max-width: 360px;
+  width: calc(100vw - 48px);
+}
+
+/* Header */
+.cp-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.cp-header-label {
+  font-size: 3.5rem;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -2px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.cp-header-label.active {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.cp-header-sep {
+  font-size: 3.5rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  line-height: 1;
+  user-select: none;
+}
+
+/* Clock face */
+.cp-face-wrap {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  margin: 0 auto 20px;
+  background: var(--bg-surface-2);
+  border-radius: 50%;
+  touch-action: none;
+}
+
+.cp-center-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.cp-hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom center;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  z-index: 5;
+  transition: transform 0.15s ease, height 0.15s ease;
+  margin-left: -1px;
+}
+
+.cp-hand::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+/* Clock numbers */
+.cp-number {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+  z-index: 6;
+  transition: background 0.15s;
+  color: var(--text-primary);
+}
+
+.cp-number:hover {
+  background: var(--bg-surface-2);
+}
+
+.cp-number.selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cp-number.inner {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.cp-number.inner.selected {
+  color: #fff;
+}
+
+/* Actions */
+.cp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cp-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.15s;
+}
+
+.cp-btn:hover {
+  background: var(--accent-light);
+}

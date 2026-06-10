@@ -70,6 +70,14 @@ class RecurrenceUIController {
     // Show/hide infinite hint
     const infiniteHint = document.getElementById(`${this.prefix}infinite-hint-section`);
     infiniteHint?.classList.toggle('hidden', condition !== 'infinite');
+
+    // Init date picker for series_end when date condition is selected
+    if (condition === 'date' && window.DateTimePicker) {
+      const endInput = this.form?.querySelector('[name="series_end"]');
+      if (endInput && !endInput._flatpickr_instance) {
+        DateTimePicker.initDate(endInput);
+      }
+    }
   }
 
   updateUI() {
@@ -104,7 +112,13 @@ class RecurrenceUIController {
       const dateRadio = this.form.querySelector('input[name="end_condition"][value="date"]');
       if (dateRadio) dateRadio.checked = true;
       const endInput = this.form.querySelector('[name="series_end"]');
-      if (endInput) endInput.value = seriesData.series_end;
+      if (endInput) {
+        if (window.DateTimePicker) {
+          DateTimePicker.setValue(endInput, seriesData.series_end);
+        } else {
+          endInput.value = seriesData.series_end;
+        }
+      }
     } else {
       // Infinite series (both null)
       const infiniteRadio = this.form.querySelector('input[name="end_condition"][value="infinite"]');

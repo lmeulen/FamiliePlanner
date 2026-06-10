@@ -1,0 +1,169 @@
+/* ================================================================
+   date-time-picker.css – DateTimePicker wrapper styles
+   ================================================================ */
+
+/* Wrapper for date + time buttons */
+.dtp-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+/* Shared button style matching native inputs */
+.dtp-date-btn,
+.dtp-time-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dtp-date-btn:focus,
+.dtp-time-btn:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.dtp-date-btn:hover,
+.dtp-time-btn:hover {
+  border-color: var(--accent);
+}
+
+.dtp-date-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.dtp-time-btn {
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+/* Separator */
+.dtp-separator {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Flatpickr theme overrides ──────────────────────────────────── */
+.flatpickr-calendar {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--text-primary) !important;
+  font-family: inherit !important;
+}
+
+.flatpickr-calendar::before,
+.flatpickr-calendar::after {
+  display: none !important;
+}
+
+.flatpickr-months {
+  background: var(--accent) !important;
+  border-radius: 16px 16px 0 0 !important;
+  padding: 8px 0 !important;
+}
+
+.flatpickr-month {
+  color: #fff !important;
+  fill: #fff !important;
+}
+
+.flatpickr-current-month {
+  color: #fff !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowUp::after {
+  border-bottom-color: #fff !important;
+}
+.flatpickr-current-month .numInputWrapper span.arrowDown::after {
+  border-top-color: #fff !important;
+}
+
+.flatpickr-prev-month,
+.flatpickr-next-month {
+  color: #fff !important;
+  fill: #fff !important;
+}
+
+.flatpickr-prev-month:hover svg,
+.flatpickr-next-month:hover svg {
+  fill: rgba(255,255,255,0.75) !important;
+}
+
+.flatpickr-weekdays {
+  background: var(--accent) !important;
+}
+
+span.flatpickr-weekday {
+  background: var(--accent) !important;
+  color: rgba(255,255,255,0.8) !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+}
+
+.flatpickr-day {
+  color: var(--text-primary) !important;
+  border-radius: 50% !important;
+  border: none !important;
+}
+
+.flatpickr-day:hover {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: var(--accent) !important;
+}
+
+.flatpickr-day.today {
+  border: 2px solid var(--accent) !important;
+  color: var(--accent) !important;
+  font-weight: 700 !important;
+}
+
+.flatpickr-day.today.selected {
+  color: #fff !important;
+}
+
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.flatpickr-disabled:hover {
+  color: var(--text-muted) !important;
+}
+
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: var(--text-muted) !important;
+}
+
+.numInputWrapper span.arrowUp::after {
+  border-bottom-color: var(--text-secondary) !important;
+}
+.numInputWrapper span.arrowDown::after {
+  border-top-color: var(--text-secondary) !important;
+}
+.numInputWrapper:hover {
+  background: var(--bg-surface-2) !important;
+}
+
+.flatpickr-innerContainer {
+  padding: 8px !important;
+}
