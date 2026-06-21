@@ -47,7 +47,11 @@ async def _regenerate_infinite_series() -> None:
                 )
                 new_events = _make_events_for_series(series)
                 db.add_all(new_events)
-                logger.info("recurrence-scheduler.regenerated series_id={} count={}", series.id, len(new_events))
+                logger.info(
+                    "Regenerated agenda occurrences for infinite recurrence series.",
+                    series_id=series.id,
+                    regenerated_count=len(new_events),
+                )
 
         # Find infinite task series
         task_result = await db.execute(
@@ -77,7 +81,9 @@ async def _regenerate_infinite_series() -> None:
                 new_tasks = _make_tasks_for_series(task_series)
                 db.add_all(new_tasks)
                 logger.info(
-                    "recurrence-scheduler.regenerated task_series_id={} count={}", task_series.id, len(new_tasks)
+                    "Regenerated task occurrences for infinite recurrence series.",
+                    task_series_id=task_series.id,
+                    regenerated_count=len(new_tasks),
                 )
 
         await db.commit()
@@ -85,7 +91,7 @@ async def _regenerate_infinite_series() -> None:
 
 async def run_recurrence_scheduler(stop_event: asyncio.Event) -> None:
     """Run daily at 01:00 to regenerate infinite series."""
-    logger.info("recurrence-scheduler.started")
+    logger.info("Recurrence scheduler started; next run is daily at 01:00.")
 
     while not stop_event.is_set():
         now = datetime.now()
@@ -99,8 +105,12 @@ async def run_recurrence_scheduler(stop_event: asyncio.Event) -> None:
         except TimeoutError:
             try:
                 await _regenerate_infinite_series()
-                logger.info("recurrence-scheduler.completed")
-            except Exception as exc:
-                logger.exception("recurrence-scheduler.failed error={}", exc)
+                logger.info("Recurrence scheduler cycle completed successfully.")
+            except Exception:
+                logger.exception(
+                    "Recurrence regeneration job failed; some infinite series may be outdated until next successful run.",
+                    scheduler="recurrence",
+                    next_attempt="next scheduled cycle",
+                )
 
-    logger.info("recurrence-scheduler.stopped")
+    logger.info("Recurrence scheduler stopped.")

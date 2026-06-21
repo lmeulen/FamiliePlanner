@@ -35,7 +35,11 @@ async def get_or_404(
     item = await db.get(model, id_value)
     if not item:
         msg = error_msg or f"{model.__name__} not found"
-        logger.warning(f"{model.__name__.lower()}.not_found id={id_value}")
+        logger.warning(
+            "Requested resource was not found in database.",
+            model=model.__name__,
+            resource_id=id_value,
+        )
         raise HTTPException(404, msg)
     return item
 

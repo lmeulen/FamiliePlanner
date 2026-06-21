@@ -8,9 +8,10 @@ Provides:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Literal
+from datetime import date, datetime, timedelta
+from typing import Any, Literal, TypeVar, cast
 
 import httpx
 from icalendar import Calendar
@@ -50,6 +51,7 @@ DEFAULT_SERIES_COUNT = 60
 
 
 # ── Internal parsed event ─────────────────────────────────────────
+
 
 @dataclass
 class _ParsedEvent:
@@ -92,7 +94,7 @@ class CoziPreviewItem:
     recommendation_reason: str
     event_type: EventType
     title: str
-    start_date: str        # ISO date "YYYY-MM-DD"
+    start_date: str  # ISO date "YYYY-MM-DD"
     start_time: str | None  # "HH:MM" or None for all-day
     end_time: str | None
     all_day: bool
@@ -145,6 +147,7 @@ class ImportResult:
 
 # ── ICS Fetch & Parse ─────────────────────────────────────────────
 
+
 async def fetch_ics(url: str) -> str:
     async with httpx.AsyncClient(timeout=20) as client:
         response = await client.get(url)
@@ -178,7 +181,11 @@ async def fetch_and_parse_cozi(url: str) -> list[_ParsedEvent]:
         if item is not None:
             parsed.append(item)
 
-    logger.debug("cozi_sync.parsed url={} total={}", url, len(parsed))
+    logger.debug(
+        "Cozi feed parsed into internal preview candidates.",
+        cozi_url=url,
+        parsed_count=len(parsed),
+    )
     return parsed
 
 
@@ -205,10 +212,7 @@ def _parse_single_event(
 
     is_meal, _, _, _ = _detect_meal_candidate(ev, title)
     is_multiday_allday = (
-        all_day
-        and not is_meal
-        and not advice.recurrence_type
-        and (end_dt.date() - start_dt.date()).days > 0
+        all_day and not is_meal and not advice.recurrence_type and (end_dt.date() - start_dt.date()).days > 0
     )
 
     return _ParsedEvent(
@@ -230,6 +234,7 @@ def _parse_single_event(
 
 # ── Classification ────────────────────────────────────────────────
 
+
 async def classify_cozi_events(
     events: list[_ParsedEvent],
     db: AsyncSession,
@@ -248,12 +253,12 @@ async def _classify_one(ev: _ParsedEvent, db: AsyncSession) -> CoziPreviewItem:
     reason = "Geen overeenkomst gevonden in FamiliePlanner"
 
     if ev.event_type == "meal":
-        uid_match = await _meal_by_cozi_uid(db, ev.uid) if ev.uid else None
-        if uid_match:
-            matched_fp_id = uid_match.id
-            matched_fp_title = uid_match.name
+        meal_uid_match = await _meal_by_cozi_uid(db, ev.uid) if ev.uid else None
+        if meal_uid_match:
+            matched_fp_id = meal_uid_match.id
+            matched_fp_title = meal_uid_match.name
             matched_fp_type = "meal"
-            changes = _diff_meal(uid_match, ev)
+            changes = _diff_meal(meal_uid_match, ev)
             if changes:
                 status = "changed"
                 recommendation = "import"
@@ -263,22 +268,22 @@ async def _classify_one(ev: _ParsedEvent, db: AsyncSession) -> CoziPreviewItem:
                 recommendation = "skip"
                 reason = "Maaltijd al aanwezig (geen wijzigingen)"
         else:
-            fuzzy = await _meal_fuzzy_match(db, ev)
-            if fuzzy:
-                matched_fp_id = fuzzy.id
-                matched_fp_title = fuzzy.name
+            meal_fuzzy_match = await _meal_fuzzy_match(db, ev)
+            if meal_fuzzy_match:
+                matched_fp_id = meal_fuzzy_match.id
+                matched_fp_title = meal_fuzzy_match.name
                 matched_fp_type = "meal"
                 status = "likely_exists"
                 recommendation = "skip"
                 reason = "Vergelijkbare maaltijd al aanwezig (naam + datum)"
 
     elif ev.event_type == "series":
-        uid_match = await _series_by_cozi_uid(db, ev.uid) if ev.uid else None
-        if uid_match:
-            matched_fp_id = uid_match.id
-            matched_fp_title = uid_match.title
+        series_uid_match = await _series_by_cozi_uid(db, ev.uid) if ev.uid else None
+        if series_uid_match:
+            matched_fp_id = series_uid_match.id
+            matched_fp_title = series_uid_match.title
             matched_fp_type = "series"
-            changes = _diff_series(uid_match, ev)
+            changes = _diff_series(series_uid_match, ev)
             if changes:
                 status = "changed"
                 recommendation = "import"
@@ -288,22 +293,22 @@ async def _classify_one(ev: _ParsedEvent, db: AsyncSession) -> CoziPreviewItem:
                 recommendation = "skip"
                 reason = "Herhalende afspraak al aanwezig (geen wijzigingen)"
         else:
-            fuzzy = await _series_fuzzy_match(db, ev)
-            if fuzzy:
-                matched_fp_id = fuzzy.id
-                matched_fp_title = fuzzy.title
+            series_fuzzy_match = await _series_fuzzy_match(db, ev)
+            if series_fuzzy_match:
+                matched_fp_id = series_fuzzy_match.id
+                matched_fp_title = series_fuzzy_match.title
                 matched_fp_type = "series"
                 status = "likely_exists"
                 recommendation = "skip"
                 reason = "Vergelijkbare reeks al aanwezig (naam + datum)"
 
     else:  # event
-        uid_match = await _event_by_cozi_uid(db, ev.uid) if ev.uid else None
-        if uid_match:
-            matched_fp_id = uid_match.id
-            matched_fp_title = uid_match.title
+        event_uid_match = await _event_by_cozi_uid(db, ev.uid) if ev.uid else None
+        if event_uid_match:
+            matched_fp_id = event_uid_match.id
+            matched_fp_title = event_uid_match.title
             matched_fp_type = "event"
-            changes = _diff_event(uid_match, ev)
+            changes = _diff_event(event_uid_match, ev)
             if changes:
                 status = "changed"
                 recommendation = "import"
@@ -313,10 +318,10 @@ async def _classify_one(ev: _ParsedEvent, db: AsyncSession) -> CoziPreviewItem:
                 recommendation = "skip"
                 reason = "Afspraak al aanwezig (geen wijzigingen)"
         else:
-            fuzzy = await _event_fuzzy_match(db, ev)
-            if fuzzy:
-                matched_fp_id = fuzzy.id
-                matched_fp_title = fuzzy.title
+            event_fuzzy_match = await _event_fuzzy_match(db, ev)
+            if event_fuzzy_match:
+                matched_fp_id = event_fuzzy_match.id
+                matched_fp_title = event_fuzzy_match.title
                 matched_fp_type = "event"
                 status = "likely_exists"
                 recommendation = "skip"
@@ -350,6 +355,7 @@ async def _classify_one(ev: _ParsedEvent, db: AsyncSession) -> CoziPreviewItem:
 
 
 # ── DB Lookup helpers ─────────────────────────────────────────────
+
 
 async def _meal_by_cozi_uid(db: AsyncSession, uid: str) -> Meal | None:
     result = await db.execute(select(Meal).where(Meal.cozi_uid == uid))
@@ -401,9 +407,7 @@ async def _series_fuzzy_match(db: AsyncSession, ev: _ParsedEvent) -> RecurrenceS
 
 async def _event_by_cozi_uid(db: AsyncSession, uid: str) -> AgendaEvent | None:
     result = await db.execute(
-        select(AgendaEvent).where(
-            and_(AgendaEvent.cozi_uid == uid, AgendaEvent.series_id.is_(None))
-        )
+        select(AgendaEvent).where(and_(AgendaEvent.cozi_uid == uid, AgendaEvent.series_id.is_(None)))
     )
     return result.scalar_one_or_none()
 
@@ -438,21 +442,27 @@ async def _event_fuzzy_match(db: AsyncSession, ev: _ParsedEvent) -> AgendaEvent 
     return min(matches, key=_score)
 
 
-def _filter_candidates_by_member_ids(expected_member_ids: list[int], candidates: list[Any]) -> list[Any]:
-    if not candidates:
+TMemberMatch = TypeVar("TMemberMatch")
+
+
+def _filter_candidates_by_member_ids(
+    expected_member_ids: list[int], candidates: Sequence[TMemberMatch]
+) -> list[TMemberMatch]:
+    candidates_list = list(candidates)
+    if not candidates_list:
         return []
     if not expected_member_ids:
-        return candidates
+        return candidates_list
 
     expected = set(expected_member_ids)
-    exact_matches = [candidate for candidate in candidates if set(getattr(candidate, "member_ids", [])) == expected]
+    exact_matches = [
+        candidate for candidate in candidates_list if set(getattr(candidate, "member_ids", [])) == expected
+    ]
     if exact_matches:
         return exact_matches
 
     overlapping_matches = [
-        candidate
-        for candidate in candidates
-        if expected.intersection(getattr(candidate, "member_ids", []))
+        candidate for candidate in candidates_list if expected.intersection(getattr(candidate, "member_ids", []))
     ]
     if overlapping_matches:
         return overlapping_matches
@@ -461,6 +471,7 @@ def _filter_candidates_by_member_ids(expected_member_ids: list[int], candidates:
 
 
 # ── Diff helpers ──────────────────────────────────────────────────
+
 
 def _diff_meal(existing: Meal, ev: _ParsedEvent) -> list[_CoziChange]:
     changes = []
@@ -496,6 +507,7 @@ def _diff_event(existing: AgendaEvent, ev: _ParsedEvent) -> list[_CoziChange]:
 
 
 # ── Import ────────────────────────────────────────────────────────
+
 
 async def import_selected_events(
     selected_uids: list[str],
@@ -553,16 +565,23 @@ async def import_selected_events(
     await db.commit()
 
     total = (
-        result.imported_events + result.imported_series + result.imported_meals
-        + result.updated_events + result.updated_series + result.updated_meals
+        result.imported_events
+        + result.imported_series
+        + result.imported_meals
+        + result.updated_events
+        + result.updated_series
+        + result.updated_meals
     )
     logger.info(
-        "cozi_sync.imported total={} new_events={} new_series={} new_meals={} "
-        "upd_events={} upd_series={} upd_meals={} skipped={}",
-        total,
-        result.imported_events, result.imported_series, result.imported_meals,
-        result.updated_events, result.updated_series, result.updated_meals,
-        result.skipped,
+        "Cozi import sync cycle committed to database.",
+        total_processed=total,
+        new_events=result.imported_events,
+        new_series=result.imported_series,
+        new_meals=result.imported_meals,
+        updated_events=result.updated_events,
+        updated_series=result.updated_series,
+        updated_meals=result.updated_meals,
+        skipped=result.skipped,
     )
     return result
 
@@ -605,6 +624,9 @@ async def _import_series(ev: _ParsedEvent, db: AsyncSession, default_series_coun
     if not existing:
         existing = await _series_fuzzy_match(db, ev)
 
+    series_start: date
+    series_end: date | None
+
     if ev.is_multiday_allday:
         recurrence_type = RecurrenceType.daily
         interval = 1
@@ -635,8 +657,8 @@ async def _import_series(ev: _ParsedEvent, db: AsyncSession, default_series_coun
         existing.location = ev.location
         existing.all_day = ev.all_day
         existing.recurrence_type = recurrence_type
-        existing.series_start = series_start
-        existing.series_end = series_end or series_start
+        existing.series_start = cast(Any, series_start)
+        existing.series_end = cast(Any, (series_end or series_start))
         existing.count = count
         existing.start_time_of_day = ev.start_dt.time()
         existing.end_time_of_day = ev.end_dt.time()
@@ -647,9 +669,7 @@ async def _import_series(ev: _ParsedEvent, db: AsyncSession, default_series_coun
         await db.flush()
         # Regenerate non-exception occurrences
         await db.execute(
-            sa_delete(AgendaEvent).where(
-                and_(AgendaEvent.series_id == existing.id, ~AgendaEvent.is_exception)
-            )
+            sa_delete(AgendaEvent).where(and_(AgendaEvent.series_id == existing.id, ~AgendaEvent.is_exception))
         )
         series = existing
     else:
@@ -671,9 +691,7 @@ async def _import_series(ev: _ParsedEvent, db: AsyncSession, default_series_coun
         )
         db.add(series)
         await db.flush()
-        await set_junction_members(
-            db, recurrence_series_members, "series_id", series.id, ev.mapped_member_ids
-        )
+        await set_junction_members(db, recurrence_series_members, "series_id", series.id, ev.mapped_member_ids)
 
     occurrence_dates = generate_occurrence_dates(
         recurrence_type=recurrence_type,
@@ -703,9 +721,7 @@ async def _import_series(ev: _ParsedEvent, db: AsyncSession, default_series_coun
 
     if ev.mapped_member_ids:
         for ge in new_events:
-            await set_junction_members(
-                db, agenda_event_members, "event_id", ge.id, ev.mapped_member_ids
-            )
+            await set_junction_members(db, agenda_event_members, "event_id", ge.id, ev.mapped_member_ids)
 
     return was_update
 
@@ -728,9 +744,7 @@ async def _import_event(ev: _ParsedEvent, db: AsyncSession) -> bool:
         if ev.uid:
             existing.cozi_uid = ev.uid
         await db.flush()
-        await set_junction_members(
-            db, agenda_event_members, "event_id", existing.id, ev.mapped_member_ids
-        )
+        await set_junction_members(db, agenda_event_members, "event_id", existing.id, ev.mapped_member_ids)
     else:
         event = AgendaEvent(
             title=ev.title,
@@ -743,8 +757,6 @@ async def _import_event(ev: _ParsedEvent, db: AsyncSession) -> bool:
         )
         db.add(event)
         await db.flush()
-        await set_junction_members(
-            db, agenda_event_members, "event_id", event.id, ev.mapped_member_ids
-        )
+        await set_junction_members(db, agenda_event_members, "event_id", event.id, ev.mapped_member_ids)
 
     return was_update

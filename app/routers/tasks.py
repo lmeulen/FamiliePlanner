@@ -76,7 +76,7 @@ async def create_task_list(payload: TaskListCreate, db: AsyncSession = Depends(g
     db.add(tl)
     await db.commit()
     await db.refresh(tl)
-    logger.info("tasks.list.created id={} name='{}'", tl.id, tl.name)
+    logger.info("Task list created.", list_id=tl.id, name=tl.name)
     return tl
 
 
@@ -88,7 +88,7 @@ async def reorder_task_lists(items: list[TaskListReorderItem], db: AsyncSession 
         if tl:
             tl.sort_order = item.sort_order
     await db.commit()
-    logger.info("tasks.lists.reordered count={}", len(items))
+    logger.info("Task list ordering updated.", affected_count=len(items))
 
 
 @router.get("/overdue-position", response_model=OverduePositionOut)
@@ -105,7 +105,7 @@ async def set_overdue_position(payload: OverduePositionOut, db: AsyncSession = D
     else:
         db.add(AppSetting(key="overdue_sort_order", value=str(payload.sort_order)))
     await db.commit()
-    logger.info("tasks.overdue_position.updated sort_order={}", payload.sort_order)
+    logger.info("Overdue section position updated.", sort_order=payload.sort_order)
     return {"sort_order": payload.sort_order}
 
 
@@ -113,13 +113,13 @@ async def set_overdue_position(payload: OverduePositionOut, db: AsyncSession = D
 async def update_task_list(list_id: int, payload: TaskListUpdate, db: AsyncSession = Depends(get_db)):
     tl = await db.get(TaskList, list_id)
     if not tl:
-        logger.warning("tasks.list.not_found id={}", list_id)
+        logger.warning("Task list not found for update request.", list_id=list_id)
         raise HTTPException(404, "Task list not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(tl, k, v)
     await db.commit()
     await db.refresh(tl)
-    logger.info("tasks.list.updated id={} name='{}'", tl.id, tl.name)
+    logger.info("Task list updated.", list_id=tl.id, name=tl.name)
     return tl
 
 
@@ -127,11 +127,11 @@ async def update_task_list(list_id: int, payload: TaskListUpdate, db: AsyncSessi
 async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
     tl = await db.get(TaskList, list_id)
     if not tl:
-        logger.warning("tasks.list.not_found id={}", list_id)
+        logger.warning("Task list not found for delete request.", list_id=list_id)
         raise HTTPException(404, "Task list not found")
     await db.delete(tl)
     await db.commit()
-    logger.info("tasks.list.deleted id={}", list_id)
+    logger.info("Task list deleted.", list_id=list_id)
 
 
 # ---- Task Recurrence Series ----
@@ -141,12 +141,12 @@ async def delete_task_list(list_id: int, db: AsyncSession = Depends(get_db)):
 async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
     try:
         logger.info(
-            "tasks.series.creating title='{}' type={} start={} end={} count={}",
-            payload.title,
-            payload.recurrence_type,
-            payload.series_start,
-            payload.series_end,
-            payload.count,
+            "Task recurrence series creation started.",
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
+            series_start=payload.series_start,
+            series_end=payload.series_end,
+            count=payload.count,
         )
         data = payload.model_dump(exclude={"member_ids"})
 
@@ -154,13 +154,21 @@ async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSessi
         series = TaskRecurrenceSeries(**data)
         db.add(series)
         await db.flush()
-        logger.debug("tasks.series.created_entity id={}", series.id)
+        logger.debug("Task recurrence series DB entity created.", series_id=series.id)
 
         await set_junction_members(db, task_recurrence_series_members, "series_id", series.id, payload.member_ids)
-        logger.debug("tasks.series.members_set id={} members={}", series.id, payload.member_ids)
+        logger.debug(
+            "Task recurrence series member relations updated.",
+            series_id=series.id,
+            member_ids=payload.member_ids,
+        )
 
         occurrences = _make_tasks_for_series(series)
-        logger.debug("tasks.series.generated_occurrences id={} count={}", series.id, len(occurrences))
+        logger.debug(
+            "Task recurrence occurrences generated.",
+            series_id=series.id,
+            generated_count=len(occurrences),
+        )
 
         db.add_all(occurrences)
         await db.flush()
@@ -172,12 +180,19 @@ async def create_task_series(payload: TaskRecurrenceSeriesCreate, db: AsyncSessi
         await db.commit()
         result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series.id))
         series = result.scalar_one()
-        logger.info("tasks.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
+        logger.info(
+            "Task recurrence series created successfully.",
+            series_id=series.id,
+            title=series.title,
+            occurrence_count=len(occurrences),
+        )
         return series
-    except Exception as exc:
+    except Exception:
         await db.rollback()
         logger.exception(
-            "tasks.series.create_failed title='{}' type={} error={}", payload.title, payload.recurrence_type, exc
+            "Failed to create recurring task series; transaction rolled back. Validate recurrence payload and member assignments.",
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
         )
         raise
 
@@ -187,7 +202,7 @@ async def get_task_series(series_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
-        logger.warning("tasks.series.not_found id={}", series_id)
+        logger.warning("Task recurrence series not found.", series_id=series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     return series
 
@@ -198,16 +213,16 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
         result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
         series = result.scalar_one_or_none()
         if not series:
-            logger.warning("tasks.series.not_found id={}", series_id)
+            logger.warning("Task recurrence series not found during update.", series_id=series_id)
             raise HTTPException(404, "Reeks niet gevonden")
 
         logger.info(
-            "tasks.series.updating id={} title='{}' type={} end={} count={}",
-            series_id,
-            payload.title,
-            payload.recurrence_type,
-            payload.series_end,
-            payload.count,
+            "Task recurrence series update started.",
+            series_id=series_id,
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
+            series_end=payload.series_end,
+            count=payload.count,
         )
 
         # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
@@ -219,7 +234,11 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
         # Regenerate all non-exception occurrences
         await db.execute(sa_delete(Task).where(and_(Task.series_id == series_id, ~Task.is_exception)))
         new_tasks = _make_tasks_for_series(series)
-        logger.debug("tasks.series.regenerated id={} count={}", series_id, len(new_tasks))
+        logger.debug(
+            "Task recurrence occurrences regenerated after update.",
+            series_id=series_id,
+            regenerated_count=len(new_tasks),
+        )
 
         db.add_all(new_tasks)
         await db.flush()
@@ -230,13 +249,21 @@ async def update_task_series(series_id: int, payload: TaskRecurrenceSeriesUpdate
         db.expire(series)
         result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
         series = result.scalar_one()
-        logger.info("tasks.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_tasks))
+        logger.info(
+            "Task recurrence series updated successfully.",
+            series_id=series.id,
+            title=series.title,
+            regenerated_count=len(new_tasks),
+        )
         return series
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         await db.rollback()
-        logger.exception("tasks.series.update_failed id={} error={}", series_id, exc)
+        logger.exception(
+            "Failed to update recurring task series; transaction rolled back.",
+            series_id=series_id,
+        )
         raise
 
 
@@ -245,13 +272,13 @@ async def delete_task_series(series_id: int, db: AsyncSession = Depends(get_db))
     result = await db.execute(select(TaskRecurrenceSeries).where(TaskRecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
-        logger.warning("tasks.series.not_found id={}", series_id)
+        logger.warning("Task recurrence series not found for deletion.", series_id=series_id)
         raise HTTPException(404, "Reeks niet gevonden")
     title = series.title
     await db.execute(sa_delete(Task).where(Task.series_id == series_id))
     await db.delete(series)
     await db.commit()
-    logger.info("tasks.series.deleted id={} title='{}'", series_id, title)
+    logger.info("Task recurrence series deleted.", series_id=series_id, title=title)
 
 
 # ---- Tasks ----
@@ -337,7 +364,7 @@ async def complete_overdue_tasks_for_date(
     if completed_count:
         tasks_completed_total.inc(completed_count)
 
-    logger.info("tasks.overdue.completed due_date={} count={}", due_date, completed_count)
+    logger.info("Overdue tasks marked complete for date.", due_date=due_date, completed_count=completed_count)
     return {"completed": completed_count}
 
 
@@ -350,7 +377,7 @@ async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task.id))
     task = result.scalar_one()
-    logger.info("tasks.task.created id={} title='{}'", task.id, task.title)
+    logger.info("Task created.", task_id=task.id, title=task.title)
     tasks_created_total.inc()
     return task
 
@@ -360,7 +387,7 @@ async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
-        logger.warning("tasks.task.not_found id={}", task_id)
+        logger.warning("Task not found.", task_id=task_id)
         raise HTTPException(404, "Task not found")
     return task
 
@@ -370,9 +397,9 @@ async def update_task(task_id: int, payload: TaskUpdate, db: AsyncSession = Depe
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
-        logger.warning("tasks.task.not_found id={}", task_id)
+        logger.warning("Task not found for update request.", task_id=task_id)
         raise HTTPException(404, "Task not found")
-    logger.debug("tasks.task.update id={} member_ids={}", task_id, payload.member_ids)
+    logger.debug("Task update request received.", task_id=task_id, member_ids=payload.member_ids)
     for k, v in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(task, k, v)
     await set_junction_members(db, task_members, "task_id", task.id, payload.member_ids)
@@ -382,7 +409,7 @@ async def update_task(task_id: int, payload: TaskUpdate, db: AsyncSession = Depe
     db.expire(task)
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one()
-    logger.info("tasks.task.updated id={} title='{}' member_ids={}", task.id, task.title, task.member_ids)
+    logger.info("Task updated.", task_id=task.id, title=task.title, member_ids=task.member_ids)
     return task
 
 
@@ -391,13 +418,13 @@ async def toggle_task(task_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
-        logger.warning("tasks.task.not_found id={}", task_id)
+        logger.warning("Task not found for toggle request.", task_id=task_id)
         raise HTTPException(404, "Task not found")
     task.done = not task.done
     await db.commit()
     result = await db.execute(select(Task).options(selectinload(Task.members)).where(Task.id == task_id))
     task = result.scalar_one()
-    logger.info("tasks.task.toggled id={} done={}", task.id, task.done)
+    logger.info("Task completion status toggled.", task_id=task.id, done=task.done)
     if task.done:
         tasks_completed_total.inc()
     return task
@@ -416,7 +443,10 @@ async def clear_all_tasks(db: AsyncSession = Depends(get_db)):
     # Delete all task lists
     await db.execute(sa_delete(TaskList))
     await db.commit()
-    logger.warning("tasks.all_cleared - All tasks, lists, and series deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all tasks, task lists, and recurrence series were removed.",
+        endpoint="/api/tasks/all",
+    )
     return FastAPIResponse(status_code=204)
 
 
@@ -424,8 +454,8 @@ async def clear_all_tasks(db: AsyncSession = Depends(get_db)):
 async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(Task, task_id)
     if not task:
-        logger.warning("tasks.task.not_found id={}", task_id)
+        logger.warning("Task not found for delete request.", task_id=task_id)
         raise HTTPException(404, "Task not found")
     await db.delete(task)
     await db.commit()
-    logger.info("tasks.task.deleted id={}", task_id)
+    logger.info("Task deleted.", task_id=task_id)

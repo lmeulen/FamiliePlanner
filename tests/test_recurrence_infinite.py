@@ -139,11 +139,12 @@ async def test_create_infinite_task_series(client: AsyncClient):
     assert data["series_end"] is None
     assert data["count"] is None
 
-    # Verify tasks were created (should be ~52 for weekly over 1 year)
+    # Verify tasks were created (rolling window generates 365 days from today, not from series_start)
+    # Series starts 2026-04-02, today is ~2026-06-21, so window extends to ~2027-06-21 = ~65 weeks
     tasks_r = await client.get(f"/api/tasks/?list_id={list_id}")
     tasks = tasks_r.json()
     series_tasks = [t for t in tasks if t.get("series_id") == data["id"]]
-    assert 52 <= len(series_tasks) <= 54  # Weekly for ~1 year
+    assert 60 <= len(series_tasks) <= 70  # Weekly for ~15 months (rolling window from today)
 
     # Cleanup
     await client.delete(f"/api/tasks/series/{data['id']}")

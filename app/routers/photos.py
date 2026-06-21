@@ -111,7 +111,13 @@ async def upload_photo(
     try:
         _generate_thumbnail(data, filename)
     except Exception as e:
-        logger.error("Failed to generate thumbnail for {}: {}", filename, e)
+        logger.error(
+            "Thumbnail generation failed; original upload is kept and request continues.",
+            filename=filename,
+            uploads_dir=str(UPLOADS_DIR),
+            thumbnails_dir=str(THUMBNAILS_DIR),
+            error=str(e),
+        )
         # Continue even if thumbnail fails
 
     display_name = Path(file.filename).stem if file.filename else filename

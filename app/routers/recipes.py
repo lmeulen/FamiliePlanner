@@ -60,7 +60,12 @@ async def _mealie_request(method: str, url: str, token: str, path: str, **kwargs
         except httpx.ConnectError as e:
             raise HTTPException(503, "Kan geen verbinding maken met Mealie server - controleer URL.") from e
         except Exception as e:
-            logger.error("mealie_request_failed method={} path={} error={}", method, path, str(e))
+            logger.error(
+                "Mealie API request failed unexpectedly. Verify Mealie base URL, token validity, and network reachability.",
+                method=method,
+                path=path,
+                error=str(e),
+            )
             raise HTTPException(500, f"Fout bij communicatie met Mealie: {str(e)}") from e
 
 
@@ -296,7 +301,11 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
         return []
     except HTTPException as e:
         # If categories endpoint doesn't exist, return empty list
-        logger.warning("categories_endpoint_failed status={} detail={}", e.status_code, e.detail)
+        logger.warning(
+            "Categories endpoint unavailable on Mealie; returning empty category list.",
+            status=e.status_code,
+            detail=e.detail,
+        )
         return []
 
 
@@ -312,5 +321,9 @@ async def list_tags(db: AsyncSession = Depends(get_db)):
         return []
     except HTTPException as e:
         # If tags endpoint doesn't exist, return empty list
-        logger.warning("tags_endpoint_failed status={} detail={}", e.status_code, e.detail)
+        logger.warning(
+            "Tags endpoint unavailable on Mealie; returning empty tag list.",
+            status=e.status_code,
+            detail=e.detail,
+        )
         return []

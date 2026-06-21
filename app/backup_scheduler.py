@@ -45,7 +45,7 @@ async def create_backup_now() -> Path:
 
 async def run_nightly_backup_scheduler(stop_event: asyncio.Event) -> None:
     """Run a loop that writes one backup every day at 00:00."""
-    logger.info("nightly-backup.scheduler.started")
+    logger.info("Nightly backup scheduler started; waiting for next midnight run.", backup_dir=str(BACKUP_DIR))
 
     while not stop_event.is_set():
         wait_seconds = _seconds_until_next_midnight(datetime.now())
@@ -55,8 +55,11 @@ async def run_nightly_backup_scheduler(stop_event: asyncio.Event) -> None:
         except TimeoutError:
             try:
                 file_path = await _write_nightly_backup_file()
-                logger.info("nightly-backup.completed file={}", file_path)
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("nightly-backup.failed error={}", exc)
+                logger.info("Nightly backup file created successfully.", file_path=str(file_path))
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "Nightly backup job failed; backup for this run was not created. Check disk space, permissions, and DB availability.",
+                    backup_dir=str(BACKUP_DIR),
+                )
 
-    logger.info("nightly-backup.scheduler.stopped")
+    logger.info("Nightly backup scheduler stopped.")

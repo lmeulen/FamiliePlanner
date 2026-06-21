@@ -85,9 +85,13 @@ def rate_limit_exceeded_handler(request: Request, exc: Exception) -> Response:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting {} v{}", APP_TITLE, APP_VERSION)
+    logger.info(
+        "Application startup initiated.",
+        app=APP_TITLE,
+        version=APP_VERSION,
+    )
     await init_db()
-    logger.info("Database ready")
+    logger.info("Database initialization completed; service dependencies are ready.")
     backup_stop_event = asyncio.Event()
     backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
     recurrence_stop_event = asyncio.Event()
@@ -108,7 +112,7 @@ async def lifespan(app: FastAPI):
         recurrence_stop_event.set()
         await backup_task
         await recurrence_task
-        logger.info("Shutting down {}", APP_TITLE)
+        logger.info("Application shutdown completed.", app=APP_TITLE)
 
 
 app = FastAPI(
@@ -138,7 +142,13 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, https_only=False)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle Pydantic validation errors with user-friendly Dutch messages."""
     errors = exc.errors()
-    logger.warning("Validation error on {} {}: {}", request.method, request.url.path, errors)
+    logger.warning(
+        "Request validation failed; returning 422. Verify request payload schema and required fields.",
+        method=request.method,
+        path=request.url.path,
+        error_count=len(errors),
+        errors=errors,
+    )
 
     # Get first error for primary message
     first_error = errors[0] if errors else {}
@@ -174,7 +184,13 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
     else:
         code = ErrorCode.DATABASE_ERROR
 
-    logger.warning("IntegrityError on {} {}: {}", request.method, request.url.path, exc.orig)
+    logger.warning(
+        "Database integrity check failed; returning 422. Inspect foreign keys, unique constraints, and duplicate inputs.",
+        method=request.method,
+        path=request.url.path,
+        db_error=str(exc.orig),
+        mapped_code=code,
+    )
 
     error_response = ErrorResponse(
         code=code,
@@ -190,7 +206,12 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
     """Handle generic database errors."""
-    logger.error("SQLAlchemyError on {} {}: {}", request.method, request.url.path, exc)
+    logger.error(
+        "Database operation failed; returning 500. Check DB availability, schema state, and recent migrations.",
+        method=request.method,
+        path=request.url.path,
+        db_error=str(exc),
+    )
 
     error_response = ErrorResponse(
         code=ErrorCode.DATABASE_ERROR,
@@ -233,7 +254,13 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             status_code=404,
         )
 
-    logger.warning("{} error on {} {}: {}", exc.status_code, request.method, request.url.path, exc.detail)
+    logger.warning(
+        "HTTP error returned to client. Confirm endpoint/path, authorization, and request parameters.",
+        status_code=exc.status_code,
+        method=request.method,
+        path=request.url.path,
+        detail=str(exc.detail) if exc.detail else None,
+    )
 
     error_response = ErrorResponse(
         code=code,
@@ -250,7 +277,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Catch-all handler for unexpected exceptions."""
-    logger.exception("Unhandled exception on {} {}: {}", request.method, request.url.path, exc)
+    logger.exception(
+        "Unhandled application exception; returning 500. Inspect traceback and upstream dependency health.",
+        method=request.method,
+        path=request.url.path,
+    )
 
     # Return 500 HTML page for browser requests
     if "text/html" in request.headers.get("accept", ""):
@@ -287,11 +318,11 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
     logger.info(
-        "{method} {path} → {status} ({duration:.1f}ms)",
+        "HTTP request handled.",
         method=request.method,
         path=request.url.path,
         status=response.status_code,
-        duration=duration_ms,
+        duration_ms=round(duration_ms, 1),
     )
     return response
 
@@ -356,7 +387,12 @@ async def health():
             await db.execute(__import__("sqlalchemy").text("SELECT 1"))
         db_ok = True
     except Exception as exc:  # noqa: BLE001
-        logger.error("health check: DB unreachable – {}", exc)
+        logger.error(
+            "Health probe failed: database unreachable. Service is degraded until DB connectivity is restored.",
+            probe="/health",
+            dependency="database",
+            db_error=str(exc),
+        )
 
     status = "ok" if db_ok else "degraded"
     payload = {
@@ -400,10 +436,12 @@ async def csp_violation_report(request: Request):
         csp_report = violation.get("csp-report", {})
 
         logger.warning(
-            "CSP Violation: {} blocked {} from {}",
-            csp_report.get("violated-directive", "unknown"),
-            csp_report.get("blocked-uri", "unknown"),
-            csp_report.get("document-uri", "unknown"),
+            "Browser reported CSP violation; request was blocked by policy. Review CSP config if this blocks expected resources.",
+            violated_directive=csp_report.get("violated-directive", "unknown"),
+            blocked_uri=csp_report.get("blocked-uri", "unknown"),
+            document_uri=csp_report.get("document-uri", "unknown"),
+            source_file=csp_report.get("source-file"),
+            line_number=csp_report.get("line-number"),
         )
     except Exception:  # noqa: BLE001
         # Don't break on invalid reports

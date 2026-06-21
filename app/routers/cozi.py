@@ -72,11 +72,21 @@ async def cozi_preview(db: AsyncSession = Depends(get_db)):
     try:
         events = await fetch_and_parse_cozi(url)
     except Exception as exc:
-        logger.warning("cozi.preview.fetch_failed url={} error={}", url, exc)
+        logger.warning(
+            "Cozi preview could not be generated because feed retrieval/parsing failed. Verify Cozi URL and network reachability.",
+            cozi_url=url,
+            error=str(exc),
+            endpoint="/api/cozi/preview",
+        )
         raise HTTPException(502, f"Kon Cozi feed niet ophalen: {exc}") from exc
 
     preview = await classify_cozi_events(events, db)
-    logger.info("cozi.preview.done url={} total={}", url, len(preview))
+    logger.info(
+        "Cozi preview generated successfully.",
+        endpoint="/api/cozi/preview",
+        cozi_url=url,
+        total_items=len(preview),
+    )
     return [item.to_dict() for item in preview]
 
 
@@ -94,8 +104,12 @@ async def cozi_import(payload: CoziImportRequest, db: AsyncSession = Depends(get
 
     if not payload.selected_uids:
         return {
-            "imported_events": 0, "imported_series": 0, "imported_meals": 0,
-            "updated_events": 0, "updated_series": 0, "updated_meals": 0,
+            "imported_events": 0,
+            "imported_series": 0,
+            "imported_meals": 0,
+            "updated_events": 0,
+            "updated_series": 0,
+            "updated_meals": 0,
             "skipped": 0,
         }
 
@@ -104,8 +118,26 @@ async def cozi_import(payload: CoziImportRequest, db: AsyncSession = Depends(get
     try:
         result = await import_selected_events(payload.selected_uids, db, url, series_count)
     except Exception as exc:
-        logger.error("cozi.import.failed error={}", exc)
+        logger.error(
+            "Cozi import failed before completion. Inspect feed data consistency and database health before retry.",
+            endpoint="/api/cozi/import",
+            selected_uid_count=len(payload.selected_uids),
+            error=str(exc),
+        )
         raise HTTPException(502, f"Importeren mislukt: {exc}") from exc
+
+    logger.info(
+        "Cozi import completed.",
+        endpoint="/api/cozi/import",
+        selected_uid_count=len(payload.selected_uids),
+        imported_events=result.imported_events,
+        imported_series=result.imported_series,
+        imported_meals=result.imported_meals,
+        updated_events=result.updated_events,
+        updated_series=result.updated_series,
+        updated_meals=result.updated_meals,
+        skipped=result.skipped,
+    )
 
     return {
         "imported_events": result.imported_events,
@@ -137,9 +169,10 @@ async def cozi_link(payload: CoziLinkRequest, db: AsyncSession = Depends(get_db)
 
     await db.commit()
     logger.info(
-        "cozi.link.done item_type={} item_id={} cozi_uid={}",
-        resolved_type,
-        item.id,
-        payload.cozi_uid,
+        "Cozi UID linked to existing FamiliePlanner item.",
+        endpoint="/api/cozi/link",
+        item_type=resolved_type,
+        item_id=item.id,
+        cozi_uid=payload.cozi_uid,
     )
     return {"status": "ok", "message": f"{resolved_type} gekoppeld aan Cozi"}

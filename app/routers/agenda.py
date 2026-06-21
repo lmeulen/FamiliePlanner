@@ -99,12 +99,12 @@ def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
 async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depends(get_db)):
     try:
         logger.info(
-            "agenda.series.creating title='{}' type={} start={} end={} count={}",
-            payload.title,
-            payload.recurrence_type,
-            payload.series_start,
-            payload.series_end,
-            payload.count,
+            "Agenda recurrence series creation started.",
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
+            series_start=payload.series_start,
+            series_end=payload.series_end,
+            count=payload.count,
         )
         data = payload.model_dump(exclude={"member_ids"})
 
@@ -112,13 +112,21 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
         series = RecurrenceSeries(**data)
         db.add(series)
         await db.flush()
-        logger.debug("agenda.series.created_entity id={}", series.id)
+        logger.debug("Agenda recurrence series DB entity created.", series_id=series.id)
 
         await set_junction_members(db, recurrence_series_members, "series_id", series.id, payload.member_ids)
-        logger.debug("agenda.series.members_set id={} members={}", series.id, payload.member_ids)
+        logger.debug(
+            "Agenda recurrence series member relations updated.",
+            series_id=series.id,
+            member_ids=payload.member_ids,
+        )
 
         occurrences = _make_events_for_series(series)
-        logger.debug("agenda.series.generated_occurrences id={} count={}", series.id, len(occurrences))
+        logger.debug(
+            "Agenda recurrence occurrences generated.",
+            series_id=series.id,
+            generated_count=len(occurrences),
+        )
 
         db.add_all(occurrences)
         await db.flush()
@@ -130,12 +138,19 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
         await db.commit()
         result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series.id))
         series = result.scalar_one()
-        logger.info("agenda.series.created id={} title='{}' occurrences={}", series.id, series.title, len(occurrences))
+        logger.info(
+            "Agenda recurrence series created successfully.",
+            series_id=series.id,
+            title=series.title,
+            occurrence_count=len(occurrences),
+        )
         return series
-    except Exception as exc:
+    except Exception:
         await db.rollback()
         logger.exception(
-            "agenda.series.create_failed title='{}' type={} error={}", payload.title, payload.recurrence_type, exc
+            "Failed to create recurring agenda series; no data was committed. Validate recurrence parameters and member references.",
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
         )
         raise
 
@@ -145,7 +160,10 @@ async def get_series(series_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
-        logger.warning("agenda.series.not_found id={}", series_id)
+        logger.warning(
+            "Requested agenda recurrence series was not found. Verify series_id and client cache freshness.",
+            series_id=series_id,
+        )
         raise HTTPException(404, "Reeks niet gevonden")
     return series
 
@@ -156,16 +174,19 @@ async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: Asy
         result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
         series = result.scalar_one_or_none()
         if not series:
-            logger.warning("agenda.series.not_found id={}", series_id)
+            logger.warning(
+                "Requested agenda recurrence series was not found during update. Verify series_id and whether it was deleted by another user.",
+                series_id=series_id,
+            )
             raise HTTPException(404, "Reeks niet gevonden")
 
         logger.info(
-            "agenda.series.updating id={} title='{}' type={} end={} count={}",
-            series_id,
-            payload.title,
-            payload.recurrence_type,
-            payload.series_end,
-            payload.count,
+            "Agenda recurrence series update started.",
+            series_id=series_id,
+            title=payload.title,
+            recurrence_type=str(payload.recurrence_type),
+            series_end=payload.series_end,
+            count=payload.count,
         )
 
         # No longer calculate series_end from count - generate_occurrence_dates handles rolling window
@@ -182,7 +203,11 @@ async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: Asy
             )
         )
         new_events = _make_events_for_series(series)
-        logger.debug("agenda.series.regenerated id={} count={}", series_id, len(new_events))
+        logger.debug(
+            "Agenda recurrence occurrences regenerated after update.",
+            series_id=series_id,
+            regenerated_count=len(new_events),
+        )
 
         db.add_all(new_events)
         await db.flush()
@@ -193,13 +218,21 @@ async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: Asy
         db.expire(series)
         result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
         series = result.scalar_one()
-        logger.info("agenda.series.updated id={} title='{}' regenerated={}", series.id, series.title, len(new_events))
+        logger.info(
+            "Agenda recurrence series updated successfully.",
+            series_id=series.id,
+            title=series.title,
+            regenerated_count=len(new_events),
+        )
         return series
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         await db.rollback()
-        logger.exception("agenda.series.update_failed id={} error={}", series_id, exc)
+        logger.exception(
+            "Failed to update recurring agenda series; transaction rolled back. Check recurrence constraints and DB health.",
+            series_id=series_id,
+        )
         raise
 
 
@@ -208,13 +241,16 @@ async def delete_series(series_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(RecurrenceSeries).where(RecurrenceSeries.id == series_id))
     series = result.scalar_one_or_none()
     if not series:
-        logger.warning("agenda.series.not_found id={}", series_id)
+        logger.warning(
+            "Requested agenda recurrence series was not found for deletion.",
+            series_id=series_id,
+        )
         raise HTTPException(404, "Reeks niet gevonden")
     title = series.title
     await db.execute(sa_delete(AgendaEvent).where(AgendaEvent.series_id == series_id))
     await db.delete(series)
     await db.commit()
-    logger.info("agenda.series.deleted id={} title='{}'", series_id, title)
+    logger.info("Agenda recurrence series deleted.", series_id=series_id, title=title)
 
 
 # ── Agenda event endpoints ────────────────────────────────────────
@@ -285,7 +321,7 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
         select(AgendaEvent).options(selectinload(AgendaEvent.members)).where(AgendaEvent.id == event.id)
     )
     event = result.scalar_one()
-    logger.info("agenda.event.created id={} title='{}'", event.id, event.title)
+    logger.info("Agenda event created.", event_id=event.id, title=event.title)
     events_created_total.inc()
     return event
 
@@ -297,7 +333,10 @@ async def get_event(event_id: int, db: AsyncSession = Depends(get_db)):
     )
     event = result.scalar_one_or_none()
     if not event:
-        logger.warning("agenda.event.not_found id={}", event_id)
+        logger.warning(
+            "Requested agenda event was not found.",
+            event_id=event_id,
+        )
         raise HTTPException(404, "Event not found")
     return event
 
@@ -310,7 +349,10 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
     )
     event = result.scalar_one_or_none()
     if not event:
-        logger.warning("agenda.event.not_found id={}", event_id)
+        logger.warning(
+            "Requested agenda event export failed because the event was not found.",
+            event_id=event_id,
+        )
         raise HTTPException(404, "Event not found")
 
     # Fetch series data if this is a recurring event
@@ -366,7 +408,7 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
     safe_title = safe_title[:50]  # Limit length
     filename = f"{safe_title or 'event'}.ics"
 
-    logger.info("agenda.event.exported id={} title='{}'", event.id, event.title)
+    logger.info("Agenda event exported to ICS.", event_id=event.id, title=event.title, filename=filename)
 
     return Response(
         content=cal.to_ical(),
@@ -449,9 +491,12 @@ async def update_event(event_id: int, payload: AgendaEventUpdate, db: AsyncSessi
     )
     event = result.scalar_one_or_none()
     if not event:
-        logger.warning("agenda.event.not_found id={}", event_id)
+        logger.warning(
+            "Requested agenda event update failed because the event was not found.",
+            event_id=event_id,
+        )
         raise HTTPException(404, "Event not found")
-    logger.debug("agenda.event.update id={} member_ids={}", event_id, payload.member_ids)
+    logger.debug("Agenda event update request received.", event_id=event_id, member_ids=payload.member_ids)
     for key, value in payload.model_dump(exclude={"member_ids"}, exclude_unset=True).items():
         setattr(event, key, value)
     await set_junction_members(db, agenda_event_members, "event_id", event.id, payload.member_ids)
@@ -463,7 +508,12 @@ async def update_event(event_id: int, payload: AgendaEventUpdate, db: AsyncSessi
         select(AgendaEvent).options(selectinload(AgendaEvent.members)).where(AgendaEvent.id == event_id)
     )
     event = result.scalar_one()
-    logger.info("agenda.event.updated id={} title='{}' member_ids={}", event.id, event.title, event.member_ids)
+    logger.info(
+        "Agenda event updated.",
+        event_id=event.id,
+        title=event.title,
+        member_ids=event.member_ids,
+    )
     return event
 
 
@@ -475,7 +525,10 @@ async def clear_all_events(db: AsyncSession = Depends(get_db)):
     # Delete any remaining standalone events
     await db.execute(sa_delete(AgendaEvent))
     await db.commit()
-    logger.warning("agenda.all_cleared - All agenda events and series deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all agenda events and recurrence series were removed.",
+        endpoint="/api/agenda/all",
+    )
     return Response(status_code=204)
 
 
@@ -483,11 +536,14 @@ async def clear_all_events(db: AsyncSession = Depends(get_db)):
 async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
     event = await db.get(AgendaEvent, event_id)
     if not event:
-        logger.warning("agenda.event.not_found id={}", event_id)
+        logger.warning(
+            "Requested agenda event delete failed because the event was not found.",
+            event_id=event_id,
+        )
         raise HTTPException(404, "Event not found")
     await db.delete(event)
     await db.commit()
-    logger.info("agenda.event.deleted id={}", event_id)
+    logger.info("Agenda event deleted.", event_id=event_id)
 
 
 # ── Calendar Subscription ─────────────────────────────────────────────
@@ -508,7 +564,7 @@ async def export_calendar_subscription(
     cache_key = _get_cache_key(member_id)
     cached = _get_cached_calendar(cache_key)
     if cached:
-        logger.debug("calendar.subscription.cache_hit member_id={}", member_id)
+        logger.debug("Calendar subscription served from cache.", member_id=member_id)
         return Response(
             content=cached,
             media_type="text/calendar",
@@ -579,10 +635,10 @@ async def export_calendar_subscription(
     _cache_calendar(cache_key, ical_bytes)
 
     logger.info(
-        "calendar.subscription.generated member_id={} events={} series={}",
-        member_id,
-        len(events),
-        len(exported_series),
+        "Calendar subscription generated and cached.",
+        member_id=member_id,
+        event_count=len(events),
+        recurring_series_count=len(exported_series),
     )
 
     return Response(

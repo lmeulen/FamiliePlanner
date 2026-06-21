@@ -71,7 +71,7 @@ async def create_meal(payload: MealCreate, db: AsyncSession = Depends(get_db)):
 async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
-        logger.warning("meals.meal.not_found id={}", meal_id)
+        logger.warning("Meal record not found.", meal_id=meal_id)
         raise HTTPException(404, "Meal not found")
     return meal
 
@@ -80,7 +80,7 @@ async def get_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
 async def update_meal(meal_id: int, payload: MealUpdate, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
-        logger.warning("meals.meal.not_found id={}", meal_id)
+        logger.warning("Meal record not found for update request.", meal_id=meal_id)
         raise HTTPException(404, "Meal not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(meal, k, v)
@@ -98,7 +98,10 @@ async def clear_all_meals(db: AsyncSession = Depends(get_db)):
 
     await db.execute(sa_delete(Meal))
     await db.commit()
-    logger.warning("meals.all_cleared - All meals deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all meals were removed.",
+        endpoint="/api/meals/all",
+    )
     return FastAPIResponse(status_code=204)
 
 
@@ -106,7 +109,7 @@ async def clear_all_meals(db: AsyncSession = Depends(get_db)):
 async def delete_meal(meal_id: int, db: AsyncSession = Depends(get_db)):
     meal = await db.get(Meal, meal_id)
     if not meal:
-        logger.warning("meals.meal.not_found id={}", meal_id)
+        logger.warning("Meal record not found for delete request.", meal_id=meal_id)
         raise HTTPException(404, "Meal not found")
     await db.delete(meal)
     await db.commit()

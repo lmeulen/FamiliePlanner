@@ -28,11 +28,11 @@ async def set_junction_members(
         )
     except Exception as exc:
         logger.error(
-            "set_junction_members FAILED table={} {}={} member_ids={} error={}",
-            junction_table.name,
-            key_col,
-            key_val,
-            member_ids,
-            exc,
+            "Failed to update member junction rows; relation update aborted and caller transaction should be reviewed.",
+            table=junction_table.name,
+            key_column=key_col,
+            key_value=key_val,
+            member_ids=member_ids,
+            error=str(exc),
         )
         raise

@@ -164,7 +164,10 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
             raise HTTPException(400, "Cozi ICS URL moet beginnen met http:// of https://")
         await _set(db, "cozi_url", url)
 
-    logger.info("settings.updated payload={}", {k: v for k, v in payload.items() if k in _KEYS})
+    logger.info(
+        "Application settings updated via API request.",
+        updated_keys=sorted([k for k in payload.keys() if k in _KEYS]),
+    )
     return await _build_settings_dict(db)
 
 
@@ -228,7 +231,7 @@ async def export_backup_data(db: AsyncSession) -> dict:
 @router.get("/backup")
 async def backup_database(db: AsyncSession = Depends(get_db)):
     """Export entire database as JSON file with metadata."""
-    logger.info("backup.started")
+    logger.info("Database backup export started.", endpoint="/api/settings/backup")
 
     backup_data = await export_backup_data(db)
     record_counts = backup_data["record_counts"]
@@ -240,7 +243,12 @@ async def backup_database(db: AsyncSession = Depends(get_db)):
     json_bytes = BytesIO(json_content.encode("utf-8"))
     filename = f"familieplanner-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
 
-    logger.info("backup.completed filename={} records={}", filename, sum(record_counts.values()))
+    logger.info(
+        "Database backup export completed.",
+        endpoint="/api/settings/backup",
+        filename=filename,
+        total_records=sum(record_counts.values()),
+    )
 
     return StreamingResponse(
         json_bytes, media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{filename}"'}
@@ -309,10 +317,10 @@ async def _import_junction_data(db: AsyncSession, table, data: list[dict]):
             await db.execute(table.insert().values(**row_dict))
         except Exception as e:
             logger.warning(
-                "junction table insert failed table={} data={} error={}",
-                table.name,
-                row_dict,
-                str(e),
+                "Skipped invalid junction-table row during restore; restore continues in degraded mode for this relation.",
+                table=table.name,
+                row=row_dict,
+                error=str(e),
             )
             # Skip invalid junction entries rather than failing entire restore
             continue
@@ -396,7 +404,11 @@ async def _create_pre_restore_backup(db: AsyncSession) -> str:
 
     # Note: In production, this would write backup_data to disk for rollback capability
     # For now, we just return the filename to indicate it would be created
-    logger.info("pre-restore backup created filename={} records={}", filename, total_records)
+    logger.info(
+        "Pre-restore safety backup prepared.",
+        filename=filename,
+        total_records=total_records,
+    )
     return filename
 
 
@@ -412,7 +424,12 @@ async def restore_database(
     Supports dry-run mode for validation without modifying data.
     Creates pre-restore backup for rollback capability.
     """
-    logger.info("restore.started filename={} dry_run={}", file.filename, dry_run)
+    logger.info(
+        "Database restore request received.",
+        endpoint="/api/settings/restore",
+        filename=file.filename,
+        dry_run=dry_run,
+    )
 
     try:
         # Read and parse JSON
@@ -436,10 +453,10 @@ async def restore_database(
     # If dry-run, return validation results
     if dry_run:
         logger.info(
-            "restore.dry_run valid={} errors={} warnings={}",
-            validation.valid,
-            len(validation.errors),
-            len(validation.warnings),
+            "Database restore dry-run completed.",
+            valid=validation.valid,
+            error_count=len(validation.errors),
+            warning_count=len(validation.warnings),
         )
         return validation
 
@@ -454,13 +471,19 @@ async def restore_database(
     # Log warnings but continue
     if validation.warnings:
         for warning in validation.warnings:
-            logger.warning("restore.warning message={}", warning)
+            logger.warning(
+                "Backup validation warning detected; restore will continue because warning is non-fatal.",
+                warning=warning,
+            )
 
     # Create pre-restore backup for rollback
     try:
         pre_restore_filename = await _create_pre_restore_backup(db)
     except Exception as e:
-        logger.error("pre-restore backup failed error={}", str(e))
+        logger.error(
+            "Pre-restore backup creation failed; restore will continue without rollback snapshot.",
+            error=str(e),
+        )
         # Continue anyway - pre-restore backup is optional safety feature
         pre_restore_filename = None
 
@@ -514,7 +537,11 @@ async def restore_database(
         await db.commit()
 
         total_records = sum(validation.record_counts.values())
-        logger.info("restore.completed records={}", total_records)
+        logger.info(
+            "Database restore completed successfully.",
+            endpoint="/api/settings/restore",
+            total_records=total_records,
+        )
 
         return RestoreResult(
             status="success",
@@ -525,7 +552,10 @@ async def restore_database(
 
     except Exception as e:
         await db.rollback()
-        logger.error("restore.failed error={}", str(e))
+        logger.error(
+            "Database restore failed; transaction rolled back and existing data was kept unchanged.",
+            error=str(e),
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Herstel mislukt tijdens importeren: {str(e)}. Database ongewijzigd gelaten.",
@@ -536,7 +566,10 @@ async def restore_database(
 async def get_weather(location: str, db: AsyncSession = Depends(get_db)):
     """Fetch weather data from OpenWeatherMap API."""
     if not OPENWEATHER_API_KEY:
-        logger.warning("weather.fetch.failed: API key not configured")
+        logger.warning(
+            "Weather request rejected because API key is missing. Configure OPENWEATHER_API_KEY before retrying.",
+            endpoint="/api/settings/weather",
+        )
         raise HTTPException(
             status_code=503, detail="Geen API key geconfigureerd. Voeg OPENWEATHER_API_KEY toe aan .env"
         )
@@ -548,17 +581,22 @@ async def get_weather(location: str, db: AsyncSession = Depends(get_db)):
             response = await client.get(url, params=params, timeout=5.0)
 
             if response.status_code == 401:
-                logger.error("weather.fetch.failed location={} error=Invalid API key", location)
+                logger.error(
+                    "Weather provider rejected API key. Rotate/replace OPENWEATHER_API_KEY and retry.",
+                    location=location,
+                    provider="openweathermap",
+                )
                 raise HTTPException(
                     status_code=401, detail="Ongeldige API key. Vraag een nieuwe aan op openweathermap.org"
                 )
 
             if response.status_code != 200:
                 logger.error(
-                    "weather.fetch.failed location={} status={} response={}",
-                    location,
-                    response.status_code,
-                    response.text,
+                    "Weather provider returned non-success status. Check provider availability and request parameters.",
+                    location=location,
+                    status=response.status_code,
+                    provider="openweathermap",
+                    response_body=response.text,
                 )
                 raise HTTPException(
                     status_code=response.status_code, detail=f"Weather API error: {response.status_code}"
@@ -569,5 +607,9 @@ async def get_weather(location: str, db: AsyncSession = Depends(get_db)):
     except httpx.TimeoutException as e:
         raise HTTPException(status_code=504, detail="Weather API timeout") from e
     except Exception as e:
-        logger.error("weather.fetch.failed location={} error={}", location, str(e))
+        logger.error(
+            "Weather request failed unexpectedly. Check network path, provider status, and API configuration.",
+            location=location,
+            error=str(e),
+        )
         raise HTTPException(status_code=500, detail="Failed to fetch weather data") from e

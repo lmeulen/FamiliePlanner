@@ -28,7 +28,7 @@ def get_auth_required() -> bool:
 def set_auth_required(value: bool) -> None:
     global _auth_required
     _auth_required = value
-    logger.info("auth.auth_required changed to {}", value)
+    logger.info("Authentication requirement setting changed.", auth_required=value)
 
 
 templates = Jinja2Templates(directory=BASE_DIR / "app" / "templates")
@@ -76,15 +76,20 @@ async def login_post(
     pass_ok = verify_password(password, APP_PASSWORD)
     if user_ok and pass_ok:
         request.session["authenticated"] = True
-        logger.info("auth.login.success user='{}'", username)
+        logger.info("Login succeeded; authenticated session created.", username=username)
         next_url = request.query_params.get("next", "/")
         return RedirectResponse(url=next_url, status_code=302)
-    logger.warning("auth.login.failed user='{}'", username)
+    logger.warning(
+        "Login attempt rejected due to invalid credentials. Monitor repeated failures for brute-force attempts.",
+        username=username,
+        auth_required=AUTH_REQUIRED,
+        path="/login",
+    )
     return RedirectResponse(url="/login?error=1", status_code=302)
 
 
 async def logout(request: Request) -> RedirectResponse:
     """Clear the session and redirect to login."""
     request.session.clear()
-    logger.info("auth.logout")
+    logger.info("Logout completed; session cleared.", path="/logout")
     return RedirectResponse(url="/login", status_code=302)

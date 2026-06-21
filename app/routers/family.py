@@ -57,7 +57,10 @@ async def clear_all_members(db: AsyncSession = Depends(get_db)):
 
     await db.execute(sa_delete(FamilyMember))
     await db.commit()
-    logger.warning("family.all_cleared - All family members deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all family members were removed and member links were cascaded.",
+        endpoint="/api/family/all",
+    )
     return FastAPIResponse(status_code=204)
 
 

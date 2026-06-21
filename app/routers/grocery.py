@@ -225,7 +225,10 @@ async def clear_all_groceries(db: AsyncSession = Depends(get_db)):
     # Delete all learning data
     await db.execute(sa_delete(GroceryProductLearning))
     await db.commit()
-    logger.warning("grocery.all_cleared - All grocery items and learning data deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all grocery items and category-learning history were removed.",
+        endpoint="/api/grocery/all",
+    )
     return FastAPIResponse(status_code=204)
 
 

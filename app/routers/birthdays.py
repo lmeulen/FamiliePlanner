@@ -149,7 +149,10 @@ async def clear_all_birthdays(db: AsyncSession = Depends(get_db)):
     await db.execute(sql_delete(Birthday))
     await db.commit()
 
-    logger.warning("birthdays.all_cleared - All birthdays and linked agenda series deleted")
+    logger.warning(
+        "Administrative bulk delete executed: all birthdays and linked agenda recurrence series were removed.",
+        endpoint="/api/birthdays/all",
+    )
     return Response(status_code=204)
 
 
