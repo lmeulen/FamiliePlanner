@@ -2084,22 +2084,27 @@ img { max-width: 100%; }
 
 /* Phone-specific styles (does not affect tablets at 768px+) */
 @media (max-width: 640px) {
+  .settings-form {
+    gap: .35rem;
+  }
+
   .settings-section {
-    gap: .4rem;
+    gap: .08rem;
+    padding: .6rem;
   }
 
   .settings-row,
   .settings-row--col {
     flex-direction: column;
     align-items: stretch;
-    gap: .25rem;
+    gap: .08rem;
   }
 
   .settings-control {
     flex-basis: auto;
     width: 100%;
     max-width: 100%;
-    gap: .2rem;
+    gap: .08rem;
   }
 
   .settings-row--col:has(.settings-number-input) .settings-control {
@@ -2110,7 +2115,7 @@ img { max-width: 100%; }
 
   .settings-label {
     flex: 1 1 auto;
-    gap: .08rem;
+    gap: .03rem;
   }
 
   .settings-row .toggle-wrap {
@@ -2130,6 +2135,7 @@ img { max-width: 100%; }
 
   .settings-section-title {
     font-size: .8rem;
+    margin-bottom: .05rem;
   }
 
   .settings-label-main {
@@ -2138,6 +2144,7 @@ img { max-width: 100%; }
 
   .settings-label-hint {
     font-size: .75rem;
+    line-height: 1.2;
   }
 }
 

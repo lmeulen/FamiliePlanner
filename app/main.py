@@ -317,12 +317,15 @@ async def log_requests(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
+    target = request.url.path
+    if request.url.query:
+        target = f"{target}?{request.url.query}"
     logger.info(
-        "HTTP request handled.",
-        method=request.method,
-        path=request.url.path,
-        status=response.status_code,
-        duration_ms=round(duration_ms, 1),
+        "HTTP request handled: {} ({:.1f}ms) {} {}",
+        response.status_code,
+        duration_ms,
+        request.method,
+        target,
     )
     return response
 
