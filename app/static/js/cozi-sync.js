@@ -330,6 +330,14 @@
         default_series_count: 60,
       });
 
+      // Invalidate caches so updates are visible immediately
+      const invalidatedAgenda = Cache.invalidate(/^agenda_events_/);
+      const invalidatedMeals = Cache.invalidate(/^meals_/);
+      const invalidatedTasks = Cache.invalidate(/^tasks_/);
+      if (invalidatedAgenda || invalidatedMeals || invalidatedTasks) {
+        console.log('[Cozi] Cache invalidated after import:', { invalidatedAgenda, invalidatedMeals, invalidatedTasks });
+      }
+
       // Show result panel
       hide(elResults);
       renderImportResult(result);

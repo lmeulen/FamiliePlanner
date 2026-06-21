@@ -83,6 +83,15 @@ window.API = (() => {
     // Parse JSON response
     const json = await res.json().catch(() => ({ detail: res.statusText }));
 
+    // Invalidate cache patterns from X-Cache-Invalidate header (if present)
+    const cacheInvalidateHeader = res.headers.get('X-Cache-Invalidate');
+    if (cacheInvalidateHeader && typeof Cache !== 'undefined') {
+      const patterns = cacheInvalidateHeader.split(',').map(p => p.trim());
+      patterns.forEach(pattern => {
+        Cache.invalidate(new RegExp(`^${pattern}_`));
+      });
+    }
+
     // Error response
     if (!res.ok) {
       if (window.GlobalLoader) window.GlobalLoader.hide();

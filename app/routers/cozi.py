@@ -1,6 +1,7 @@
 """API router for Cozi ICS synchronization."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,15 +104,19 @@ async def cozi_import(payload: CoziImportRequest, db: AsyncSession = Depends(get
         raise HTTPException(400, "Geen Cozi ICS URL geconfigureerd.")
 
     if not payload.selected_uids:
-        return {
-            "imported_events": 0,
-            "imported_series": 0,
-            "imported_meals": 0,
-            "updated_events": 0,
-            "updated_series": 0,
-            "updated_meals": 0,
-            "skipped": 0,
-        }
+        return JSONResponse(
+            status_code=200,
+            content={
+                "imported_events": 0,
+                "imported_series": 0,
+                "imported_meals": 0,
+                "updated_events": 0,
+                "updated_series": 0,
+                "updated_meals": 0,
+                "skipped": 0,
+            },
+            headers={"X-Cache-Invalidate": "agenda_events,meals,tasks"},
+        )
 
     series_count = max(1, min(365, payload.default_series_count))
 
@@ -139,15 +144,19 @@ async def cozi_import(payload: CoziImportRequest, db: AsyncSession = Depends(get
         skipped=result.skipped,
     )
 
-    return {
-        "imported_events": result.imported_events,
-        "imported_series": result.imported_series,
-        "imported_meals": result.imported_meals,
-        "updated_events": result.updated_events,
-        "updated_series": result.updated_series,
-        "updated_meals": result.updated_meals,
-        "skipped": result.skipped,
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "imported_events": result.imported_events,
+            "imported_series": result.imported_series,
+            "imported_meals": result.imported_meals,
+            "updated_events": result.updated_events,
+            "updated_series": result.updated_series,
+            "updated_meals": result.updated_meals,
+            "skipped": result.skipped,
+        },
+        headers={"X-Cache-Invalidate": "agenda_events,meals,tasks"},
+    )
 
 
 class CoziLinkRequest(BaseModel):
