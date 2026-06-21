@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Cozi Synchronisatie – FamiliePlanner{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:1rem;">
+  <a href="/instellingen" class="btn btn--secondary" style="white-space:nowrap;">← Instellingen</a>
+  <h1 class="page-title" style="margin:0;">🔄 Cozi Synchronisatie</h1>
+</div>
+
+<!-- Loading state -->
+<div id="cozi-loading" class="card" style="text-align:center;padding:2rem;">
+  <div class="spinner" style="margin:0 auto 1rem;"></div>
+  <p>Cozi feed ophalen en vergelijken…</p>
+</div>
+
+<!-- Error state -->
+<div id="cozi-error" class="card hidden" style="border-left:4px solid var(--color-danger);padding:1.5rem;">
+  <h3 style="color:var(--color-danger);margin:0 0 .5rem;">Fout bij ophalen</h3>
+  <p id="cozi-error-msg" style="margin:0;"></p>
+  <div style="margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+    <a href="/instellingen" class="btn btn--secondary">← Terug naar instellingen</a>
+    <button type="button" class="btn btn--primary" id="btn-retry">Opnieuw proberen</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="cozi-results" class="hidden">
+
+  <!-- Summary bar -->
+  <div id="cozi-summary" class="card" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;padding:1rem 1.25rem;margin-bottom:1rem;">
+    <span id="badge-new" class="cozi-badge cozi-badge--new">0 nieuw</span>
+    <span id="badge-changed" class="cozi-badge cozi-badge--changed">0 gewijzigd</span>
+    <span id="badge-likely" class="cozi-badge cozi-badge--exists">0 mogelijk aanwezig</span>
+    <span id="badge-exists" class="cozi-badge cozi-badge--exists">0 al aanwezig</span>
+    <div style="flex:1;"></div>
+    <button type="button" class="btn btn--secondary" id="btn-select-new" title="Selecteer alle nieuwe items">✔ Alle nieuwe</button>
+    <button type="button" class="btn btn--secondary" id="btn-select-changed" title="Selecteer alle gewijzigde items">✔ Alle gewijzigde</button>
+    <button type="button" class="btn btn--secondary" id="btn-link-all-likely" title="Koppel alle mogelijk aanwezige items">🔗 Alle mogelijke koppelen</button>
+    <button type="button" class="btn btn--primary" id="btn-import" disabled>
+      Importeer geselecteerde (<span id="selected-count">0</span>)
+    </button>
+  </div>
+
+  <!-- No items message -->
+  <div id="cozi-empty" class="card hidden" style="text-align:center;padding:2rem;color:var(--text-muted);">
+    <p>Geen items gevonden in de Cozi feed.</p>
+    <a href="/instellingen" class="btn btn--secondary" style="margin-top:.5rem;">← Terug naar instellingen</a>
+  </div>
+
+  <!-- Nieuw -->
+  <section id="section-new" class="hidden">
+    <h2 class="cozi-section-title cozi-section-title--new">✨ Nieuw</h2>
+    <p class="cozi-section-hint">Deze items bestaan nog niet in FamiliePlanner. Aanbevolen: importeren.</p>
+    <div id="list-new" class="cozi-item-list"></div>
+  </section>
+
+  <!-- Gewijzigd -->
+  <section id="section-changed" class="hidden">
+    <h2 class="cozi-section-title cozi-section-title--changed">✏️ Gewijzigd in Cozi</h2>
+    <p class="cozi-section-hint">Deze items zijn al aanwezig maar hebben wijzigingen t.o.v. Cozi. Aanbevolen: bijwerken.</p>
+    <div id="list-changed" class="cozi-item-list"></div>
+  </section>
+
+  <!-- Mogelijk aanwezig -->
+  <section id="section-likely" class="hidden">
+    <h2 class="cozi-section-title cozi-section-title--exists">❓ Mogelijk aanwezig</h2>
+    <p class="cozi-section-hint">Deze items lijken al aanwezig in FamiliePlanner. Controleer en koppel indien nodig.</p>
+    <div id="list-likely" class="cozi-item-list"></div>
+  </section>
+
+  <!-- Al aanwezig -->
+  <section id="section-exists" class="hidden">
+    <h2 class="cozi-section-title cozi-section-title--exists">✅ Al aanwezig</h2>
+    <p class="cozi-section-hint">Deze items zijn al gekoppeld en up-to-date. Aanbevolen: overslaan.</p>
+    <div id="list-exists" class="cozi-item-list"></div>
+  </section>
+
+</div>
+
+<!-- Import result -->
+<div id="cozi-import-result" class="card hidden" style="border-left:4px solid var(--color-success);padding:1.5rem;">
+  <h3 style="color:var(--color-success);margin:0 0 .75rem;">✅ Import voltooid</h3>
+  <div id="import-result-details"></div>
+  <div style="margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap;">
+    <a href="/agenda" class="btn btn--primary">Naar agenda</a>
+    <a href="/instellingen" class="btn btn--secondary">← Instellingen</a>
+    <button type="button" class="btn btn--secondary" id="btn-sync-again">Opnieuw synchroniseren</button>
+  </div>
+</div>
+
+<!-- Item card template -->
+<template id="tpl-cozi-item">
+  <label class="cozi-item-card">
+    <input type="checkbox" class="cozi-item-cb" />
+    <div class="cozi-item-body">
+      <div class="cozi-item-header">
+        <span class="cozi-item-title"></span>
+        <span class="cozi-item-type-badge"></span>
+        <span class="cozi-item-status-badge"></span>
+      </div>
+      <div class="cozi-item-meta"></div>
+      <div class="cozi-item-reason"></div>
+      <div class="cozi-item-changes hidden"></div>
+      <div class="cozi-item-match hidden"></div>
+    </div>
+  </label>
+</template>
+
+<!-- Link modal -->
+<div id="cozi-link-modal" class="modal hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div class="card" style="width:90%;max-width:500px;padding:1.5rem;">
+    <h2 style="margin:0 0 1rem;">🔗 Koppel aan Cozi</h2>
+    <p id="link-modal-msg" style="margin:0 0 1rem;color:var(--text-muted);"></p>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+      <button type="button" class="btn btn--secondary" id="btn-link-cancel">Annuleren</button>
+      <button type="button" class="btn btn--primary" id="btn-link-confirm">Koppel nu</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.cozi-badge {
+  display: inline-block;
+  padding: .2rem .6rem;
+  border-radius: 12px;
+  font-size: .8rem;
+  font-weight: 700;
+}
+.cozi-badge--new { background: rgba(46,213,115,.15); color: #27ae60; border: 1px solid #27ae60; }
+.cozi-badge--changed { background: rgba(243,156,18,.15); color: #e67e22; border: 1px solid #e67e22; }
+.cozi-badge--exists { background: rgba(149,165,166,.15); color: var(--text-muted); border: 1px solid var(--border); }
+
+.cozi-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 1.25rem 0 .25rem;
+  padding-left: .25rem;
+}
+.cozi-section-title--new { color: #27ae60; }
+.cozi-section-title--changed { color: #e67e22; }
+.cozi-section-title--exists { color: var(--text-muted); }
+
+.cozi-section-hint {
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin: 0 0 .6rem;
+}
+
+.cozi-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+.cozi-item-card {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .75rem 1rem;
+  cursor: pointer;
+  transition: box-shadow .15s;
+}
+.cozi-item-card:hover { box-shadow: var(--shadow-sm); }
+.cozi-item-card:has(.cozi-item-cb:checked) {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb, 78,205,196), .06);
+}
+
+.cozi-item-cb { margin-top: .15rem; flex-shrink: 0; width: 1.1rem; height: 1.1rem; }
+
+.cozi-item-body { flex: 1; min-width: 0; }
+
+.cozi-item-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+  margin-bottom: .25rem;
+}
+.cozi-item-title { font-weight: 600; font-size: .95rem; }
+
+.cozi-item-type-badge, .cozi-item-status-badge {
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .1rem .45rem;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.cozi-item-type-badge { background: var(--bg-alt, #f0f0f0); color: var(--text-secondary); }
+.badge--new { background: rgba(46,213,115,.15); color: #27ae60; }
+.badge--changed { background: rgba(243,156,18,.15); color: #e67e22; }
+.badge--likely_exists, .badge--exists { background: rgba(149,165,166,.15); color: var(--text-muted); }
+
+.cozi-item-meta { font-size: .82rem; color: var(--text-muted); margin-bottom: .15rem; }
+.cozi-item-reason { font-size: .78rem; color: var(--text-muted); font-style: italic; }
+
+.cozi-item-changes {
+  margin-top: .4rem;
+  font-size: .8rem;
+  background: rgba(243,156,18,.08);
+  border-left: 3px solid #e67e22;
+  padding: .35rem .6rem;
+  border-radius: 0 6px 6px 0;
+}
+.cozi-item-match {
+  margin-top: .3rem;
+  font-size: .78rem;
+  color: var(--text-muted);
+}
+
+/* spinner */
+.spinner {
+  width: 2rem; height: 2rem;
+  border: 3px solid var(--border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/cozi-sync.js?v={{ static_v }}"></script>
+{% endblock %}

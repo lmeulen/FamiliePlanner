@@ -22,4 +22,5 @@ class Meal(Base):
     cook_member_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("family_members.id", ondelete="SET NULL"), nullable=True, default=None, index=True
     )
+    cozi_uid: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())

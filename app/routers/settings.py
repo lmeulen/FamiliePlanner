@@ -42,6 +42,7 @@ _KEYS = {
     "weather_location",
     "mealie_server_url",
     "mealie_api_token",
+    "cozi_url",
 }
 
 
@@ -80,6 +81,7 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
         "mealie_server_url": await _get(db, "mealie_server_url", ""),
         "mealie_api_token": await _get(db, "mealie_api_token", ""),
+        "cozi_url": await _get(db, "cozi_url", ""),
     }
 
 
@@ -155,6 +157,12 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
     if "mealie_api_token" in payload:
         token = str(payload["mealie_api_token"]).strip()[:500]  # max 500 chars
         await _set(db, "mealie_api_token", token)
+
+    if "cozi_url" in payload:
+        url = str(payload["cozi_url"]).strip()[:500]
+        if url and not (url.startswith("http://") or url.startswith("https://")):
+            raise HTTPException(400, "Cozi ICS URL moet beginnen met http:// of https://")
+        await _set(db, "cozi_url", url)
 
     logger.info("settings.updated payload={}", {k: v for k, v in payload.items() if k in _KEYS})
     return await _build_settings_dict(db)

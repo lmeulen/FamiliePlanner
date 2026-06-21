@@ -35,6 +35,7 @@ from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
 from app.recurrence_scheduler import run_recurrence_scheduler
 from app.routers import agenda, birthdays, family, grocery, meals, photos, recipes, search, stats, tasks
+from app.routers import cozi as cozi_router
 from app.routers import settings as settings_router
 from app.security import SecurityHeadersMiddleware
 
@@ -433,6 +434,7 @@ app.include_router(stats.router)
 app.include_router(grocery.router)
 app.include_router(recipes.router)
 app.include_router(birthdays.router)
+app.include_router(cozi_router.router)
 
 # Auth routes – login POST is rate-limited to 5 attempts per minute per IP
 app.get("/login", response_class=HTMLResponse, response_model=None)(login_get)
@@ -477,6 +479,11 @@ async def page_recipes(request: Request):
 @app.get("/instellingen", response_class=HTMLResponse)
 async def page_settings(request: Request):
     return templates.TemplateResponse(request, "settings.html", {"request": request})
+
+
+@app.get("/cozi-sync", response_class=HTMLResponse)
+async def page_cozi_sync(request: Request):
+    return templates.TemplateResponse(request, "cozi_sync.html", {"request": request})
 
 
 @app.get("/fotos", response_class=HTMLResponse)

@@ -45,6 +45,7 @@ class RecurrenceSeries(Base):
     count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     monthly_pattern: Mapped[str | None] = mapped_column(String(50), nullable=True)
     rrule: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cozi_uid: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
 
     members = relationship("FamilyMember", secondary=recurrence_series_members, lazy="selectin", uselist=True)
@@ -69,6 +70,7 @@ class AgendaEvent(Base):
         Integer, ForeignKey("recurrence_series.id", ondelete="CASCADE"), nullable=True, index=True
     )
     is_exception: Mapped[bool] = mapped_column(Boolean, default=False)
+    cozi_uid: Mapped[str | None] = mapped_column(String(500), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), server_default=func.now())
 
     members = relationship("FamilyMember", secondary=agenda_event_members, lazy="selectin", uselist=True)

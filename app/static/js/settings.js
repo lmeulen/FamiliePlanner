@@ -16,6 +16,7 @@
   const weatherLocationInput = document.getElementById('weather-location');
   const mealieServerUrlInput = document.getElementById('mealie-server-url');
   const mealieApiTokenInput = document.getElementById('mealie-api-token');
+  const coziUrlInput = document.getElementById('cozi-url');
   const saveStatus        = document.getElementById('save-status');
 
   function t(key, vars = {}) {
@@ -95,6 +96,8 @@
     mealieServerUrlInput.value = s.mealie_server_url || '';
     mealieApiTokenInput.value = s.mealie_api_token || '';
 
+    if (coziUrlInput) coziUrlInput.value = s.cozi_url || '';
+
     updatePhotoHeightRow();
     updateWeatherLocationRow();
   }
@@ -130,6 +133,7 @@
       weather_location: weatherLocationInput.value.trim() || 'Amsterdam,NL',
       mealie_server_url: mealieServerUrlInput.value.trim(),
       mealie_api_token: mealieApiTokenInput.value.trim(),
+      cozi_url: coziUrlInput ? coziUrlInput.value.trim() : undefined,
     };
 
     const updatedSettings = await API.put('/api/settings/', payload);
