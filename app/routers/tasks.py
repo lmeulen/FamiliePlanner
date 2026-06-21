@@ -308,6 +308,39 @@ async def overdue_tasks(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+@router.patch("/overdue/complete")
+async def complete_overdue_tasks_for_date(
+    due_date: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    today = date.today()
+    if due_date >= today:
+        raise HTTPException(400, "Alleen verlopen taken kunnen in bulk worden afgevinkt")
+
+    result = await db.execute(
+        select(Task).where(
+            and_(
+                Task.due_date == due_date,
+                Task.due_date < today,
+                Task.done == False,  # noqa: E712
+            )
+        )
+    )
+    overdue_tasks = result.scalars().all()
+
+    for task in overdue_tasks:
+        task.done = True
+
+    await db.commit()
+
+    completed_count = len(overdue_tasks)
+    if completed_count:
+        tasks_completed_total.inc(completed_count)
+
+    logger.info("tasks.overdue.completed due_date={} count={}", due_date, completed_count)
+    return {"completed": completed_count}
+
+
 @router.post("/", response_model=TaskOut, status_code=201)
 async def create_task(payload: TaskCreate, db: AsyncSession = Depends(get_db)):
     task = Task(**payload.model_dump(exclude={"member_ids"}))

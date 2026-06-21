@@ -8,6 +8,46 @@
   let activeMember = null;
   let showDone     = false;
 
+  function openOverdueConfirm(dueDate) {
+    if (!dueDate) return;
+
+    Modal.open(`
+      <div class="modal-form">
+        <h3 class="modal-title">Verlopen taken afvinken?</h3>
+        <p>Wil je alle verlopen taken op deze dag als afgerond markeren?</p>
+        <div class="form-actions">
+          <button type="button" class="btn btn--primary" id="btn-confirm-overdue-complete">Ja</button>
+          <button type="button" class="btn" id="btn-cancel-overdue-complete">Nee</button>
+        </div>
+      </div>
+    `);
+
+    document.getElementById('btn-cancel-overdue-complete')?.addEventListener('click', () => {
+      Modal.close();
+    });
+
+    document.getElementById('btn-confirm-overdue-complete')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
+
+      try {
+        await API.withButtonLoading(button, async () => {
+          const result = await API.patch(`/api/tasks/overdue/complete?due_date=${encodeURIComponent(dueDate)}`);
+          Modal.close();
+          Cache.invalidate(/^tasks_/);
+          await loadTasks();
+
+          if (result?.completed) {
+            Toast.show(`${result.completed} verlopen ${result.completed === 1 ? 'taak' : 'taken'} afgerond`);
+          } else {
+            Toast.show('Geen verlopen taken gevonden voor deze dag');
+          }
+        });
+      } catch (err) {
+        Toast.show('Kon verlopen taken niet afvinken', 'error');
+      }
+    });
+  }
+
   // ── Loaders ───────────────────────────────────────────────────
   async function loadLists() {
     lists = await API.get('/api/tasks/lists').catch(() => []);
@@ -83,7 +123,7 @@
         <div class="agenda-day-section-header">
           <div class="agenda-day-section-title">${FP.esc(dayLabel)}</div>
           ${daySub ? `<div class="agenda-day-section-badge">${daySub}</div>` : ''}
-          ${isOverdue ? `<div class="agenda-day-section-badge overdue-badge">Verlopen</div>` : ''}
+          ${isOverdue ? `<button type="button" class="agenda-day-section-badge overdue-badge overdue-badge-button" data-overdue-date="${dayTasks[0].due_date}" aria-label="Verlopen taken op ${FP.esc(dayLabel)} afvinken">Verlopen</button>` : ''}
         </div>
         <div class="agenda-day-section-list">
           ${sortedTasks.map(renderTaskRow).join('')}
@@ -174,6 +214,13 @@
 
     document.querySelectorAll('[data-edit]').forEach(el => {
       el.addEventListener('click', () => openTaskForm(parseInt(el.dataset.edit)));
+    });
+
+    document.querySelectorAll('.overdue-badge-button').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openOverdueConfirm(btn.dataset.overdueDate);
+      });
     });
   }
 

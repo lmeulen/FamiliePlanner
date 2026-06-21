@@ -183,6 +183,33 @@ async def test_overdue_tasks(client: AsyncClient):
     assert all(t["due_date"] < TODAY for t in data)
 
 
+async def test_complete_overdue_tasks_for_date(client: AsyncClient):
+    await client.post("/api/tasks/", json={**TASK_BASE, "title": "Verlopen 1", "due_date": YESTERDAY})
+    await client.post("/api/tasks/", json={**TASK_BASE, "title": "Verlopen 2", "due_date": YESTERDAY})
+    await client.post("/api/tasks/", json={**TASK_BASE, "title": "Vandaag", "due_date": TODAY})
+    await client.post("/api/tasks/", json={**TASK_BASE, "title": "Morgen", "due_date": TOMORROW})
+
+    response = await client.patch("/api/tasks/overdue/complete", params={"due_date": YESTERDAY})
+
+    assert response.status_code == 200
+    assert response.json() == {"completed": 2}
+
+    overdue_tasks = (await client.get("/api/tasks/", params={"due_date": YESTERDAY})).json()
+    assert all(task["done"] is True for task in overdue_tasks)
+
+    today_tasks = (await client.get("/api/tasks/", params={"due_date": TODAY})).json()
+    assert all(task["done"] is False for task in today_tasks)
+
+    tomorrow_tasks = (await client.get("/api/tasks/", params={"due_date": TOMORROW})).json()
+    assert all(task["done"] is False for task in tomorrow_tasks)
+
+
+async def test_complete_overdue_tasks_for_date_rejects_non_overdue_date(client: AsyncClient):
+    response = await client.patch("/api/tasks/overdue/complete", params={"due_date": TODAY})
+
+    assert response.status_code == 400
+
+
 # ── Recurrence series ─────────────────────────────────────────────
 
 
