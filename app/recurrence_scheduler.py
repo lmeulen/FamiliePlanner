@@ -15,7 +15,21 @@ from app.routers.tasks import _make_tasks_for_series
 
 
 async def _regenerate_infinite_series() -> None:
-    """Regenerate occurrences for infinite series that need more future dates."""
+    """
+    Regenerate occurrences for infinite series that need more future dates.
+
+    Logic:
+    - Select series where ``series_end`` and ``count`` are both ``NULL``.
+    - Inspect latest non-exception occurrence for each series.
+    - If no future items exist or fewer than 30 days remain, delete only future
+        non-exception items from today onward and regenerate via rolling window.
+
+    Notes:
+    - Rolling window generation lives in ``generate_occurrence_dates()`` and uses
+        an upper bound of ``today + 365 days``.
+    - ``is_exception=True`` occurrences are preserved during regeneration.
+    - This job is scheduled daily by ``run_recurrence_scheduler()``.
+    """
     async with AsyncSessionLocal() as db:
         today = date.today()
         regenerate_threshold = today + timedelta(days=30)  # Regenerate if < 30 days left

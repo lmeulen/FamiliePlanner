@@ -2325,6 +2325,34 @@ img { max-width: 100%; }
   font-size: .78rem;
 }
 
+/* Mobile compacting for whitespace-heavy layouts */
+@media (max-width: 640px) {
+  .page-header { margin-bottom: .8rem; }
+  .section { margin-bottom: 1.2rem; }
+  .view-controls {
+    gap: .5rem;
+    margin-bottom: .5rem;
+  }
+
+  .cal-week-scroll,
+  .cal-day-scroll {
+    max-height: calc(100vh - 180px);
+    min-height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+
+  .meal-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .family-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    FULLSIZE PHOTO MODAL
    ═══════════════════════════════════════════════════════════════════ */

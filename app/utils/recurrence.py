@@ -48,6 +48,17 @@ def generate_occurrence_dates(
 
     Returns:
         List of occurrence dates (max MAX_OCCURRENCES)
+
+    Infinite Series Rolling Window:
+        When both ``series_end`` and ``count`` are ``None``, the series is treated as
+        infinite and generated through a rolling window from ``series_start`` through
+        ``today + 365 days`` (computed fresh on every call). This means older series
+        can contain more than ~52 weekly items if ``series_start`` is in the past,
+        because the window is anchored on "today" for its upper bound.
+
+        Ongoing maintenance is handled by ``app/recurrence_scheduler.py`` which
+        regenerates future non-exception occurrences daily when fewer than 30 days
+        remain, while preserving ``is_exception=True`` items.
     """
     # Handle infinite series with rolling window
     if series_end is None and count is None:

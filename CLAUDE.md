@@ -193,6 +193,14 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - Updating series → regenerates all non-exception occurrences
 - Deleting series → cascades to all instances
 
+**Infinite Series (Rolling Window):**
+
+- Create an infinite series with `series_end=None` and `count=None`
+- Occurrences are generated with a rolling upper bound of `today + 365 days`
+- Generation still starts at `series_start`, so older starts can yield more than ~52 weekly items
+- Daily scheduler (`app/recurrence_scheduler.py`) regenerates when fewer than 30 future days remain
+- Regeneration preserves exception instances (`is_exception=True`)
+
 **Recurrence types** (`app/enums.py`):
 
 - `daily`, `every_other_day`, `weekly`, `biweekly`, `weekdays`, `monthly`, `yearly`
