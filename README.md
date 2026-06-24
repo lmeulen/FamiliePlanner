@@ -1,6 +1,6 @@
 # 🏠 FamiliePlanner
 
-Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uvicorn (backend) en vanilla HTML/CSS/JS (frontend). Installeerbaar als native app op mobiel en desktop, werkt offline!
+Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uvicorn (backend) en vanilla HTML/CSS/JS (frontend). Installeerbaar als PWA op mobiel en desktop, werkt offline!
 
 ## 🚀 Highlights
 
@@ -8,7 +8,7 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 - 🌓 **Dark Mode** - Light/dark/system thema met smooth transitions
 - 📱 **Mobile First** - Responsive design, touch-optimized, safe-area support
 - 🔍 **Global Search** - Zoek door alle modules (events, tasks, meals)
-- ⚡ **Snelle PWA** - Installeer als native app, werkt offline, instant loading
+- ⚡ **Snelle PWA** - Installeer als PWA, werkt offline, instant loading
 - 🔄 **Herhaalde Series** - Slimme recurrence voor events en taken (dagelijks tot jaarlijks)
 - 📊 **Statistieken** - Inzicht in gebruikspatronen en activiteit
 - 💾 **Auto Backup** - Dagelijkse JSON backups om 00:00
@@ -26,7 +26,7 @@ Een moderne Progressive Web App voor gezinsorganisatie, gebouwd met FastAPI + Uv
 | **👨‍👩‍👧‍👦 Gezin** | Gezinsleden beheren met naam, kleur en emoji-avatar |
 | **🖼️ Foto's** | Upload foto's (JPEG/PNG), automatische thumbnails, diashow op dashboard, fullscreen viewer |
 | **🔍 Zoeken** | Globaal zoeken door agenda, taken en maaltijden met deep-linking |
-| **📱 Progressive Web App** | Installeerbaar als native app, werkt offline, app shortcuts, snelle laadtijden |
+| **📱 Progressive Web App** | Installeerbaar als PWA, werkt offline, app shortcuts, snelle laadtijden |
 | **📊 Statistieken** | Inzicht in gebruikspatronen, meest actieve leden, populaire maaltijden |
 | **⚙️ Instellingen** | Thema (licht/donker/systeem), fotogrootte dashboard, authenticatie toggle, export/import |
 
@@ -65,7 +65,7 @@ Open in de browser: **http://\<server-ip\>:8000**
 
 ## 📱 PWA Installatie
 
-### Mobiel (Android/iOS)
+### Mobiel (PWA via browser)
 
 **Android (Chrome/Edge):**
 

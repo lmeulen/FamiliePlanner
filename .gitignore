@@ -106,7 +106,3 @@ yarn-error.log*
 # Backup directory
 backups/
 
-android/.gradle
-android/*.keystore
-android/app
-android/*credentials.txt

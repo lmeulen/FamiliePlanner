@@ -163,7 +163,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 
 **PWA Features:**
 
-- Installable as native app (Android, iOS, Windows, macOS)
+- Installable as Progressive Web App (PWA) on Android, iOS, Windows, and macOS
 - Service Worker with offline-first caching strategy (`app/static/sw.js`)
 - App shortcuts for quick access (Agenda, Taken, Maaltijden)
 - Manifest file (`app/static/manifest.json`) with icons and theme colors

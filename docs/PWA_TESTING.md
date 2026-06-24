@@ -8,7 +8,7 @@ FamiliePlanner is now a fully functional Progressive Web App with offline suppor
 
 ## 📱 Testing the PWA Installation
 
-### On Android (Chrome/Edge)
+### On Android (Chrome/Edge, browser install)
 
 1. **Access the app on mobile:**
    - Open Chrome or Edge browser
