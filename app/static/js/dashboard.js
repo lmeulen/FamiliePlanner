@@ -172,12 +172,15 @@
 
     // Widget is altijd zichtbaar (toont minimaal datum/tijd)
     updateDateTime();
-    setInterval(updateDateTime, 30000); // Update elke 30 seconden
+    // Register updateDateTime with centralized timer (30s interval)
+    FP.TimerController.register('dashboard-datetime', updateDateTime, 30_000);
 
     // Laad weer alleen als ingeschakeld
     if (settings && settings.weather_enabled) {
       console.log('[Weather] Weather is enabled, location:', settings.weather_location);
       loadWeather(settings.weather_location || 'Amsterdam,NL');
+      // Register weather update with centralized timer (5min = 300000ms interval)
+      FP.TimerController.register('weather', () => loadWeather(settings.weather_location || 'Amsterdam,NL'), 300_000);
     } else {
       console.log('[Weather] Weather is disabled');
       weatherInfo.innerHTML = ''; // Verberg weer sectie
@@ -364,12 +367,13 @@
     const container = document.getElementById('all-tasks');
     const empty     = document.getElementById('tasks-empty');
     try {
-      const [today, overdue, lists, overduePos] = await Promise.all([
-        API.get('/api/tasks/today'),
-        API.get('/api/tasks/overdue'),
-        API.get('/api/tasks/lists'),
-        API.get('/api/tasks/overdue-position').catch(() => ({ sort_order: 9999 })),
-      ]);
+      // Single consolidated API call replaces 4 separate requests
+      const dashboard = await API.get('/api/tasks/dashboard');
+      const today = dashboard.today || [];
+      const overdue = dashboard.overdue || [];
+      const lists = dashboard.lists || [];
+      const overduePos = dashboard.overdue_position || { sort_order: 9999 };
+      
       _tasks = [...today, ...overdue];
 
       // Lists are already ordered by sort_order from API
@@ -634,7 +638,7 @@
         if (s && s.dashboard_photo_enabled === false) return;
         const data = await API.get('/api/photos/');
         if (!data || !data.length) return;
-        photos = data.sort(() => Math.random() - .5);
+        photos = data; // Server pre-shuffles and limits to 50 photos
         wrap.style.display = '';
         wrap.removeAttribute('aria-hidden');
         buildDots();

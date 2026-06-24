@@ -14,6 +14,7 @@ from app.metrics import tasks_completed_total, tasks_created_total
 from app.models.settings import AppSetting
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.tasks import (
+    DashboardOut,
     OverduePositionOut,
     TaskCreate,
     TaskListCreate,
@@ -107,6 +108,50 @@ async def set_overdue_position(payload: OverduePositionOut, db: AsyncSession = D
     await db.commit()
     logger.info("Overdue section position updated.", sort_order=payload.sort_order)
     return {"sort_order": payload.sort_order}
+
+
+@router.get("/dashboard", response_model=DashboardOut)
+async def get_dashboard_tasks(db: AsyncSession = Depends(get_db)):
+    """Consolidated endpoint for dashboard: returns today, overdue, lists, and overdue position in one call.
+
+    Replaces 4 separate API calls with a single request to reduce network overhead on low-powered clients.
+    """
+    today = date.today()
+
+    # Get today's tasks
+    today_stmt = (
+        select(Task)
+        .options(selectinload(Task.members))
+        .where(and_(Task.due_date == today, Task.done == False))  # noqa: E712
+        .order_by(Task.created_at)
+    )
+    today_result = await db.execute(today_stmt)
+    today_tasks = today_result.scalars().all()
+
+    # Get overdue tasks
+    overdue_stmt = (
+        select(Task)
+        .options(selectinload(Task.members))
+        .where(and_(Task.due_date < today, Task.done == False))  # noqa: E712
+        .order_by(Task.due_date.asc(), Task.created_at)
+    )
+    overdue_result = await db.execute(overdue_stmt)
+    overdue_tasks = overdue_result.scalars().all()
+
+    # Get task lists
+    lists_result = await db.execute(select(TaskList).order_by(TaskList.sort_order, TaskList.id))
+    task_lists = lists_result.scalars().all()
+
+    # Get overdue position
+    overdue_pos = await db.get(AppSetting, "overdue_sort_order")
+    overdue_position = {"sort_order": int(overdue_pos.value) if overdue_pos else 9999}
+
+    return {
+        "today": today_tasks,
+        "overdue": overdue_tasks,
+        "lists": task_lists,
+        "overdue_position": overdue_position,
+    }
 
 
 @router.put("/lists/{list_id}", response_model=TaskListOut)

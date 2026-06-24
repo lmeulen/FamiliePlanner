@@ -245,6 +245,18 @@
 </template>
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/flatpickr.min.css?v={{ static_v }}" />
+<link rel="stylesheet" href="/static/css/clock-picker.css?v={{ static_v }}" />
+<link rel="stylesheet" href="/static/css/date-time-picker.css?v={{ static_v }}" />
+{% endblock %}
+
 {% block extra_js %}
+<script src="/static/js/flatpickr.min.js?v={{ static_v }}"></script>
+<script src="/static/js/flatpickr-nl.js?v={{ static_v }}"></script>
+<script src="/static/js/clock-picker.js?v={{ static_v }}"></script>
+<script src="/static/js/date-time-picker.js?v={{ static_v }}"></script>
+<script src="/static/js/form-controllers/recurrence-ui.js?v={{ static_v }}"></script>
+<script src="/static/js/form-controllers/task-form.js?v={{ static_v }}"></script>
 <script src="/static/js/tasks.js?v={{ static_v }}"></script>
 {% endblock %}

@@ -143,3 +143,12 @@ class TaskOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DashboardOut(BaseModel):
+    """Combined response for dashboard task data (consolidates 4 API calls into 1)."""
+
+    today: list[TaskOut]
+    overdue: list[TaskOut]
+    lists: list[TaskListOut]
+    overdue_position: OverduePositionOut

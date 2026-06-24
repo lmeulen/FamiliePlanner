@@ -9,6 +9,7 @@
   let curDate       = new Date();    // anchor date for current view
   let activeMember  = null;
   let multidayCount = 3;  // default 3 days
+  let eventsByDate  = new Map(); // Cache: dateStr -> [events] for O(1) lookup instead of O(n*m) filtering
   const MULTIDAY_MIN = 2;
   const MULTIDAY_MAX = 5;
   let agendaRefreshScheduler = null;
@@ -125,7 +126,26 @@
       : events;
   }
 
+  // Pre-group events by date to avoid repeated filtering in render loops
+  function buildEventsByDate() {
+    eventsByDate.clear();
+    const fe = filteredEvents();
+    fe.forEach(e => {
+      const dateKey = `${new Date(e.start_time).getFullYear()}-${FP.pad(new Date(e.start_time).getMonth()+1)}-${FP.pad(new Date(e.start_time).getDate())}`;
+      if (!eventsByDate.has(dateKey)) {
+        eventsByDate.set(dateKey, []);
+      }
+      eventsByDate.get(dateKey).push(e);
+    });
+  }
+
+  // Get events for a specific date (or empty array if not found)
+  function getEventsForDate(dateStr) {
+    return eventsByDate.get(dateStr) || [];
+  }
+
   function render() {
+    buildEventsByDate(); // Pre-group events by date once per render
     updateTitle();
     if (curView === 'day')        renderDayView();
     else if (curView === 'week')  renderWeekView();
@@ -254,14 +274,9 @@
     listView.classList.add('hidden');
 
     const days = Array.from({length: numDays}, (_, i) => FP.addDays(startDate, i));
-    const fe   = filteredEvents();
-    const allDayEvents = fe.filter(e => e.all_day);
-    const timedEvents  = fe.filter(e => !e.all_day);
-
-    const dayCountStr = String(numDays);
 
     let html = '<div class="cal-week-wrapper">';
-    html += `<div class="cal-week-head" data-day-count="${dayCountStr}" style="--day-count: ${dayCountStr}">`;
+    html += `<div class="cal-week-head" data-day-count="${numDays}" style="--day-count: ${numDays}">`;
     html += '<div class="cal-corner"></div>';
     days.forEach(d => {
       const isTod = FP.isToday(d);
@@ -272,12 +287,14 @@
     });
     html += '</div>';
 
-    html += `<div class="cal-week-allday" data-day-count="${dayCountStr}" style="--day-count: ${dayCountStr}">`;
+    html += `<div class="cal-week-allday" data-day-count="${numDays}" style="--day-count: ${numDays}">`;
     html += '<div class="cal-allday-label">Hele<br>dag</div>';
     days.forEach(d => {
-      const chips = allDayEvents.filter(e => FP.isSameDay(new Date(e.start_time), d));
+      const dateStr = `${d.getFullYear()}-${FP.pad(d.getMonth()+1)}-${FP.pad(d.getDate())}`;
+      const dayEvents = getEventsForDate(dateStr);
+      const allDayEvents = dayEvents.filter(e => e.all_day);
       html += '<div class="cal-allday-cell">';
-      chips.forEach(ev => {
+      allDayEvents.forEach(ev => {
         const m = ev.member_ids?.length === 1 ? FP.getMember(ev.member_ids[0]) : null;
         html += `<div class="cal-event-chip" style="background:${FP.agendaEventBackground(ev.member_ids || [])}" data-id="${ev.id}">${recurIcon(ev)}${m ? m.avatar + ' ' : ''}${FP.esc(ev.title)}</div>`;
       });
@@ -285,7 +302,7 @@
     });
     html += '</div>';
 
-    html += '<div class="cal-week-scroll"><div class="cal-week-timegrid" data-day-count="' + dayCountStr + '" style="--day-count: ' + dayCountStr + '">';
+    html += '<div class="cal-week-scroll"><div class="cal-week-timegrid" data-day-count="' + numDays + '" style="--day-count: ' + numDays + '">';
     html += '<div class="cal-time-labels">';
     for (let h = START_HOUR; h <= END_HOUR; h++) {
       html += `<div class="cal-time-slot">${FP.pad(h)}:00</div>`;
@@ -295,7 +312,8 @@
     days.forEach(day => {
       const dateStr = `${day.getFullYear()}-${FP.pad(day.getMonth()+1)}-${FP.pad(day.getDate())}`;
       const isToday = FP.isToday(day);
-      const dayTimed = timedEvents.filter(e => FP.isSameDay(new Date(e.start_time), day));
+      const dayEvents = getEventsForDate(dateStr);
+      const timedEvents = dayEvents.filter(e => !e.all_day);
 
       html += `<div class="cal-day-col ${isToday ? 'cal-day-col--today' : ''}" data-date="${dateStr}">`;
       for (let h = START_HOUR; h <= END_HOUR; h++) html += `<div class="cal-hour-line"></div>`;
@@ -308,7 +326,7 @@
         }
       }
 
-      const layout = computeEventLayout(dayTimed);
+      const layout = computeEventLayout(timedEvents);
       layout.forEach(({ ev, lane, totalCols }) => {
         const start  = new Date(ev.start_time), end = new Date(ev.end_time);
         const topPx  = Math.max(0, (start.getHours() + start.getMinutes() / 60 - START_HOUR) * HOUR_HEIGHT);
@@ -367,7 +385,6 @@
     const year = curDate.getFullYear(), month = curDate.getMonth();
     const first = new Date(year, month, 1), last = new Date(year, month + 1, 0);
     const startDay = (first.getDay() + 6) % 7;
-    const fe = filteredEvents();
 
     let html = '<div class="cal-month-grid">';
     ['Ma','Di','Wo','Do','Vr','Za','Zo'].forEach(d => { html += `<div class="cal-month-header">${d}</div>`; });
@@ -379,8 +396,8 @@
 
     for (let d = 1; d <= last.getDate(); d++) {
       const day = new Date(year, month, d);
-      const dayEvents = fe.filter(e => FP.isSameDay(new Date(e.start_time), day));
       const dayStr = `${day.getFullYear()}-${FP.pad(day.getMonth()+1)}-${FP.pad(day.getDate())}`;
+      const dayEvents = getEventsForDate(dayStr);
       html += `<div class="cal-month-day ${FP.isToday(day) ? 'cal-day--today' : ''}" data-date="${dayStr}">
         <div class="cal-month-day-num">${d}</div>
         <div class="cal-month-events">

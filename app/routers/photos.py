@@ -1,5 +1,6 @@
 """API router for photo management (upload, list, delete)."""
 
+import random
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -69,9 +70,18 @@ def _generate_thumbnail(image_data: bytes, filename: str) -> None:
 
 @router.get("/", response_model=list[dict])
 async def list_photos(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Photo).order_by(Photo.uploaded_at.desc()))
+    """List photos (limited to 50 recent, pre-shuffled for dashboard carousel).
+
+    Limiting the response and pre-shuffling server-side avoids:
+    - Large JSON payloads from unlimited photo lists
+    - Client-side O(n) shuffle on low-powered tablets
+    - Multiple unnecessary API calls for photo galleries
+    """
+    result = await db.execute(select(Photo).order_by(Photo.uploaded_at.desc()).limit(50))
     photos = result.scalars().all()
-    return [
+
+    # Pre-shuffle server-side for dashboard carousel
+    shuffled = [
         {
             "id": p.id,
             "filename": p.filename,
@@ -82,6 +92,8 @@ async def list_photos(db: AsyncSession = Depends(get_db)):
         }
         for p in photos
     ]
+    random.shuffle(shuffled)
+    return shuffled
 
 
 @router.post("/", status_code=201, response_model=dict)

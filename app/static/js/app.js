@@ -508,6 +508,51 @@ window.FP = (() => {
     }[mealType] || mealType);
   }
 
+  // ── Centralized Timer Controller for tablet optimization ──────
+  // Coalesces multiple periodic callbacks into a single timer to reduce CPU churn
+  const TimerController = (() => {
+    let timerId = null;
+    const callbacks = []; // Array of { fn, interval, name, nextRun: 0 }
+    const TICK = 1000; // Master timer ticks every 1s
+
+    function register(name, fn, intervalMs) {
+      callbacks.push({
+        name,
+        fn,
+        interval: intervalMs,
+        nextRun: Date.now() + intervalMs
+      });
+    }
+
+    function tick() {
+      const now = Date.now();
+      callbacks.forEach(cb => {
+        if (now >= cb.nextRun) {
+          try {
+            cb.fn();
+            cb.nextRun = now + cb.interval;
+          } catch (e) {
+            console.error(`[TimerController] Error in ${cb.name}:`, e);
+          }
+        }
+      });
+    }
+
+    function start() {
+      if (timerId) return; // Already running
+      timerId = setInterval(tick, TICK);
+    }
+
+    function stop() {
+      if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    return { register, start, stop };
+  })();
+
   // ── Header date + time ──────────────────────────────────────
   function renderHeaderDate() {
     const el = document.getElementById('header-date');
@@ -675,7 +720,19 @@ window.FP = (() => {
 
   async function applyPersistedSettings() {
     try {
-      const s = await API.get('/api/settings/');
+      // Check cache first with longer TTL (10 minutes) to reduce API calls
+      const cacheKey = 'settings_cached';
+      let s = Cache.get(cacheKey);
+      
+      if (!s) {
+        // Cache miss, fetch from server
+        s = await API.get('/api/settings/');
+        if (s) {
+          // Cache settings for 10 minutes (600000ms)
+          Cache.set(cacheKey, s, 600000);
+        }
+      }
+      
       if (s) {
         _settings = s;
         const langFromSettings = (s.language || localStorage.getItem('fp-language') || 'nl').toLowerCase();
@@ -701,7 +758,10 @@ window.FP = (() => {
 
   document.addEventListener('DOMContentLoaded', () => {
     renderHeaderDate();
-    setInterval(renderHeaderDate, 30_000);  // update clock every 30s
+    // Register clock update with centralized timer (30s interval)
+    TimerController.register('clock', renderHeaderDate, 30_000);
+    TimerController.start();
+    
     loadMembers();   // pre-load for all pages
     applyPersistedSettings();
     settingsReady.then(initIdleRedirectWatcher);
@@ -739,6 +799,7 @@ window.FP = (() => {
     getLanguage,
     translateDocument,
     invalidateCache, clearAllCache,
+    TimerController,
   };
 })();
 

@@ -371,9 +371,9 @@
     updateCacheStats();
   });
 
-  // Update cache stats every 2 seconds
+  // Update cache stats via centralized timer (30s interval instead of 2s)
   updateCacheStats();
-  setInterval(updateCacheStats, 2000);
+  FP.TimerController.register('cache-stats', updateCacheStats, 30_000);
 
   // ── PWA Install ───────────────────────────────────────────────
   const pwaInstallSection = document.getElementById('pwa-install-section');
