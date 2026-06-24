@@ -64,3 +64,10 @@ COZI_ICS_URL: str = os.environ.get("COZI_ICS_URL", "")
 # App metadata
 APP_TITLE = "FamiliePlanner"
 APP_VERSION = "1.0.0"
+
+# Frontend refresh behavior
+_refresh_interval_raw = os.environ.get("DATA_REFRESH_INTERVAL", "120")
+try:
+    DATA_REFRESH_INTERVAL_SECONDS: int = max(0, int(_refresh_interval_raw))
+except ValueError:
+    DATA_REFRESH_INTERVAL_SECONDS = 120

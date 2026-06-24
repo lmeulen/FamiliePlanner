@@ -11,6 +11,28 @@
   let multidayCount = 3;  // default 3 days
   const MULTIDAY_MIN = 2;
   const MULTIDAY_MAX = 5;
+  let agendaRefreshScheduler = null;
+  let agendaRefreshInFlight = false;
+
+  function getRefreshIntervalSeconds() {
+    const raw = Number(window.FP_CONFIG?.dataRefreshIntervalSeconds ?? 120);
+    if (!Number.isFinite(raw)) return 120;
+    if (raw <= 0) return 0;
+    return Math.max(30, Math.floor(raw));
+  }
+
+  async function refreshAgendaData(forceFresh = true) {
+    if (agendaRefreshInFlight) return;
+    agendaRefreshInFlight = true;
+    try {
+      if (forceFresh) {
+        Cache.invalidate(/^agenda_events_/);
+      }
+      await loadEvents(!forceFresh);
+    } finally {
+      agendaRefreshInFlight = false;
+    }
+  }
 
   // ── Multi-day view helpers ────────────────────────────────────
   function loadMultidayCount() {
@@ -537,7 +559,20 @@
       }
     }
 
-    await loadEvents();
+    await refreshAgendaData(false);
+
+    agendaRefreshScheduler = new window.RefreshScheduler({
+      name: 'agenda',
+      intervalSeconds: getRefreshIntervalSeconds(),
+      onTick: () => refreshAgendaData(true),
+      reloadOnDateChange: true,
+      runImmediately: false,
+    });
+    agendaRefreshScheduler.start();
+
+    window.addEventListener('beforeunload', () => {
+      agendaRefreshScheduler?.stop();
+    }, { once: true });
 
     // Check for URL parameter to open specific event modal (from search)
     const eventId = params.get('event');

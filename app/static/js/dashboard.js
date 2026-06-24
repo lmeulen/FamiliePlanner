@@ -3,6 +3,31 @@
    ================================================================ */
 (function () {
 
+  let dashboardRefreshScheduler = null;
+  let dashboardRefreshInFlight = false;
+
+  function getRefreshIntervalSeconds() {
+    const raw = Number(window.FP_CONFIG?.dataRefreshIntervalSeconds ?? 120);
+    if (!Number.isFinite(raw)) return 120;
+    if (raw <= 0) return 0;
+    return Math.max(30, Math.floor(raw));
+  }
+
+  async function refreshDashboardData(forceFresh = true) {
+    if (dashboardRefreshInFlight) return;
+    dashboardRefreshInFlight = true;
+    try {
+      if (forceFresh) {
+        Cache.invalidate(/^agenda_events_/);
+        Cache.invalidate(/^tasks_/);
+        Cache.invalidate(/^meals_/);
+      }
+      await Promise.all([loadEvents(), loadMeals(), loadTasks()]);
+    } finally {
+      dashboardRefreshInFlight = false;
+    }
+  }
+
   // ── Module-level data caches (used by edit forms) ─────────────
   let _events = [];
   let _meals  = [];
@@ -808,7 +833,20 @@
     initSearchBar();
     await FP.loadMembers();
     initFab();
-    await Promise.all([loadEvents(), loadMeals(), loadTasks()]);
+    await refreshDashboardData(false);
+
+    dashboardRefreshScheduler = new window.RefreshScheduler({
+      name: 'dashboard',
+      intervalSeconds: getRefreshIntervalSeconds(),
+      onTick: () => refreshDashboardData(true),
+      reloadOnDateChange: true,
+      runImmediately: false,
+    });
+    dashboardRefreshScheduler.start();
+
+    window.addEventListener('beforeunload', () => {
+      dashboardRefreshScheduler?.stop();
+    }, { once: true });
   }
 
   document.addEventListener('DOMContentLoaded', init);

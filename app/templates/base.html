@@ -187,7 +187,13 @@
   <div id="toast-container" aria-live="polite"></div>
 
   <!-- ──────────── SCRIPTS ──────────── -->
+  <script>
+    window.FP_CONFIG = {
+      dataRefreshIntervalSeconds: Number("{{ data_refresh_interval_seconds }}") || 120,
+    };
+  </script>
   <script src="/static/js/cache.js?v={{ static_v }}"></script>
+  <script src="/static/js/refresh-scheduler.js?v={{ static_v }}"></script>
   <script src="/static/js/api.js?v={{ static_v }}"></script>
   <script src="/static/js/modal.js?v={{ static_v }}"></script>
   <script src="/static/js/toast.js?v={{ static_v }}"></script>

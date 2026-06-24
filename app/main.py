@@ -27,7 +27,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.backup_scheduler import run_nightly_backup_scheduler
-from app.config import APP_TITLE, APP_VERSION, SECRET_KEY
+from app.config import APP_TITLE, APP_VERSION, DATA_REFRESH_INTERVAL_SECONDS, SECRET_KEY
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
@@ -462,6 +462,7 @@ app.mount("/static", CachedStaticFiles(directory=BASE_DIR / "static"), name="sta
 # Templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 templates.env.globals["static_v"] = CACHE_VERSION
+templates.env.globals["data_refresh_interval_seconds"] = DATA_REFRESH_INTERVAL_SECONDS
 
 # API routers
 app.include_router(family.router)

@@ -128,6 +128,7 @@ Kopieer `.env.example` naar `.env`:
 | `APP_PASSWORD` | `familieplanner` | Wachtwoord |
 | `AUTH_REQUIRED` | `true` | `false` om authenticatie uit te schakelen |
 | `COZI_ICS_URL` | _(leeg)_ | Cozi ICS feed URL voor import tools (optioneel) |
+| `DATA_REFRESH_INTERVAL` | `120` | Auto-refresh interval (seconden) voor dashboard/agenda; `0` schakelt uit |
 
 > ⚠️ Commit `.env` nooit naar git.
 
