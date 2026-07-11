@@ -7,12 +7,12 @@ import asyncio
 from loguru import logger
 
 from app.database import AsyncSessionLocal
-from app.services.cozi_sync import run_automatic_cozi_sync
+from app.services.cozi_sync import ImportResult, run_automatic_cozi_sync
 
 COZI_SYNC_INTERVAL_SECONDS = 2 * 60 * 60
 
 
-def _result_total(result) -> int:
+def _result_total(result: ImportResult) -> int:
     return (
         result.imported_events
         + result.imported_series
