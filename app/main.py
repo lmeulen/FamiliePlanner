@@ -28,6 +28,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import AuthMiddleware, login_get, login_post, logout
 from app.backup_scheduler import run_nightly_backup_scheduler
 from app.config import APP_TITLE, APP_VERSION, DATA_REFRESH_INTERVAL_SECONDS, SECRET_KEY
+from app.cozi_scheduler import run_cozi_sync_scheduler
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
@@ -94,6 +95,8 @@ async def lifespan(app: FastAPI):
     logger.info("Database initialization completed; service dependencies are ready.")
     backup_stop_event = asyncio.Event()
     backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
+    cozi_stop_event = asyncio.Event()
+    cozi_task = asyncio.create_task(run_cozi_sync_scheduler(cozi_stop_event))
     recurrence_stop_event = asyncio.Event()
     recurrence_task = asyncio.create_task(run_recurrence_scheduler(recurrence_stop_event))
     # Load persisted auth_required setting from DB
@@ -109,8 +112,10 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         backup_stop_event.set()
+        cozi_stop_event.set()
         recurrence_stop_event.set()
         await backup_task
+        await cozi_task
         await recurrence_task
         logger.info("Application shutdown completed.", app=APP_TITLE)
 

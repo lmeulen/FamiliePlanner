@@ -6,22 +6,17 @@ from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import COZI_ICS_URL
 from app.database import get_db
 from app.models.agenda import AgendaEvent, RecurrenceSeries
 from app.models.meals import Meal
-from app.models.settings import AppSetting
-from app.services.cozi_sync import classify_cozi_events, fetch_and_parse_cozi, import_selected_events
+from app.services.cozi_sync import (
+    classify_cozi_events,
+    fetch_and_parse_cozi,
+    get_configured_cozi_url,
+    import_selected_events,
+)
 
 router = APIRouter(prefix="/api/cozi", tags=["cozi"])
-
-
-async def _get_cozi_url(db: AsyncSession) -> str:
-    """Return Cozi URL from DB setting, fall back to environment variable."""
-    row = await db.get(AppSetting, "cozi_url")
-    if row and row.value:
-        return row.value
-    return COZI_ICS_URL or ""
 
 
 async def _get_link_item(db: AsyncSession, item_type: str, item_id: int):
@@ -39,7 +34,7 @@ async def _resolve_link_target(db: AsyncSession, payload: "CoziLinkRequest"):
     if item is not None:
         return item, payload.item_type, label
 
-    url = await _get_cozi_url(db)
+    url = await get_configured_cozi_url(db)
     if not url:
         return None, payload.item_type, label
 
@@ -63,7 +58,7 @@ async def _resolve_link_target(db: AsyncSession, payload: "CoziLinkRequest"):
 @router.get("/preview")
 async def cozi_preview(db: AsyncSession = Depends(get_db)):
     """Fetch Cozi feed and classify each event vs existing FamiliePlanner data."""
-    url = await _get_cozi_url(db)
+    url = await get_configured_cozi_url(db)
     if not url:
         raise HTTPException(
             400,
@@ -99,7 +94,7 @@ class CoziImportRequest(BaseModel):
 @router.post("/import")
 async def cozi_import(payload: CoziImportRequest, db: AsyncSession = Depends(get_db)):
     """Import selected Cozi events into FamiliePlanner."""
-    url = await _get_cozi_url(db)
+    url = await get_configured_cozi_url(db)
     if not url:
         raise HTTPException(400, "Geen Cozi ICS URL geconfigureerd.")
 

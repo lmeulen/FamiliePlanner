@@ -24,6 +24,7 @@ from sqlalchemy.orm import selectinload
 from app.enums import MealType, RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.models.meals import Meal
+from app.models.settings import AppSetting
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
 from tools.cozi_import_advisor import (
@@ -143,6 +144,16 @@ class ImportResult:
     updated_series: int = 0
     updated_meals: int = 0
     skipped: int = 0
+
+
+async def get_configured_cozi_url(db: AsyncSession) -> str:
+    """Return Cozi URL from DB setting, fall back to environment variable."""
+    from app.config import COZI_ICS_URL
+
+    row = await db.get(AppSetting, "cozi_url")
+    if row and row.value:
+        return row.value
+    return COZI_ICS_URL or ""
 
 
 # ── ICS Fetch & Parse ─────────────────────────────────────────────
@@ -584,6 +595,37 @@ async def import_selected_events(
         skipped=result.skipped,
     )
     return result
+
+
+async def run_automatic_cozi_sync(db: AsyncSession, default_series_count: int = DEFAULT_SERIES_COUNT) -> ImportResult:
+    """Run one safe automatic Cozi sync cycle.
+
+    Only deterministic items are imported automatically. Ambiguous fuzzy matches
+    remain manual-only on the Cozi review page.
+    """
+    url = await get_configured_cozi_url(db)
+    if not url:
+        logger.debug("Automatic Cozi sync skipped because no Cozi URL is configured.")
+        return ImportResult()
+
+    events = await fetch_and_parse_cozi(url)
+    preview = await classify_cozi_events(events, db)
+    selected_uids = [item.uid for item in preview if item.uid and item.status in {"new", "changed"}]
+
+    if not selected_uids:
+        logger.info(
+            "Automatic Cozi sync completed with no actionable items.",
+            total_items=len(preview),
+            actionable_items=0,
+        )
+        return ImportResult(skipped=len(events))
+
+    logger.info(
+        "Automatic Cozi sync found actionable items.",
+        total_items=len(preview),
+        actionable_items=len(selected_uids),
+    )
+    return await import_selected_events(selected_uids, db, url, default_series_count)
 
 
 async def _import_meal(ev: _ParsedEvent, db: AsyncSession) -> bool:

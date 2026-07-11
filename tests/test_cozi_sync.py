@@ -1,13 +1,18 @@
 """Tests for /api/cozi endpoints."""
 
+import asyncio
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.cozi_scheduler import run_cozi_sync_scheduler
 from app.models.agenda import AgendaEvent, RecurrenceSeries
 from app.models.family import FamilyMember
 from app.models.meals import Meal
+from app.models.settings import AppSetting
+from app.services.cozi_sync import run_automatic_cozi_sync
 from tools.cozi_import_advisor import FamilyMemberRecord
 
 TODAY = date.today()
@@ -54,14 +59,14 @@ def _mock_fetch(ics_content: str = SAMPLE_ICS):
 
 async def test_preview_no_url_returns_400(client: AsyncClient):
     """Preview should return 400 when no Cozi URL is configured."""
-    with patch("app.routers.cozi.COZI_ICS_URL", ""):
+    with patch("app.config.COZI_ICS_URL", ""):
         response = await client.get("/api/cozi/preview")
     assert response.status_code == 400
 
 
 async def test_import_no_url_returns_400(client: AsyncClient):
     """Import should return 400 when no Cozi URL is configured."""
-    with patch("app.routers.cozi.COZI_ICS_URL", ""):
+    with patch("app.config.COZI_ICS_URL", ""):
         response = await client.post("/api/cozi/import", json={"selected_uids": ["uid-1"]})
     assert response.status_code == 400
 
@@ -496,3 +501,102 @@ async def test_link_recovers_from_stale_item_id(client: AsyncClient, db_engine):
         linked_event = result.scalar_one()
 
     assert linked_event.cozi_uid == "single-001@cozi.test"
+
+
+async def test_automatic_sync_only_imports_safe_items(db_engine):
+    """Automatic sync should import only new or changed items, not fuzzy likely matches."""
+    custom_ics = f"""BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Cozi//Test//EN
+BEGIN:VEVENT
+UID:changed-001@cozi.test
+DTSTART:{TODAY.strftime('%Y%m%d')}T100000
+DTEND:{TODAY.strftime('%Y%m%d')}T110000
+SUMMARY:Nieuwe titel
+DESCRIPTION:Nieuwe beschrijving
+LOCATION:Utrecht
+END:VEVENT
+BEGIN:VEVENT
+UID:likely-001@cozi.test
+DTSTART:{TODAY.strftime('%Y%m%d')}T120000
+DTEND:{TODAY.strftime('%Y%m%d')}T130000
+SUMMARY:Fuzzy afspraak
+LOCATION:Rotterdam
+END:VEVENT
+BEGIN:VEVENT
+UID:meal-automatic-001@cozi.test
+DTSTART:{TODAY.strftime('%Y%m%d')}T180000
+DTEND:{TODAY.strftime('%Y%m%d')}T200000
+SUMMARY:Lasagna
+END:VEVENT
+END:VCALENDAR
+"""
+
+    Session = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with Session() as db:
+        db.add_all(
+            [
+                AgendaEvent(
+                    title="Oude titel",
+                    description="",
+                    location="Amsterdam",
+                    start_time=datetime.combine(TODAY, datetime.strptime("10:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("11:00", "%H:%M").time()),
+                    all_day=False,
+                    cozi_uid="changed-001@cozi.test",
+                ),
+                AgendaEvent(
+                    title="Fuzzy afspraak",
+                    description="",
+                    location="Rotterdam",
+                    start_time=datetime.combine(TODAY, datetime.strptime("12:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("13:00", "%H:%M").time()),
+                    all_day=False,
+                    cozi_uid=None,
+                ),
+            ]
+        )
+        await db.commit()
+
+    async with Session() as db:
+        db.add(AppSetting(key="cozi_url", value="https://example.test/feed.ics"))
+        await db.commit()
+
+    with _mock_fetch(custom_ics):
+        async with Session() as db:
+            result = await run_automatic_cozi_sync(db)
+
+    assert result.updated_events == 1
+    assert result.imported_meals == 1
+    assert result.imported_events == 0
+
+    from sqlalchemy import func, select
+
+    async with Session() as db:
+        changed = await db.execute(select(AgendaEvent).where(AgendaEvent.cozi_uid == "changed-001@cozi.test"))
+        changed_event = changed.scalar_one()
+        fuzzy_count = await db.execute(
+            select(func.count()).select_from(AgendaEvent).where(AgendaEvent.title == "Fuzzy afspraak")
+        )
+        fuzzy = await db.execute(select(AgendaEvent).where(AgendaEvent.title == "Fuzzy afspraak"))
+        meal = await db.execute(select(Meal).where(Meal.cozi_uid == "meal-automatic-001@cozi.test"))
+
+    assert changed_event.title == "Nieuwe titel"
+    assert fuzzy_count.scalar() == 1
+    assert fuzzy.scalar_one().cozi_uid is None
+    assert meal.scalar_one().name == "Lasagna"
+
+
+async def test_cozi_scheduler_runs_once_immediately_on_startup():
+    """Scheduler should execute one sync cycle immediately when started."""
+    stop_event = asyncio.Event()
+    calls = []
+
+    async def fake_execute() -> None:
+        calls.append("called")
+        stop_event.set()
+
+    with patch("app.cozi_scheduler._execute_automatic_cozi_sync", new=fake_execute):
+        await run_cozi_sync_scheduler(stop_event)
+
+    assert calls == ["called"]
