@@ -46,6 +46,16 @@
     let vx = 1.2;
     let vy = 0.95;
 
+    function consumeAndDismiss(event) {
+      if (!active) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
+      deactivate();
+    }
+
     function upcomingEvents() {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -143,6 +153,13 @@
 
     function refresh() {
       if (active) render();
+    }
+
+    if (overlay) {
+      overlay.addEventListener('touchstart', consumeAndDismiss, { passive: false });
+      overlay.addEventListener('pointerdown', consumeAndDismiss);
+      overlay.addEventListener('mousedown', consumeAndDismiss);
+      overlay.addEventListener('click', consumeAndDismiss);
     }
 
     return { activate, deactivate, isActive, refresh };
