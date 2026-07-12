@@ -251,6 +251,44 @@ class EventFormController {
       const exportBtn = this.form.querySelector('[id*="export-event"]');
       exportBtn?.addEventListener('click', () => this.handleExport(), { once: true });
     }
+
+    // When the start date changes, sync the end date to match (preserving end time)
+    const startInput = this.form.start_time;
+    const endInput = this.form.end_time;
+    if (startInput && endInput) {
+      const syncEndDate = () => {
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+        if (!startVal || !endVal) return;
+
+        const isAllDay = this.form.all_day?.checked;
+        if (isAllDay) {
+          // For all-day events both fields are date-only
+          const newEndDate = startVal;
+          if (endVal < newEndDate) {
+            if (window.DateTimePicker) {
+              DateTimePicker.setValue(endInput, newEndDate);
+            } else {
+              endInput.value = newEndDate;
+            }
+          }
+        } else {
+          const startDate = startVal.split('T')[0];
+          const endDate = endVal.split('T')[0];
+          if (startDate !== endDate) {
+            const endTime = endVal.split('T')[1] || '10:00';
+            const newEndVal = `${startDate}T${endTime}`;
+            if (window.DateTimePicker) {
+              DateTimePicker.setValue(endInput, newEndVal);
+            } else {
+              endInput.value = newEndVal;
+            }
+          }
+        }
+      };
+
+      startInput.addEventListener('change', syncEndDate);
+    }
   }
 
   async handleSubmit(e) {
