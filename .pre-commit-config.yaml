@@ -1,0 +1,30 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check --fix
+        entry: ./.venv/Scripts/python.exe -m ruff check . --fix
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: black
+        name: black
+        entry: ./.venv/Scripts/python.exe -m black .
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: mypy
+        name: mypy
+        entry: ./.venv/Scripts/python.exe -m mypy app/ --ignore-missing-imports
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: pytest
+        name: pytest
+        entry: ./.venv/Scripts/python.exe -m pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
