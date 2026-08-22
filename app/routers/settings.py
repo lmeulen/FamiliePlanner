@@ -23,6 +23,7 @@ from app.models.photos import Photo
 from app.models.settings import AppSetting
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.backup import BackupFile, RestoreResult, RestoreValidationResult
+from app.utils.timezone import app_timezone_name, now_local, set_app_timezone
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -76,7 +77,7 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "idle_redirect_seconds": int(await _get(db, "overview_redirect_seconds", "60")),
         "language": language,
         "theme": await _get(db, "theme", "system"),
-        "timezone": await _get(db, "timezone", "UTC"),
+        "timezone": await _get(db, "timezone", app_timezone_name()),
         "weather_enabled": (await _get(db, "weather_enabled", "true")).lower() in ("1", "true"),
         "weather_location": await _get(db, "weather_location", "Amsterdam,NL"),
         "mealie_server_url": await _get(db, "mealie_server_url", ""),
@@ -133,12 +134,11 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
         await _set(db, "theme", t)
 
     if "timezone" in payload:
-        from zoneinfo import available_timezones
-
         tz = str(payload["timezone"]).strip()
-        # Validate timezone exists
-        if tz not in available_timezones():
-            raise HTTPException(400, f"Ongeldige timezone: {tz}")
+        try:
+            set_app_timezone(tz)
+        except ValueError as exc:
+            raise HTTPException(400, f"Ongeldige timezone: {tz}") from exc
         await _set(db, "timezone", tz)
 
     if "weather_enabled" in payload:
@@ -220,7 +220,7 @@ async def export_backup_data(db: AsyncSession) -> dict:
     record_counts = {table_name: len(records) for table_name, records in table_data.items()}
 
     return {
-        "exported_at": datetime.now().isoformat(),
+        "exported_at": now_local().isoformat(),
         "version": "2.0",
         "app_version": APP_VERSION,
         "record_counts": record_counts,
@@ -241,7 +241,7 @@ async def backup_database(db: AsyncSession = Depends(get_db)):
 
     # Create a streaming response with the JSON file
     json_bytes = BytesIO(json_content.encode("utf-8"))
-    filename = f"familieplanner-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    filename = f"familieplanner-backup-{now_local().strftime('%Y%m%d-%H%M%S')}.json"
 
     logger.info(
         "Database backup export completed.",
@@ -343,7 +343,7 @@ async def _validate_backup_file(backup_data: dict) -> RestoreValidationResult:
         return RestoreValidationResult(
             valid=False,
             version="unknown",
-            exported_at=datetime.now(),
+            exported_at=now_local(),
             record_counts={},
             errors=errors,
             warnings=warnings,
@@ -400,7 +400,7 @@ async def _create_pre_restore_backup(db: AsyncSession) -> str:
     record_counts = backup_data["record_counts"]
     total_records = sum(record_counts.values())
 
-    filename = f"familieplanner-pre-restore-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    filename = f"familieplanner-pre-restore-{now_local().strftime('%Y%m%d-%H%M%S')}.json"
 
     # Note: In production, this would write backup_data to disk for rollback capability
     # For now, we just return the filename to indicate it would be created

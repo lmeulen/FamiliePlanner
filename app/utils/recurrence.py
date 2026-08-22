@@ -21,6 +21,7 @@ from dateutil.rrule import (  # type: ignore[import-untyped]
 from loguru import logger
 
 from app.enums import RecurrenceType
+from app.utils.timezone import today_local
 
 MAX_OCCURRENCES = 365
 
@@ -62,7 +63,7 @@ def generate_occurrence_dates(
     """
     # Handle infinite series with rolling window
     if series_end is None and count is None:
-        today = date.today()
+        today = today_local()
         # Generate 1 year ahead from today (not from series_start!)
         effective_end = today + timedelta(days=365)
         series_end = effective_end

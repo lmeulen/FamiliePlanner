@@ -15,6 +15,7 @@ from app.models.birthdays import Birthday
 from app.schemas.birthdays import BirthdayCreate, BirthdayOut, BirthdayUpdate
 from app.utils.crud import delete_model, get_or_404, update_model
 from app.utils.recurrence import generate_occurrence_dates
+from app.utils.timezone import today_local
 
 router = APIRouter(prefix="/api/birthdays", tags=["birthdays"])
 
@@ -33,7 +34,7 @@ async def _create_or_update_agenda_series(db: AsyncSession, birthday: Birthday) 
     title = f"{emoji} {birthday.name}"
 
     # Calculate series start/end (50 years of occurrences)
-    current_year = date.today().year
+    current_year = today_local().year
     series_start_date = date(current_year, birthday.month, birthday.day)
     series_end_date = date(current_year + 50, birthday.month, birthday.day)
     series_start = datetime.combine(series_start_date, time(0, 0))

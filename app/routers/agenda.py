@@ -1,11 +1,13 @@
 """CRUD + query router for AgendaEvent and RecurrenceSeries."""
 
+import time
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from icalendar import Calendar
 from icalendar import Event as ICalEvent
+from icalendar import Timezone as ICalTimezone
 from loguru import logger
 from sqlalchemy import and_, select
 from sqlalchemy import delete as sa_delete
@@ -26,6 +28,7 @@ from app.schemas.agenda import (
 )
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
+from app.utils.timezone import UTC, app_timezone_name, app_tz, now_utc_aware, to_aware, today_local
 
 router = APIRouter(prefix="/api/agenda", tags=["agenda"])
 
@@ -38,14 +41,14 @@ _CACHE_TTL = 300  # 5 minutes
 
 def _get_cache_key(member_id: int | None) -> str:
     """Generate cache key for subscription."""
-    return f"cal:{member_id or 'all'}"
+    return f"cal:{member_id or 'all'}:{app_timezone_name()}"
 
 
 def _get_cached_calendar(cache_key: str) -> bytes | None:
     """Get cached calendar if still valid."""
     if cache_key in _calendar_cache:
         ical_bytes, expiry = _calendar_cache[cache_key]
-        if datetime.now().timestamp() < expiry:
+        if time.monotonic() < expiry:
             return ical_bytes
         del _calendar_cache[cache_key]
     return None
@@ -53,18 +56,23 @@ def _get_cached_calendar(cache_key: str) -> bytes | None:
 
 def _cache_calendar(cache_key: str, ical_bytes: bytes):
     """Cache calendar with TTL."""
-    expiry = datetime.now().timestamp() + _CACHE_TTL
+    expiry = time.monotonic() + _CACHE_TTL
     _calendar_cache[cache_key] = (ical_bytes, expiry)
 
     # Cleanup expired entries when cache grows
     if len(_calendar_cache) > 50:
-        now = datetime.now().timestamp()
+        now = time.monotonic()
         expired = [k for k, (_, exp) in _calendar_cache.items() if exp < now]
         for k in expired:
             del _calendar_cache[k]
 
 
 # ──────────────────────────────────────────────────────────────────────
+
+
+def _build_vtimezone() -> ICalTimezone:
+    """VTIMEZONE component so subscribers can resolve our TZID references."""
+    return ICalTimezone.from_tzinfo(app_tz(), tzid=app_timezone_name())
 
 
 def _make_events_for_series(series: RecurrenceSeries) -> list[AgendaEvent]:
@@ -282,7 +290,7 @@ async def list_events(
 
 @router.get("/today", response_model=list[AgendaEventOut])
 async def today_events(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     start_dt = datetime.combine(today, datetime.min.time())
     end_dt = datetime.combine(today, datetime.max.time())
     stmt = (
@@ -297,7 +305,7 @@ async def today_events(db: AsyncSession = Depends(get_db)):
 
 @router.get("/week", response_model=list[AgendaEventOut])
 async def week_events(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     start_dt = datetime.combine(today, datetime.min.time())
     end_dt = datetime.combine(today + timedelta(days=7), datetime.max.time())
     stmt = (
@@ -367,6 +375,7 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
     cal.add("version", "2.0")
     cal.add("calscale", "GREGORIAN")
     cal.add("method", "PUBLISH")
+    cal.add_component(_build_vtimezone())
 
     # Create event
     ical_event = ICalEvent()
@@ -380,8 +389,8 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
         ical_event.add("location", event.location)
 
     # Add timestamps
-    ical_event.add("dtstamp", datetime.now())
-    ical_event.add("created", event.created_at)
+    ical_event.add("dtstamp", now_utc_aware())
+    ical_event.add("created", to_aware(event.created_at))
 
     # Handle all-day events
     if event.all_day:
@@ -392,8 +401,8 @@ async def export_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
         end_date = event.end_time.date() + timedelta(days=1)
         ical_event.add("dtend", end_date)
     else:
-        ical_event.add("dtstart", event.start_time)
-        ical_event.add("dtend", event.end_time)
+        ical_event.add("dtstart", to_aware(event.start_time))
+        ical_event.add("dtend", to_aware(event.end_time))
 
     # Add recurrence rule if this is part of a series
     if series and not event.is_exception:
@@ -427,7 +436,8 @@ def _build_rrule(series: RecurrenceSeries) -> dict:
     elif series.series_end:
         # series_end is a date object (SQLAlchemy Date column)
         end_date = series.series_end.date() if isinstance(series.series_end, datetime) else series.series_end
-        rrule["UNTIL"] = datetime.combine(end_date, datetime.max.time())
+        # RFC 5545: UNTIL must be UTC when DTSTART carries a TZID.
+        rrule["UNTIL"] = to_aware(datetime.combine(end_date, datetime.max.time())).astimezone(UTC)
 
     # Base recurrence patterns
     recurrence_map: dict[RecurrenceType, dict] = {
@@ -575,7 +585,7 @@ async def export_calendar_subscription(
         )
 
     # Query events: 30 days past + 365 days future
-    today = date.today()
+    today = today_local()
     start_dt = datetime.combine(today - timedelta(days=30), datetime.min.time())
     end_dt = datetime.combine(today + timedelta(days=365), datetime.max.time())
 
@@ -610,9 +620,10 @@ async def export_calendar_subscription(
     cal.add("calscale", "GREGORIAN")
     cal.add("method", "PUBLISH")
     cal.add("x-wr-calname", "FamiliePlanner")
-    cal.add("x-wr-timezone", "UTC")
+    cal.add("x-wr-timezone", app_timezone_name())
     cal.add("refresh-interval", timedelta(minutes=30))
     cal.add("x-published-ttl", timedelta(minutes=30))
+    cal.add_component(_build_vtimezone())
 
     # Track exported series to avoid duplicates
     exported_series: set[int] = set()
@@ -662,8 +673,8 @@ def _build_series_event(series: RecurrenceSeries, base_event: AgendaEvent) -> IC
     if series.location:
         ical_event.add("location", series.location)
 
-    ical_event.add("dtstamp", datetime.now())
-    ical_event.add("created", series.created_at)
+    ical_event.add("dtstamp", now_utc_aware())
+    ical_event.add("created", to_aware(series.created_at))
 
     # Use first occurrence as base date
     if series.all_day:
@@ -672,8 +683,8 @@ def _build_series_event(series: RecurrenceSeries, base_event: AgendaEvent) -> IC
         end_date = base_event.end_time.date() + timedelta(days=1)
         ical_event.add("dtend", end_date)
     else:
-        ical_event.add("dtstart", base_event.start_time)
-        ical_event.add("dtend", base_event.end_time)
+        ical_event.add("dtstart", to_aware(base_event.start_time))
+        ical_event.add("dtend", to_aware(base_event.end_time))
 
     # Add RRULE (reuse existing _build_rrule function)
     rrule = _build_rrule(series)
@@ -694,7 +705,7 @@ def _build_single_event(event: AgendaEvent, series: RecurrenceSeries | None) -> 
         if event.all_day:
             ical_event.add("recurrence-id", event.start_time.date())
         else:
-            ical_event.add("recurrence-id", event.start_time)
+            ical_event.add("recurrence-id", to_aware(event.start_time))
     else:
         ical_event.add("uid", f"familieplanner-event-{event.id}@familieplanner")
 
@@ -705,8 +716,8 @@ def _build_single_event(event: AgendaEvent, series: RecurrenceSeries | None) -> 
     if event.location:
         ical_event.add("location", event.location)
 
-    ical_event.add("dtstamp", datetime.now())
-    ical_event.add("created", event.created_at)
+    ical_event.add("dtstamp", now_utc_aware())
+    ical_event.add("created", to_aware(event.created_at))
 
     if event.all_day:
         event_date = event.start_time.date()
@@ -714,7 +725,7 @@ def _build_single_event(event: AgendaEvent, series: RecurrenceSeries | None) -> 
         end_date = event.end_time.date() + timedelta(days=1)
         ical_event.add("dtend", end_date)
     else:
-        ical_event.add("dtstart", event.start_time)
-        ical_event.add("dtend", event.end_time)
+        ical_event.add("dtstart", to_aware(event.start_time))
+        ical_event.add("dtend", to_aware(event.end_time))
 
     return ical_event

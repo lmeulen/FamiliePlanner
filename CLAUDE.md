@@ -97,6 +97,10 @@ python -m tools.cozi_importer --today   # Import only today's events
 # Security
 python -m tools.hash_password           # Generate bcrypt hash for passwords
 
+# Timezone repair (one-off, for events imported before the Cozi timezone fix)
+python -m tools.fix_cozi_timezone_offset --dry-run  # Show which events are shifted
+python -m tools.fix_cozi_timezone_offset --apply    # Correct them
+
 # Grocery debugging
 python -m tools.check_grocery_db        # Verify grocery database state and learning data
 
@@ -347,7 +351,7 @@ test: Add tests for series deletion cascade
 
 2. **member_ids handling** - Many-to-many relationships require separate junction table operations. Use `set_junction_members()` utility, not direct ORM assignment.
 
-3. **Datetime handling** - Frontend uses local datetime-local inputs. Backend stores UTC-naive datetime. All-day events store start-of-day datetime with `all_day=True` flag.
+3. **Datetime handling** - Naive datetime columns store **wall-clock time in the app timezone** (`APP_TIMEZONE`, default `Europe/Amsterdam`), not UTC. Frontend uses local `datetime-local` inputs which round-trip unchanged. Conversion happens only at boundaries (ICS import/export). Use `now_local()` / `today_local()` from `app/utils/timezone.py` instead of `datetime.now()` / `date.today()` — the server's own timezone is UTC inside Docker. All-day events store start-of-day datetime with `all_day=True` flag.
 
 4. **Photo uploads** - Original files stored in `app/static/uploads/`, thumbnails (200px) in `app/static/uploads/thumbnails/`. Both JPEG and PNG supported with RGBA→RGB conversion.
 

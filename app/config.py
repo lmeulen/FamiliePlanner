@@ -6,6 +6,7 @@ Extend this file to add new config options as the app grows.
 import os
 import secrets
 from pathlib import Path
+from zoneinfo import available_timezones
 
 import bcrypt
 from dotenv import load_dotenv
@@ -17,6 +18,15 @@ load_dotenv(BASE_DIR / ".env")
 
 # Database
 DATABASE_URL = f"sqlite+aiosqlite:///{BASE_DIR}/familieplanner.db"
+
+# Timezone – naive datetimes in the database are wall-clock time in this zone.
+DEFAULT_APP_TIMEZONE = "Europe/Amsterdam"
+_app_timezone_raw = os.environ.get("APP_TIMEZONE", DEFAULT_APP_TIMEZONE).strip()
+if _app_timezone_raw not in available_timezones():
+    raise RuntimeError(
+        f"APP_TIMEZONE '{_app_timezone_raw}' is not a valid IANA timezone name (e.g. 'Europe/Amsterdam')."
+    )
+APP_TIMEZONE: str = _app_timezone_raw
 
 # Authentication
 SECRET_KEY: str = os.environ.get("SECRET_KEY", secrets.token_hex(32))

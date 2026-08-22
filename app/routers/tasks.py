@@ -29,6 +29,7 @@ from app.schemas.tasks import (
 )
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
+from app.utils.timezone import today_local
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -116,7 +117,7 @@ async def get_dashboard_tasks(db: AsyncSession = Depends(get_db)):
 
     Replaces 4 separate API calls with a single request to reduce network overhead on low-powered clients.
     """
-    today = date.today()
+    today = today_local()
 
     # Get today's tasks
     today_stmt = (
@@ -356,7 +357,7 @@ async def list_tasks(
 
 @router.get("/today", response_model=list[TaskOut])
 async def today_tasks(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     stmt = (
         select(Task)
         .options(selectinload(Task.members))
@@ -369,7 +370,7 @@ async def today_tasks(db: AsyncSession = Depends(get_db)):
 
 @router.get("/overdue", response_model=list[TaskOut])
 async def overdue_tasks(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     stmt = (
         select(Task)
         .options(selectinload(Task.members))
@@ -385,7 +386,7 @@ async def complete_overdue_tasks_for_date(
     due_date: date = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    today = date.today()
+    today = today_local()
     if due_date >= today:
         raise HTTPException(400, "Alleen verlopen taken kunnen in bulk worden afgevinkt")
 

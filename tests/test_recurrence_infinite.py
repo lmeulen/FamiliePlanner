@@ -1,9 +1,11 @@
 """Integration tests for infinite recurrences and expanded monthly patterns (GitHub issue #63)."""
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from httpx import AsyncClient
+
+from app.utils.timezone import today_local
 
 
 @pytest.mark.asyncio
@@ -122,12 +124,13 @@ async def test_create_infinite_task_series(client: AsyncClient):
     list_r = await client.post("/api/tasks/lists", json={"name": "Test List", "color": "#00FF00"})
     list_id = list_r.json()["id"]
 
+    series_start = today_local() - timedelta(days=140)
     payload = {
         "title": "Weekly Groceries",
         "description": "",
         "list_id": list_id,
         "recurrence_type": "weekly",
-        "series_start": "2026-04-02",
+        "series_start": series_start.isoformat(),
         "series_end": None,  # Infinite!
         "interval": 1,
         "count": None,  # Infinite!
@@ -139,12 +142,12 @@ async def test_create_infinite_task_series(client: AsyncClient):
     assert data["series_end"] is None
     assert data["count"] is None
 
-    # Verify tasks were created (rolling window generates 365 days from today, not from series_start)
-    # Series starts 2026-04-02, today is ~2026-06-21, so window extends to ~2027-06-21 = ~65 weeks
+    # Rolling window runs from series_start up to today + 365 days.
     tasks_r = await client.get(f"/api/tasks/?list_id={list_id}")
     tasks = tasks_r.json()
     series_tasks = [t for t in tasks if t.get("series_id") == data["id"]]
-    assert 60 <= len(series_tasks) <= 70  # Weekly for ~15 months (rolling window from today)
+    expected = ((today_local() + timedelta(days=365)) - series_start).days // 7 + 1
+    assert abs(len(series_tasks) - expected) <= 1
 
     # Cleanup
     await client.delete(f"/api/tasks/series/{data['id']}")

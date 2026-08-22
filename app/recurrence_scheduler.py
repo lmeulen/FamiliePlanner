@@ -1,7 +1,7 @@
 """Background job to regenerate infinite recurrence series occurrences."""
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import cast
 
 from loguru import logger
@@ -12,6 +12,7 @@ from app.models.agenda import AgendaEvent, RecurrenceSeries
 from app.models.tasks import Task, TaskRecurrenceSeries
 from app.routers.agenda import _make_events_for_series
 from app.routers.tasks import _make_tasks_for_series
+from app.utils.timezone import now_local, today_local
 
 
 async def _regenerate_infinite_series() -> None:
@@ -31,7 +32,7 @@ async def _regenerate_infinite_series() -> None:
     - This job is scheduled daily by ``run_recurrence_scheduler()``.
     """
     async with AsyncSessionLocal() as db:
-        today = date.today()
+        today = today_local()
         regenerate_threshold = today + timedelta(days=30)  # Regenerate if < 30 days left
 
         # Find infinite agenda series
@@ -108,7 +109,7 @@ async def run_recurrence_scheduler(stop_event: asyncio.Event) -> None:
     logger.info("Recurrence scheduler started; next run is daily at 01:00.")
 
     while not stop_event.is_set():
-        now = datetime.now()
+        now = now_local()
         # Next run: tomorrow at 01:00
         next_run = datetime.combine(now.date() + timedelta(days=1), datetime.min.time()) + timedelta(hours=1)
         wait_seconds = (next_run - now).total_seconds()

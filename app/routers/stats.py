@@ -13,6 +13,7 @@ from app.models.family import FamilyMember
 from app.models.meals import Meal
 from app.models.photos import Photo
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries
+from app.utils.timezone import today_local
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -38,7 +39,7 @@ async def get_statistics(
     response.headers["Cache-Control"] = "private, max-age=300"
 
     # Calculate date range
-    today = date.today()
+    today = today_local()
     if period == "week":
         start_date = today - timedelta(days=7)
     elif period == "month":

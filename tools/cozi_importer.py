@@ -28,6 +28,7 @@ from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_member
 from app.models.meals import Meal
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
+from app.utils.timezone import to_local_naive, today_local
 from tools.cozi_import_advisor import (
     FamilyMemberRecord,
     _build_found_name_mapping,
@@ -62,16 +63,18 @@ class ImportStats:
 
 
 def _to_naive(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt
-    return dt.replace(tzinfo=None)
+    """Normalise an ICS datetime to naive app-local wall-clock time.
+
+    Cozi emits UTC (``...Z``); a naive value is a floating time and is already local.
+    """
+    return to_local_naive(dt)
 
 
 def _is_today(component: Any) -> bool:
     dtstart = component.decoded("DTSTART")
-    today = date.today()
+    today = today_local()
     if isinstance(dtstart, datetime):
-        return dtstart.date() == today
+        return _to_naive(dtstart).date() == today
     if isinstance(dtstart, date):
         return dtstart == today
     return False

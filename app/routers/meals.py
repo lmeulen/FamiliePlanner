@@ -12,6 +12,7 @@ from app.enums import MealType
 from app.metrics import meals_created_total
 from app.models.meals import Meal
 from app.schemas.meals import MealCreate, MealOut, MealUpdate
+from app.utils.timezone import today_local
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
 
@@ -40,7 +41,7 @@ async def list_meals(
 
 @router.get("/today", response_model=list[MealOut])
 async def today_meals(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     stmt = select(Meal).where(Meal.date == today).order_by(Meal.meal_type)
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -48,7 +49,7 @@ async def today_meals(db: AsyncSession = Depends(get_db)):
 
 @router.get("/week", response_model=list[MealOut])
 async def week_meals(db: AsyncSession = Depends(get_db)):
-    today = date.today()
+    today = today_local()
     end = today + timedelta(days=7)
     stmt = select(Meal).where(and_(Meal.date >= today, Meal.date <= end)).order_by(Meal.date, Meal.meal_type)
     result = await db.execute(stmt)

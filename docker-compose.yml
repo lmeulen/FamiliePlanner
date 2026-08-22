@@ -32,6 +32,10 @@ services:
       # Application
       - APP_TITLE=FamiliePlanner
       - APP_VERSION=1.0.0
+
+      # Timezone – naive datetimes in the database are wall-clock time in this zone
+      - APP_TIMEZONE=${APP_TIMEZONE:-Europe/Amsterdam}
+      - TZ=${APP_TIMEZONE:-Europe/Amsterdam}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
       interval: 30s

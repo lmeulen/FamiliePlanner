@@ -15,6 +15,7 @@ from loguru import logger
 from app.config import BASE_DIR
 from app.database import AsyncSessionLocal
 from app.routers.settings import export_backup_data
+from app.utils.timezone import now_local
 
 BACKUP_DIR = BASE_DIR / "backups"
 
@@ -29,7 +30,7 @@ async def _write_nightly_backup_file() -> Path:
         backup_data = await export_backup_data(db)
 
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    file_name = datetime.now().strftime("%d%m%Y") + ".json"
+    file_name = now_local().strftime("%d%m%Y") + ".json"
     file_path = BACKUP_DIR / file_name
 
     json_content = json.dumps(backup_data, indent=2, ensure_ascii=False)
@@ -48,7 +49,7 @@ async def run_nightly_backup_scheduler(stop_event: asyncio.Event) -> None:
     logger.info("Nightly backup scheduler started; waiting for next midnight run.", backup_dir=str(BACKUP_DIR))
 
     while not stop_event.is_set():
-        wait_seconds = _seconds_until_next_midnight(datetime.now())
+        wait_seconds = _seconds_until_next_midnight(now_local())
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=wait_seconds)
             break

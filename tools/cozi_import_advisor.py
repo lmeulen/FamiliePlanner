@@ -28,6 +28,7 @@ from sqlalchemy import select
 from app.config import COZI_ICS_URL
 from app.database import AsyncSessionLocal
 from app.models.family import FamilyMember
+from app.utils.timezone import to_local_naive, today_local
 
 
 @dataclass
@@ -197,6 +198,7 @@ def _extract_start_end(event: Any) -> tuple[datetime, datetime, bool]:
     dtstart = event.decoded("DTSTART")
     dtend = event.get("DTEND")
 
+    # All-day VALUE=DATE values are timezone-less by definition; converting them shifts the day.
     if isinstance(dtstart, date) and not isinstance(dtstart, datetime):
         start_dt = datetime.combine(dtstart, time.min)
         if dtend:
@@ -285,8 +287,8 @@ def _detect_meal_candidate(event: Any, title: str) -> tuple[bool, str, datetime 
     if all_day:
         return False, "all-day event", None, None
 
-    start_dt = start_dt.replace(tzinfo=None) if start_dt.tzinfo else start_dt
-    end_dt = end_dt.replace(tzinfo=None) if end_dt.tzinfo else end_dt
+    start_dt = to_local_naive(start_dt)
+    end_dt = to_local_naive(end_dt)
     _ = title
     is_exact_dinner_slot = (
         start_dt.hour == 18
@@ -310,6 +312,8 @@ def _build_event_preview(
     name_to_member_ids: dict[str, list[int]],
 ) -> dict[str, Any]:
     start_dt, end_dt, all_day = _extract_start_end(event)
+    start_dt = to_local_naive(start_dt)
+    end_dt = to_local_naive(end_dt)
     summary_raw = str(event.get("SUMMARY", "")).strip() or "(zonder titel)"
     summary_members, summary_title = _extract_members_from_summary(summary_raw)
     mapped_member_ids = sorted(
@@ -525,12 +529,12 @@ async def run() -> None:
 
     events = [component for component in calendar.walk() if component.name == "VEVENT"]
     if args.today:
-        today = date.today()
+        today = today_local()
 
         def _is_today(component: Any) -> bool:
             dtstart = component.decoded("DTSTART")
             if isinstance(dtstart, datetime):
-                return dtstart.date() == today
+                return to_local_naive(dtstart).date() == today
             if isinstance(dtstart, date):
                 return dtstart == today
             return False

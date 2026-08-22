@@ -6,6 +6,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+from app.utils.timezone import today_local
 
 
 class Birthday(Base):
@@ -36,7 +37,7 @@ class Birthday(Base):
         """Calculate current age for birth_year type."""
         if not self.year or self.year_type != "birth_year":
             return None
-        today = date.today()
+        today = today_local()
         age = today.year - self.year
         # Adjust if birthday hasn't occurred yet this year
         if (today.month, today.day) < (self.month, self.day):
@@ -48,12 +49,12 @@ class Birthday(Base):
         """Calculate years since death for death_year type."""
         if not self.year or self.year_type != "death_year":
             return None
-        return date.today().year - self.year
+        return today_local().year - self.year
 
     @property
     def days_until_next(self) -> int:
         """Calculate days until next birthday occurrence."""
-        today = date.today()
+        today = today_local()
         try:
             this_year_birthday = date(today.year, self.month, self.day)
         except ValueError:
@@ -73,7 +74,7 @@ class Birthday(Base):
     @property
     def next_birthday_date(self) -> date:
         """Get the next occurrence date."""
-        today = date.today()
+        today = today_local()
         try:
             this_year = date(today.year, self.month, self.day)
             return this_year if this_year >= today else date(today.year + 1, self.month, self.day)

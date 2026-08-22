@@ -93,6 +93,15 @@ async def lifespan(app: FastAPI):
     )
     await init_db()
     logger.info("Database initialization completed; service dependencies are ready.")
+
+    # Timezone must be resolved before any scheduler computes a local time.
+    from app.database import AsyncSessionLocal
+    from app.utils.timezone import load_app_timezone
+
+    async with AsyncSessionLocal() as db:
+        active_timezone = await load_app_timezone(db)
+    logger.info("Application timezone resolved.", timezone=active_timezone)
+
     backup_stop_event = asyncio.Event()
     backup_task = asyncio.create_task(run_nightly_backup_scheduler(backup_stop_event))
     cozi_stop_event = asyncio.Event()
@@ -101,7 +110,6 @@ async def lifespan(app: FastAPI):
     recurrence_task = asyncio.create_task(run_recurrence_scheduler(recurrence_stop_event))
     # Load persisted auth_required setting from DB
     from app.auth import set_auth_required
-    from app.database import AsyncSessionLocal
     from app.models.settings import AppSetting
 
     async with AsyncSessionLocal() as db:
