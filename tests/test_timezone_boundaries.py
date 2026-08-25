@@ -62,6 +62,42 @@ def test_now_local_and_today_local_agree():
     assert now_local().date() == today_local()
 
 
+@pytest.mark.asyncio
+async def test_legacy_utc_setting_does_not_override_app_timezone(db_engine):
+    """A stored 'UTC' is the un-migrated default, not a deliberate choice."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.models.settings import AppSetting
+    from app.utils.timezone import load_app_timezone
+
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_factory() as db:
+        db.add(AppSetting(key="timezone", value="UTC"))
+        await db.commit()
+
+        resolved = await load_app_timezone(db)
+
+    assert resolved == "Europe/Amsterdam"
+    assert app_timezone_name() == "Europe/Amsterdam"
+
+
+@pytest.mark.asyncio
+async def test_explicit_non_utc_setting_is_honoured(db_engine):
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.models.settings import AppSetting
+    from app.utils.timezone import load_app_timezone
+
+    session_factory = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_factory() as db:
+        db.add(AppSetting(key="timezone", value="America/New_York"))
+        await db.commit()
+
+        resolved = await load_app_timezone(db)
+
+    assert resolved == "America/New_York"
+
+
 # ── Cozi import ─────────────────────────────────────────────────────────────
 
 

@@ -23,6 +23,8 @@ from app.models.photos import Photo
 from app.models.settings import AppSetting
 from app.models.tasks import Task, TaskList, TaskRecurrenceSeries, task_members, task_recurrence_series_members
 from app.schemas.backup import BackupFile, RestoreResult, RestoreValidationResult
+from app.services.google_calendar import credentials_available
+from app.utils.google_colors import GOOGLE_EVENT_COLORS
 from app.utils.timezone import app_timezone_name, now_local, set_app_timezone
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -44,6 +46,12 @@ _KEYS = {
     "mealie_server_url",
     "mealie_api_token",
     "cozi_url",
+    "app_base_url",
+    "google_sync_enabled",
+    "google_calendar_id",
+    "google_sync_title_avatars",
+    "google_sync_default_color",
+    "google_sync_member_colors",
 }
 
 
@@ -83,6 +91,12 @@ async def _build_settings_dict(db: AsyncSession) -> dict:
         "mealie_server_url": await _get(db, "mealie_server_url", ""),
         "mealie_api_token": await _get(db, "mealie_api_token", ""),
         "cozi_url": await _get(db, "cozi_url", ""),
+        "app_base_url": await _get(db, "app_base_url", ""),
+        "google_sync_enabled": (await _get(db, "google_sync_enabled", "false")).lower() in ("1", "true"),
+        "google_calendar_id": await _get(db, "google_calendar_id", ""),
+        "google_sync_title_avatars": (await _get(db, "google_sync_title_avatars", "true")).lower() in ("1", "true"),
+        "google_sync_default_color": await _get(db, "google_sync_default_color", "8"),
+        "google_credentials_available": credentials_available(),
     }
 
 
@@ -163,6 +177,36 @@ async def update_settings(payload: dict, db: AsyncSession = Depends(get_db)):
         if url and not (url.startswith("http://") or url.startswith("https://")):
             raise HTTPException(400, "Cozi ICS URL moet beginnen met http:// of https://")
         await _set(db, "cozi_url", url)
+
+    if "app_base_url" in payload:
+        url = str(payload["app_base_url"]).strip().rstrip("/")[:500]
+        if url and not (url.startswith("http://") or url.startswith("https://")):
+            raise HTTPException(400, "App URL moet beginnen met http:// of https://")
+        await _set(db, "app_base_url", url)
+
+    if "google_sync_enabled" in payload:
+        await _set(db, "google_sync_enabled", str(bool(payload["google_sync_enabled"])).lower())
+
+    if "google_calendar_id" in payload:
+        await _set(db, "google_calendar_id", str(payload["google_calendar_id"]).strip()[:255])
+
+    if "google_sync_title_avatars" in payload:
+        await _set(db, "google_sync_title_avatars", str(bool(payload["google_sync_title_avatars"])).lower())
+
+    if "google_sync_default_color" in payload:
+        color_id = str(payload["google_sync_default_color"]).strip()
+        if color_id not in GOOGLE_EVENT_COLORS:
+            raise HTTPException(400, f"Ongeldige Google kleur: {color_id}")
+        await _set(db, "google_sync_default_color", color_id)
+
+    if "google_sync_member_colors" in payload:
+        mapping = payload["google_sync_member_colors"]
+        if not isinstance(mapping, dict):
+            raise HTTPException(400, "google_sync_member_colors moet een object zijn")
+        for member_id, color_id in mapping.items():
+            if str(color_id) not in GOOGLE_EVENT_COLORS:
+                raise HTTPException(400, f"Ongeldige Google kleur voor lid {member_id}: {color_id}")
+        await _set(db, "google_sync_member_colors", json.dumps({str(k): str(v) for k, v in mapping.items()}))
 
     logger.info(
         "Application settings updated via API request.",

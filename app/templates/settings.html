@@ -287,6 +287,92 @@
       </details>
     </section>
 
+    <!-- ── Google Calendar Sync ──────────────────────────────────────── -->
+    <section class="settings-section card">
+      <h2 class="settings-section-title">🗓️ Google Calendar Sync</h2>
+      <p class="settings-side-intro">
+        Eenrichtingssynchronisatie: afspraken uit FamiliePlanner worden naar een Google agenda gekopieerd
+        en automatisch bijgewerkt. Wijzigingen in Google worden niet teruggelezen.
+      </p>
+
+      <div class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Synchronisatie inschakelen</span>
+          <span class="settings-label-hint" id="google-credentials-hint"></span>
+        </span>
+        <div class="settings-control">
+          <label class="switch">
+            <input type="checkbox" id="google-sync-enabled" name="google_sync_enabled" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Google Calendar ID</span>
+          <span class="settings-label-hint">
+            Maak een aparte agenda in Google, deel deze met het service-account e-mailadres
+            (rechten: "Wijzigingen aanbrengen in afspraken") en plak hier het agenda-ID.
+          </span>
+        </span>
+        <div class="settings-control">
+          <input type="text" id="google-calendar-id" name="google_calendar_id"
+                 placeholder="abc...@group.calendar.google.com" maxlength="255"
+                 style="width:100%;padding:.35rem .5rem;border:1px solid var(--border);border-radius:6px;" />
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">App URL</span>
+          <span class="settings-label-hint">Voor de terugkoppel-link in de Google afspraak</span>
+        </span>
+        <div class="settings-control">
+          <input type="url" id="app-base-url" name="app_base_url"
+                 placeholder="https://familieplanner.local" maxlength="500"
+                 style="width:100%;padding:.35rem .5rem;border:1px solid var(--border);border-radius:6px;" />
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-label">
+          <span class="settings-label-main">Avatars in titel</span>
+          <span class="settings-label-hint">Toont "👦🧒 Voetbaltraining" zodat je in één oogopslag ziet voor wie het is</span>
+        </span>
+        <div class="settings-control">
+          <label class="switch">
+            <input type="checkbox" id="google-sync-title-avatars" name="google_sync_title_avatars" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Kleuren per gezinslid</span>
+          <span class="settings-label-hint">
+            Google kent maar 11 vaste kleuren. Bij meerdere personen wordt de kleur van het eerste lid gebruikt.
+          </span>
+        </span>
+        <div id="google-member-colors" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+      </div>
+
+      <div class="settings-row settings-row--col">
+        <span class="settings-label">
+          <span class="settings-label-main">Status</span>
+        </span>
+        <div id="google-sync-status" class="settings-label-hint">Laden…</div>
+      </div>
+
+      <div class="settings-row" style="justify-content:flex-end;gap:.5rem;flex-wrap:wrap;">
+        <button type="button" id="btn-google-test" class="btn btn--secondary">🔌 Test verbinding</button>
+        <button type="button" id="btn-google-backfill" class="btn btn--secondary">📤 Alles klaarzetten</button>
+        <button type="button" id="btn-google-sync" class="btn btn--primary">🔄 Nu synchroniseren</button>
+        <button type="button" id="btn-google-purge" class="btn btn--danger">🗑️ Verwijder uit Google</button>
+      </div>
+    </section>
+
         <div class="settings-actions">
           <button type="submit" class="btn btn--primary" data-i18n="settings.save">Opslaan</button>
           <span class="settings-save-status hidden" id="save-status" data-i18n="settings.saved">✅ Opgeslagen</span>

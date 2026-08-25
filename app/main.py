@@ -32,11 +32,13 @@ from app.cozi_scheduler import run_cozi_sync_scheduler
 from app.csrf import CSRFMiddleware
 from app.database import AsyncSessionLocal, init_db
 from app.errors import ErrorCode, ErrorResponse, get_error_message, translate_validation_error
+from app.google_calendar_scheduler import run_google_sync_scheduler
 from app.logging_config import setup_logging
 from app.metrics import PrometheusMiddleware, db_connections
 from app.recurrence_scheduler import run_recurrence_scheduler
 from app.routers import agenda, birthdays, family, grocery, meals, photos, recipes, search, stats, tasks
 from app.routers import cozi as cozi_router
+from app.routers import google_sync as google_sync_router
 from app.routers import settings as settings_router
 from app.security import SecurityHeadersMiddleware
 
@@ -108,6 +110,8 @@ async def lifespan(app: FastAPI):
     cozi_task = asyncio.create_task(run_cozi_sync_scheduler(cozi_stop_event))
     recurrence_stop_event = asyncio.Event()
     recurrence_task = asyncio.create_task(run_recurrence_scheduler(recurrence_stop_event))
+    google_stop_event = asyncio.Event()
+    google_task = asyncio.create_task(run_google_sync_scheduler(google_stop_event))
     # Load persisted auth_required setting from DB
     from app.auth import set_auth_required
     from app.models.settings import AppSetting
@@ -122,9 +126,11 @@ async def lifespan(app: FastAPI):
         backup_stop_event.set()
         cozi_stop_event.set()
         recurrence_stop_event.set()
+        google_stop_event.set()
         await backup_task
         await cozi_task
         await recurrence_task
+        await google_task
         logger.info("Application shutdown completed.", app=APP_TITLE)
 
 
@@ -490,6 +496,7 @@ app.include_router(grocery.router)
 app.include_router(recipes.router)
 app.include_router(birthdays.router)
 app.include_router(cozi_router.router)
+app.include_router(google_sync_router.router)
 
 # Auth routes – login POST is rate-limited to 5 attempts per minute per IP
 app.get("/login", response_class=HTMLResponse, response_model=None)(login_get)

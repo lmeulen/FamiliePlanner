@@ -47,12 +47,22 @@ def set_app_timezone(name: str) -> None:
 
 
 async def load_app_timezone(db: Any) -> str:
-    """Load the timezone from settings at startup, seeding it when absent."""
+    """Load the timezone from settings at startup, seeding it when absent.
+
+    A stored ``UTC`` is treated as the un-migrated legacy default rather than a
+    deliberate choice, because it silently mislabels every exported timestamp.
+    """
     from app.models.settings import AppSetting
 
     row = await db.get(AppSetting, "timezone")
     if row is None:
         db.add(AppSetting(key="timezone", value=APP_TIMEZONE))
+        await db.commit()
+        set_app_timezone(APP_TIMEZONE)
+        return APP_TIMEZONE
+
+    if row.value == "UTC" and APP_TIMEZONE != "UTC":
+        row.value = APP_TIMEZONE
         await db.commit()
         set_app_timezone(APP_TIMEZONE)
         return APP_TIMEZONE

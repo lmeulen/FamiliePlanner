@@ -101,6 +101,15 @@ python -m tools.hash_password           # Generate bcrypt hash for passwords
 python -m tools.fix_cozi_timezone_offset --dry-run  # Show which events are shifted
 python -m tools.fix_cozi_timezone_offset --apply    # Correct them
 
+# Google Calendar one-way sync (FamiliePlanner -> Google)
+python -m tools.google_calendar_sync --status       # Show sync state and errors
+python -m tools.google_calendar_sync --test         # Verify credentials/calendar access
+python -m tools.google_calendar_sync --colors       # Show/generate member colour mapping
+python -m tools.google_calendar_sync --backfill     # Queue all events in the window
+python -m tools.google_calendar_sync --sync         # Drain the queue now
+python -m tools.google_calendar_sync --reconcile --dry-run  # Report drift/orphans
+python -m tools.google_calendar_sync --purge        # Remove all synced events from Google
+
 # Grocery debugging
 python -m tools.check_grocery_db        # Verify grocery database state and learning data
 
@@ -139,6 +148,7 @@ FastAPI router → Pydantic validation → SQLAlchemy ORM → SQLite
 - `app/errors.py` - Error codes, error response models, translation utilities
 - `app/database.py` - Async engine, session factory, `get_db()` dependency
 - `app/backup_scheduler.py` - Nightly backup job (runs at 00:00)
+- `app/google_calendar_scheduler.py` - Google Calendar sync worker (queue every 60s, reconcile at 01:00)
 - `app/metrics.py` - Prometheus metrics configuration
 - `app/config.py` - Environment variable loading and app configuration
 - `app/logging_config.py` - Loguru setup with file rotation
@@ -382,6 +392,8 @@ test: Add tests for series deletion cascade
 13. **Grocery learning algorithm** - The grocery system learns product-category associations in `grocery_product_learning` table. When a user adds a product, it remembers the category. Next time the same product is added, it auto-suggests the most frequently used category. Learning data updates on both manual category changes and initial selections.
 
 14. **Offline grocery support** - The grocery list uses IndexedDB (`grocery-db.js`) for offline-first functionality. When offline, items are stored locally with temporary negative IDs and queued for sync. When online, a background sync process uploads pending changes and resolves ID conflicts. The UI shows an offline indicator and sync status banner.
+
+15. **Google Calendar sync is one-way** - FamiliePlanner → Google only; nothing is ever imported back and manual edits in Google are overwritten by reconciliation. Auth uses a service account key at `data/google_service_account.json` (override with `GOOGLE_SERVICE_ACCOUNT_FILE`); the key must stay out of `app_settings` because that table is exported verbatim into nightly backups. Pushes go through the `google_sync_queue` outbox so a Google outage can never fail a user request. Entities are keyed by stable natural keys (`event:{id}`, `series:{id}`, `series:{id}:{date}`) rather than row ids, because series updates delete and recreate all non-exception occurrences. Recurring series map to a single native Google recurring event with an RRULE — never one event per occurrence.
 
 ## Grocery List Feature
 

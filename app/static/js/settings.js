@@ -17,6 +17,13 @@
   const mealieServerUrlInput = document.getElementById('mealie-server-url');
   const mealieApiTokenInput = document.getElementById('mealie-api-token');
   const coziUrlInput = document.getElementById('cozi-url');
+  const googleSyncEnabled = document.getElementById('google-sync-enabled');
+  const googleCalendarId = document.getElementById('google-calendar-id');
+  const googleTitleAvatars = document.getElementById('google-sync-title-avatars');
+  const appBaseUrlInput = document.getElementById('app-base-url');
+  const googleCredentialsHint = document.getElementById('google-credentials-hint');
+  const googleMemberColors = document.getElementById('google-member-colors');
+  const googleSyncStatus = document.getElementById('google-sync-status');
   const saveStatus        = document.getElementById('save-status');
 
   function t(key, vars = {}) {
@@ -98,6 +105,16 @@
 
     if (coziUrlInput) coziUrlInput.value = s.cozi_url || '';
 
+    if (googleSyncEnabled) googleSyncEnabled.checked = !!s.google_sync_enabled;
+    if (googleCalendarId) googleCalendarId.value = s.google_calendar_id || '';
+    if (googleTitleAvatars) googleTitleAvatars.checked = s.google_sync_title_avatars !== false;
+    if (appBaseUrlInput) appBaseUrlInput.value = s.app_base_url || '';
+    if (googleCredentialsHint) {
+      googleCredentialsHint.textContent = s.google_credentials_available
+        ? 'Service-account sleutel gevonden.'
+        : 'Geen service-account sleutel gevonden in data/google_service_account.json';
+    }
+
     updatePhotoHeightRow();
     updateWeatherLocationRow();
   }
@@ -134,6 +151,11 @@
       mealie_server_url: mealieServerUrlInput.value.trim(),
       mealie_api_token: mealieApiTokenInput.value.trim(),
       cozi_url: coziUrlInput ? coziUrlInput.value.trim() : undefined,
+      app_base_url: appBaseUrlInput ? appBaseUrlInput.value.trim() : undefined,
+      google_sync_enabled: googleSyncEnabled ? googleSyncEnabled.checked : undefined,
+      google_calendar_id: googleCalendarId ? googleCalendarId.value.trim() : undefined,
+      google_sync_title_avatars: googleTitleAvatars ? googleTitleAvatars.checked : undefined,
+      google_sync_member_colors: collectMemberColors(),
     };
 
     const updatedSettings = await API.put('/api/settings/', payload);
@@ -151,6 +173,165 @@
 
     saveStatus.classList.remove('hidden');
     setTimeout(() => saveStatus.classList.add('hidden'), 2500);
+  });
+
+  // ── Google Calendar sync ─────────────────────────────────────
+  let googlePalette = [];
+
+  function collectMemberColors() {
+    if (!googleMemberColors) return undefined;
+    const selects = googleMemberColors.querySelectorAll('select[data-member-id]');
+    if (!selects.length) return undefined;
+
+    const mapping = {};
+    selects.forEach(sel => { mapping[sel.dataset.memberId] = sel.value; });
+    return mapping;
+  }
+
+  async function loadGoogleColors() {
+    if (!googleMemberColors) return;
+
+    const data = await API.get('/api/google/colors');
+    if (!data) return;
+    googlePalette = data.palette || [];
+
+    const members = await API.get('/api/family/') || [];
+    googleMemberColors.innerHTML = '';
+
+    members.forEach(member => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:.5rem;';
+
+      const swatch = document.createElement('span');
+      swatch.style.cssText = `width:14px;height:14px;border-radius:50%;background:${member.color};flex:none;`;
+
+      const name = document.createElement('span');
+      name.textContent = `${member.avatar || ''} ${member.name}`.trim();
+      name.style.cssText = 'flex:1;';
+
+      const select = document.createElement('select');
+      select.dataset.memberId = String(member.id);
+      select.style.cssText = 'padding:.25rem .4rem;border:1px solid var(--border);border-radius:6px;';
+      googlePalette.forEach(color => {
+        const opt = document.createElement('option');
+        opt.value = color.id;
+        opt.textContent = color.name;
+        select.appendChild(opt);
+      });
+      select.value = data.members[String(member.id)] || '8';
+
+      const preview = document.createElement('span');
+      preview.style.cssText = 'width:14px;height:14px;border-radius:3px;flex:none;';
+      const paintPreview = () => {
+        const chosen = googlePalette.find(c => c.id === select.value);
+        preview.style.background = chosen ? chosen.hex : 'transparent';
+      };
+      paintPreview();
+      select.addEventListener('change', paintPreview);
+
+      row.append(swatch, name, select, preview);
+      googleMemberColors.appendChild(row);
+    });
+  }
+
+  async function refreshGoogleStatus() {
+    if (!googleSyncStatus) return;
+
+    const s = await API.get('/api/google/status');
+    if (!s) return;
+
+    const parts = [
+      s.usable ? '✅ Actief' : (s.enabled ? '⚠️ Ingeschakeld maar niet bruikbaar' : '⏸️ Uitgeschakeld'),
+      `${s.synced_events} afspraken gekoppeld`,
+      `${s.pending_jobs} in wachtrij`,
+    ];
+    if (s.last_synced_at) parts.push(`laatste sync ${s.last_synced_at.replace('T', ' ').slice(0, 16)}`);
+
+    googleSyncStatus.textContent = parts.join(' · ');
+
+    if (s.blocking_reason) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'margin-top:.4rem;color:var(--warning,#b26a00);';
+      hint.textContent = `⚠️ ${s.blocking_reason}`;
+      googleSyncStatus.appendChild(hint);
+    }
+
+    if (s.errors && s.errors.length) {
+      const list = document.createElement('ul');
+      list.style.cssText = 'margin:.4rem 0 0;padding-left:1.1rem;color:var(--danger,#d33);';
+      s.errors.forEach(err => {
+        const li = document.createElement('li');
+        li.textContent = `${err.entity}: ${err.error}`;
+        list.appendChild(li);
+      });
+      googleSyncStatus.appendChild(list);
+    }
+  }
+
+  async function googleAction(button, fn, successMessage) {
+    if (!button) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = '⏳ Bezig…';
+    try {
+      // Persist the panel first; otherwise these actions run against the last saved config.
+      await saveGoogleSettings();
+      const result = await fn();
+      window.Toast?.success?.(successMessage(result));
+      await refreshGoogleStatus();
+    } catch (err) {
+      window.Toast?.error?.(err?.message || 'Actie mislukt');
+      await refreshGoogleStatus();
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  async function saveGoogleSettings() {
+    if (!googleCalendarId) return;
+    await API.put('/api/settings/', {
+      google_sync_enabled: googleSyncEnabled ? googleSyncEnabled.checked : undefined,
+      google_calendar_id: googleCalendarId.value.trim(),
+      google_sync_title_avatars: googleTitleAvatars ? googleTitleAvatars.checked : undefined,
+      app_base_url: appBaseUrlInput ? appBaseUrlInput.value.trim() : undefined,
+      google_sync_member_colors: collectMemberColors(),
+    });
+  }
+
+  document.getElementById('btn-google-test')?.addEventListener('click', function () {
+    googleAction(this, () => API.post('/api/google/test', {}), r => `Verbonden met "${r.summary || r.calendar_id}"`);
+  });
+
+  document.getElementById('btn-google-backfill')?.addEventListener('click', function () {
+    googleAction(this, () => API.post('/api/google/backfill', {}), r => `${r.queued} items klaargezet`);
+  });
+
+  document.getElementById('btn-google-sync')?.addEventListener('click', function () {
+    googleAction(
+      this,
+      () => API.post('/api/google/sync', {}),
+      r => `${r.created} nieuw, ${r.updated} bijgewerkt, ${r.deleted} verwijderd`
+    );
+  });
+
+  document.getElementById('btn-google-purge')?.addEventListener('click', function () {
+    if (!confirm('WAARSCHUWING: alle afspraken uit deze volledige Google agenda verwijderen, inclusief afspraken die niet uit FamiliePlanner komen?')) return;
+    googleAction(this, () => API.delete('/api/google/events'), r => `${r.removed} afspraken verwijderd uit Google`);
+  });
+
+  googleSyncEnabled?.addEventListener('change', async () => {
+    try {
+      googleSyncEnabled.disabled = true;
+      await API.put('/api/settings/', { google_sync_enabled: googleSyncEnabled.checked });
+      await refreshGoogleStatus();
+      window.Toast?.success?.(googleSyncEnabled.checked ? 'Google synchronisatie gestart' : 'Google synchronisatie gepauzeerd');
+    } catch (err) {
+      googleSyncEnabled.checked = !googleSyncEnabled.checked;
+      window.Toast?.error?.(err?.message || 'Instelling kon niet worden opgeslagen');
+    } finally {
+      googleSyncEnabled.disabled = false;
+    }
   });
 
   // ── Apply theme (mirrors theme.js logic) ─────────────────────
@@ -565,4 +746,6 @@
   });
 
   load();
+  loadGoogleColors();
+  refreshGoogleStatus();
 })();

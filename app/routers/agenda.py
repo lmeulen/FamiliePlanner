@@ -26,6 +26,16 @@ from app.schemas.agenda import (
     RecurrenceSeriesOut,
     RecurrenceSeriesUpdate,
 )
+from app.services.google_sync import (
+    ENTITY_EVENT,
+    ENTITY_SERIES,
+    OP_DELETE,
+    enqueue,
+    enqueue_event,
+    enqueue_series,
+    event_key,
+    series_key,
+)
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
 from app.utils.timezone import UTC, app_timezone_name, app_tz, now_utc_aware, to_aware, today_local
@@ -152,6 +162,8 @@ async def create_series(payload: RecurrenceSeriesCreate, db: AsyncSession = Depe
             title=series.title,
             occurrence_count=len(occurrences),
         )
+        await enqueue_series(db, series.id)
+        await db.commit()
         return series
     except Exception:
         await db.rollback()
@@ -232,6 +244,8 @@ async def update_series(series_id: int, payload: RecurrenceSeriesUpdate, db: Asy
             title=series.title,
             regenerated_count=len(new_events),
         )
+        await enqueue_series(db, series.id)
+        await db.commit()
         return series
     except HTTPException:
         raise
@@ -257,6 +271,7 @@ async def delete_series(series_id: int, db: AsyncSession = Depends(get_db)):
     title = series.title
     await db.execute(sa_delete(AgendaEvent).where(AgendaEvent.series_id == series_id))
     await db.delete(series)
+    await enqueue(db, ENTITY_SERIES, series_key(series_id), OP_DELETE)
     await db.commit()
     logger.info("Agenda recurrence series deleted.", series_id=series_id, title=title)
 
@@ -331,6 +346,8 @@ async def create_event(payload: AgendaEventCreate, db: AsyncSession = Depends(ge
     event = result.scalar_one()
     logger.info("Agenda event created.", event_id=event.id, title=event.title)
     events_created_total.inc()
+    await enqueue_event(db, event)
+    await db.commit()
     return event
 
 
@@ -524,16 +541,27 @@ async def update_event(event_id: int, payload: AgendaEventUpdate, db: AsyncSessi
         title=event.title,
         member_ids=event.member_ids,
     )
+    await enqueue_event(db, event)
+    await db.commit()
     return event
 
 
 @router.delete("/all", status_code=204)
 async def clear_all_events(db: AsyncSession = Depends(get_db)):
     """Delete all agenda events and recurrence series (for database cleanup)."""
+    series_ids = (await db.execute(select(RecurrenceSeries.id))).scalars().all()
+    event_ids = (await db.execute(select(AgendaEvent.id).where(AgendaEvent.series_id.is_(None)))).scalars().all()
+
     # Delete all recurrence series (cascade will delete associated events)
     await db.execute(sa_delete(RecurrenceSeries))
     # Delete any remaining standalone events
     await db.execute(sa_delete(AgendaEvent))
+
+    for series_id in series_ids:
+        await enqueue(db, ENTITY_SERIES, series_key(series_id), OP_DELETE)
+    for event_id in event_ids:
+        await enqueue(db, ENTITY_EVENT, event_key(event_id), OP_DELETE)
+
     await db.commit()
     logger.warning(
         "Administrative bulk delete executed: all agenda events and recurrence series were removed.",
@@ -551,6 +579,7 @@ async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
             event_id=event_id,
         )
         raise HTTPException(404, "Event not found")
+    await enqueue_event(db, event, OP_DELETE)
     await db.delete(event)
     await db.commit()
     logger.info("Agenda event deleted.", event_id=event_id)
