@@ -744,13 +744,11 @@ async def _last_purge_marker(db: AsyncSession) -> datetime | None:
         return None
 
 
-
 async def _is_manual_purge_cleared(db: AsyncSession) -> bool:
     marker = await _last_purge_marker(db)
     if marker is None:
         return False
     return (now_local() - marker) < timedelta(minutes=5)
-
 
 
 async def _drop_replay_after_purge(db: AsyncSession) -> None:
@@ -760,7 +758,6 @@ async def _drop_replay_after_purge(db: AsyncSession) -> None:
 
     await db.execute(sa_delete(GoogleSyncQueue))
     await db.commit()
-
 
     logger.warning("Google sync queue was cleared after a manual purge to avoid replaying deleted events.")
 

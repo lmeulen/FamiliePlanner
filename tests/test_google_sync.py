@@ -559,7 +559,7 @@ async def test_purge_calendar_works_while_sync_disabled_and_clears_old_jobs(db_e
         link_rows = (await db.execute(select(GoogleSyncLink))).scalars().all()
         assert link_rows == []
 
-        marker = (await db.get(AppSetting, "google_sync_last_purge_at"))
+        marker = await db.get(AppSetting, "google_sync_last_purge_at")
         assert marker is not None and marker.value
 
         old_jobs = await process_queue(db, client)
