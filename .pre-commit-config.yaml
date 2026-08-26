@@ -8,6 +8,13 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: black
+        name: black
+        entry: ./.venv/Scripts/python.exe -m black .
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: mypy
         name: mypy
         entry: ./.venv/Scripts/python.exe -m mypy app/ --ignore-missing-imports
