@@ -25,6 +25,7 @@ from app.enums import MealType, RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries, agenda_event_members, recurrence_series_members
 from app.models.meals import Meal
 from app.models.settings import AppSetting
+from app.services.google_sync import ENTITY_SERIES, OP_DELETE, enqueue, enqueue_event, series_key
 from app.utils.db import set_junction_members
 from app.utils.recurrence import generate_occurrence_dates
 from tools.cozi_import_advisor import (
@@ -143,6 +144,9 @@ class ImportResult:
     updated_events: int = 0
     updated_series: int = 0
     updated_meals: int = 0
+    deleted_events: int = 0
+    deleted_series: int = 0
+    deleted_meals: int = 0
     skipped: int = 0
 
 
@@ -538,40 +542,12 @@ async def import_selected_events(
         found_names.update(members)
     name_mapping = _build_found_name_mapping(found_names, family_members)
 
-    uid_set = set(selected_uids)
-    result = ImportResult()
-
-    for raw_ev in raw_events:
-        uid = str(raw_ev.get("UID", "") or "")
-        if uid not in uid_set:
-            result.skipped += 1
-            continue
-
-        parsed = _parse_single_event(raw_ev, family_members, name_mapping)
-        if parsed is None:
-            result.skipped += 1
-            continue
-
-        if parsed.event_type == "meal":
-            was_update = await _import_meal(parsed, db)
-            if was_update:
-                result.updated_meals += 1
-            else:
-                result.imported_meals += 1
-
-        elif parsed.event_type == "series":
-            was_update = await _import_series(parsed, db, default_series_count)
-            if was_update:
-                result.updated_series += 1
-            else:
-                result.imported_series += 1
-
-        else:
-            was_update = await _import_event(parsed, db)
-            if was_update:
-                result.updated_events += 1
-            else:
-                result.imported_events += 1
+    parsed_events = [
+        parsed
+        for raw_ev in raw_events
+        if (parsed := _parse_single_event(raw_ev, family_members, name_mapping)) is not None
+    ]
+    result = await _import_parsed_events(parsed_events, set(selected_uids), db, default_series_count)
 
     await db.commit()
 
@@ -612,20 +588,92 @@ async def run_automatic_cozi_sync(db: AsyncSession, default_series_count: int = 
     preview = await classify_cozi_events(events, db)
     selected_uids = [item.uid for item in preview if item.uid and item.status in {"new", "changed"}]
 
-    if not selected_uids:
-        logger.info(
-            "Automatic Cozi sync completed with no actionable items.",
-            total_items=len(preview),
-            actionable_items=0,
-        )
-        return ImportResult(skipped=len(events))
-
     logger.info(
         "Automatic Cozi sync found actionable items.",
         total_items=len(preview),
         actionable_items=len(selected_uids),
     )
-    return await import_selected_events(selected_uids, db, url, default_series_count)
+    result = await _import_parsed_events(events, set(selected_uids), db, default_series_count)
+    await _reconcile_removed_events(events, db, result)
+    await db.commit()
+    return result
+
+
+async def _import_parsed_events(
+    events: list[_ParsedEvent],
+    selected_uids: set[str],
+    db: AsyncSession,
+    default_series_count: int,
+) -> ImportResult:
+    """Import selected parsed events without committing the surrounding sync transaction."""
+    result = ImportResult()
+
+    for parsed in events:
+        if parsed.uid not in selected_uids:
+            result.skipped += 1
+            continue
+
+        if parsed.event_type == "meal":
+            was_update = await _import_meal(parsed, db)
+            if was_update:
+                result.updated_meals += 1
+            else:
+                result.imported_meals += 1
+        elif parsed.event_type == "series":
+            was_update = await _import_series(parsed, db, default_series_count)
+            if was_update:
+                result.updated_series += 1
+            else:
+                result.imported_series += 1
+        else:
+            was_update = await _import_event(parsed, db)
+            if was_update:
+                result.updated_events += 1
+            else:
+                result.imported_events += 1
+
+    return result
+
+
+async def _reconcile_removed_events(events: list[_ParsedEvent], db: AsyncSession, result: ImportResult) -> None:
+    """Delete Cozi-linked records absent from a successfully parsed feed snapshot."""
+    remote_uids = {event.uid for event in events if event.uid}
+
+    event_conditions = [AgendaEvent.cozi_uid.is_not(None), AgendaEvent.series_id.is_(None)]
+    series_conditions = [RecurrenceSeries.cozi_uid.is_not(None)]
+    meal_conditions = [Meal.cozi_uid.is_not(None)]
+    if remote_uids:
+        event_conditions.append(~AgendaEvent.cozi_uid.in_(remote_uids))
+        series_conditions.append(~RecurrenceSeries.cozi_uid.in_(remote_uids))
+        meal_conditions.append(~Meal.cozi_uid.in_(remote_uids))
+
+    removed_events = list((await db.execute(select(AgendaEvent).where(and_(*event_conditions)))).scalars().all())
+    removed_series = list((await db.execute(select(RecurrenceSeries).where(and_(*series_conditions)))).scalars().all())
+    removed_meals = list((await db.execute(select(Meal).where(and_(*meal_conditions)))).scalars().all())
+
+    for event in removed_events:
+        await enqueue_event(db, event, OP_DELETE)
+        await db.delete(event)
+
+    for series in removed_series:
+        await enqueue(db, ENTITY_SERIES, series_key(series.id), OP_DELETE)
+        await db.execute(sa_delete(AgendaEvent).where(AgendaEvent.series_id == series.id))
+        await db.delete(series)
+
+    for meal in removed_meals:
+        await db.delete(meal)
+
+    result.deleted_events = len(removed_events)
+    result.deleted_series = len(removed_series)
+    result.deleted_meals = len(removed_meals)
+
+    if removed_events or removed_series or removed_meals:
+        logger.info(
+            "Cozi-linked records absent from the feed were removed.",
+            deleted_events=result.deleted_events,
+            deleted_series=result.deleted_series,
+            deleted_meals=result.deleted_meals,
+        )
 
 
 async def _import_meal(ev: _ParsedEvent, db: AsyncSession) -> bool:

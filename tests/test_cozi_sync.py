@@ -4,15 +4,20 @@ import asyncio
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.cozi_scheduler import run_cozi_sync_scheduler
+from app.enums import RecurrenceType
 from app.models.agenda import AgendaEvent, RecurrenceSeries
 from app.models.family import FamilyMember
+from app.models.google_sync import GoogleSyncQueue
 from app.models.meals import Meal
 from app.models.settings import AppSetting
 from app.services.cozi_sync import run_automatic_cozi_sync
+from app.services.google_sync import ENTITY_EVENT, ENTITY_SERIES, OP_DELETE, event_key, series_key
 from tools.cozi_import_advisor import FamilyMemberRecord
 
 TODAY = date.today()
@@ -600,3 +605,120 @@ async def test_cozi_scheduler_runs_once_immediately_on_startup():
         await run_cozi_sync_scheduler(stop_event)
 
     assert calls == ["called"]
+
+
+async def test_automatic_sync_removes_missing_cozi_records_and_queues_google_deletions(db_engine):
+    """A valid empty Cozi feed is authoritative for records linked by Cozi UID."""
+    Session = async_sessionmaker(db_engine, expire_on_commit=False)
+
+    async with Session() as db:
+        series = RecurrenceSeries(
+            title="Cozi reeks",
+            recurrence_type=RecurrenceType.weekly,
+            series_start=TODAY,
+            series_end=TODAY,
+            start_time_of_day=datetime.strptime("09:00", "%H:%M").time(),
+            end_time_of_day=datetime.strptime("10:00", "%H:%M").time(),
+            cozi_uid="removed-series@cozi.test",
+        )
+        db.add_all(
+            [
+                AgendaEvent(
+                    title="Cozi afspraak",
+                    start_time=datetime.combine(TODAY, datetime.strptime("10:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("11:00", "%H:%M").time()),
+                    all_day=False,
+                    cozi_uid="removed-event@cozi.test",
+                ),
+                AgendaEvent(
+                    title="Lokale afspraak",
+                    start_time=datetime.combine(TODAY, datetime.strptime("12:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("13:00", "%H:%M").time()),
+                    all_day=False,
+                ),
+                Meal(
+                    date=TODAY,
+                    name="Cozi maaltijd",
+                    cozi_uid="removed-meal@cozi.test",
+                ),
+                series,
+                AppSetting(key="cozi_url", value="https://example.test/feed.ics"),
+            ]
+        )
+        await db.flush()
+        db.add_all(
+            [
+                AgendaEvent(
+                    title="Normale reeksafspraak",
+                    start_time=datetime.combine(TODAY, datetime.strptime("09:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("10:00", "%H:%M").time()),
+                    all_day=False,
+                    series_id=series.id,
+                ),
+                AgendaEvent(
+                    title="Lokale reeksuitzondering",
+                    start_time=datetime.combine(TODAY, datetime.strptime("11:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("12:00", "%H:%M").time()),
+                    all_day=False,
+                    series_id=series.id,
+                    is_exception=True,
+                ),
+            ]
+        )
+        await db.commit()
+        event_id = (
+            await db.execute(select(AgendaEvent.id).where(AgendaEvent.cozi_uid == "removed-event@cozi.test"))
+        ).scalar_one()
+        series_id = series.id
+
+    with _mock_fetch("BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR\n"):
+        async with Session() as db:
+            result = await run_automatic_cozi_sync(db)
+
+    assert (result.deleted_events, result.deleted_series, result.deleted_meals) == (1, 1, 1)
+
+    async with Session() as db:
+        remaining_events = (await db.execute(select(AgendaEvent))).scalars().all()
+        remaining_meals = (await db.execute(select(Meal))).scalars().all()
+        remaining_series = (await db.execute(select(RecurrenceSeries))).scalars().all()
+        jobs = (await db.execute(select(GoogleSyncQueue))).scalars().all()
+
+    assert [event.title for event in remaining_events] == ["Lokale afspraak"]
+    assert remaining_meals == []
+    assert remaining_series == []
+    assert {(job.entity_type, job.entity_key, job.operation) for job in jobs} == {
+        (ENTITY_EVENT, event_key(event_id), OP_DELETE),
+        (ENTITY_SERIES, series_key(series_id), OP_DELETE),
+    }
+
+
+async def test_automatic_sync_fetch_failure_preserves_cozi_linked_records(db_engine):
+    """A failed feed retrieval must not be mistaken for an authoritative empty feed."""
+    Session = async_sessionmaker(db_engine, expire_on_commit=False)
+
+    async with Session() as db:
+        db.add_all(
+            [
+                AgendaEvent(
+                    title="Cozi afspraak",
+                    start_time=datetime.combine(TODAY, datetime.strptime("10:00", "%H:%M").time()),
+                    end_time=datetime.combine(TODAY, datetime.strptime("11:00", "%H:%M").time()),
+                    all_day=False,
+                    cozi_uid="still-present@cozi.test",
+                ),
+                AppSetting(key="cozi_url", value="https://example.test/feed.ics"),
+            ]
+        )
+        await db.commit()
+
+    with patch("app.services.cozi_sync.fetch_ics", new=AsyncMock(side_effect=RuntimeError("feed unavailable"))):
+        async with Session() as db:
+            with pytest.raises(RuntimeError, match="feed unavailable"):
+                await run_automatic_cozi_sync(db)
+
+    async with Session() as db:
+        events = (await db.execute(select(AgendaEvent))).scalars().all()
+        jobs = (await db.execute(select(GoogleSyncQueue))).scalars().all()
+
+    assert len(events) == 1
+    assert jobs == []

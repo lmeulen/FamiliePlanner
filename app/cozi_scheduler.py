@@ -20,6 +20,9 @@ def _result_total(result: ImportResult) -> int:
         + result.updated_events
         + result.updated_series
         + result.updated_meals
+        + result.deleted_events
+        + result.deleted_series
+        + result.deleted_meals
     )
 
 
@@ -36,6 +39,9 @@ async def _execute_automatic_cozi_sync() -> None:
         updated_events=result.updated_events,
         updated_series=result.updated_series,
         updated_meals=result.updated_meals,
+        deleted_events=result.deleted_events,
+        deleted_series=result.deleted_series,
+        deleted_meals=result.deleted_meals,
         skipped=result.skipped,
     )
 

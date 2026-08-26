@@ -63,7 +63,8 @@ async def run_google_sync_scheduler(stop_event: asyncio.Event) -> None:
         try:
             await _drain_queue()
         except GoogleCalendarNotConfigured as exc:
-            logger.warning("Google Calendar sync is enabled but not configured.", reason=str(exc))
+            # Reason goes in the message: the log format does not render extra fields.
+            logger.warning(f"Google Calendar sync is enabled but not configured: {exc}")
         except Exception:
             logger.exception("Google Calendar sync cycle failed; will retry on the next cycle.")
 
